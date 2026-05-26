@@ -13,5 +13,6 @@ export { Chip } from './chip';
 export { Button } from './button';
 export { ComingSoon } from './coming-soon';
 export { Modal } from './modal';
+export { Pagination } from './pagination';
 export { RoleBadge } from './role-badge';
 export { SegmentedTabs, type SegmentedTab } from './segmented-tabs';

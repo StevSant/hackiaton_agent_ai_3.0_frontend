@@ -5,6 +5,7 @@ import { AuthStore } from '../../../core/auth/auth.store';
 import { Chip } from '../../../shared/ui/chip';
 import { Icon } from '../../../shared/ui/icon';
 import { KpiSmall } from '../../../shared/ui/kpi-small';
+import { Pagination } from '../../../shared/ui/pagination';
 import { SegmentedTabs, type SegmentedTab } from '../../../shared/ui/segmented-tabs';
 import { ClaimsTable } from '../components/claims-table';
 import { ClaimsStore } from '../services/claims.store';
@@ -17,7 +18,7 @@ type TierFilter = 'todos' | RiskTier | 'rebotados';
 @Component({
   selector: 'page-claims-list',
   standalone: true,
-  imports: [Chip, Icon, KpiSmall, SegmentedTabs, ClaimsTable],
+  imports: [Chip, Icon, KpiSmall, Pagination, SegmentedTabs, ClaimsTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
@@ -64,20 +65,20 @@ type TierFilter = 'todos' | RiskTier | 'rebotados';
         </div>
         <div class="flex items-center gap-1.5 flex-wrap">
           @if (tab() === 'activos') {
-            <ui-chip [active]="tierFilter() === 'todos'" (click)="tierFilter.set('todos')">Todos</ui-chip>
+            <ui-chip [active]="tierFilter() === 'todos'" (click)="setTier('todos')">Todos</ui-chip>
             @if (kpis().rebotados > 0) {
-              <ui-chip [active]="tierFilter() === 'rebotados'" (click)="tierFilter.set('rebotados')">
+              <ui-chip [active]="tierFilter() === 'rebotados'" (click)="setTier('rebotados')">
                 <ui-icon name="restart_alt" [size]="11" /> Rebotados ({{ kpis().rebotados }})
               </ui-chip>
             }
           }
-          <ui-chip [active]="tierFilter() === 'rojo'" (click)="tierFilter.set('rojo')">
+          <ui-chip [active]="tierFilter() === 'rojo'" (click)="setTier('rojo')">
             <span class="tier-dot tier-dot-r" style="box-shadow: none"></span> Alto
           </ui-chip>
-          <ui-chip [active]="tierFilter() === 'amarillo'" (click)="tierFilter.set('amarillo')">
+          <ui-chip [active]="tierFilter() === 'amarillo'" (click)="setTier('amarillo')">
             <span class="tier-dot tier-dot-y" style="box-shadow: none"></span> Medio
           </ui-chip>
-          <ui-chip [active]="tierFilter() === 'verde'" (click)="tierFilter.set('verde')">
+          <ui-chip [active]="tierFilter() === 'verde'" (click)="setTier('verde')">
             <span class="tier-dot tier-dot-g" style="box-shadow: none"></span> Bajo
           </ui-chip>
         </div>
@@ -91,7 +92,14 @@ type TierFilter = 'todos' | RiskTier | 'rebotados';
           }
         </div>
       } @else {
-        <claims-table [claims]="filtered()" (open)="openCase($event)" />
+        <claims-table [claims]="paged()" (open)="openCase($event)" />
+        <ui-pagination
+          [page]="page()"
+          [pageSize]="pageSize()"
+          [total]="filtered().length"
+          (pageChange)="page.set($event)"
+          (pageSizeChange)="onPageSize($event)"
+        />
       }
     </div>
   `,
@@ -104,6 +112,8 @@ export class ClaimsListPage {
   protected readonly tab = signal<TabKey>('activos');
   protected readonly tierFilter = signal<TierFilter>('todos');
   protected readonly search = signal<string>('');
+  protected readonly page = signal<number>(0);
+  protected readonly pageSize = signal<number>(10);
 
   protected readonly greeting = computed(() => {
     const name = this.auth.user()?.name?.split(' ')[0] ?? 'Analista';
@@ -162,13 +172,31 @@ export class ClaimsListPage {
       .sort((a, b) => b.score - a.score);
   });
 
+  protected readonly paged = computed(() => {
+    const list = this.filtered();
+    const start = this.page() * this.pageSize();
+    return list.slice(start, start + this.pageSize());
+  });
+
   protected onTab(key: string): void {
     this.tab.set(key as TabKey);
-    this.tierFilter.set('todos');
+    this.setTier('todos');
+    this.page.set(0);
   }
 
   protected onSearch(value: string): void {
     this.search.set(value);
+    this.page.set(0);
+  }
+
+  protected onPageSize(n: number): void {
+    this.pageSize.set(n);
+    this.page.set(0);
+  }
+
+  protected setTier(t: TierFilter): void {
+    this.tierFilter.set(t);
+    this.page.set(0);
   }
 
   protected openCase(id: string): void {

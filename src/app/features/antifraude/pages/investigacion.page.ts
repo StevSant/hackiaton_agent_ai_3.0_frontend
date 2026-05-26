@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 
 import { Chip } from '../../../shared/ui/chip';
 import { Icon } from '../../../shared/ui/icon';
+import { Pagination } from '../../../shared/ui/pagination';
 import { ClaimsTable } from '../../claims/components/claims-table';
 import type { Claim } from '../../claims/models';
 import { ClaimsStore } from '../../claims/services/claims.store';
@@ -14,7 +15,7 @@ type TierFilter = 'todos' | RiskTier;
 @Component({
   selector: 'page-antifraude-investigacion',
   standalone: true,
-  imports: [Chip, Icon, ClaimsTable],
+  imports: [Chip, Icon, Pagination, ClaimsTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
@@ -44,23 +45,23 @@ type TierFilter = 'todos' | RiskTier;
         </div>
         <div class="flex items-center gap-1.5 flex-wrap">
           <span class="text-[11px] uppercase tracking-wider text-ink-4 mr-1">Estado</span>
-          <ui-chip [active]="status() === 'todos'" (click)="status.set('todos')">Todos</ui-chip>
-          <ui-chip [active]="status() === 'pendiente'" (click)="status.set('pendiente')">Pendientes</ui-chip>
-          <ui-chip [active]="status() === 'escalado'" (click)="status.set('escalado')">Escalados</ui-chip>
-          <ui-chip [active]="status() === 'en_revision'" (click)="status.set('en_revision')">En revisión</ui-chip>
-          <ui-chip [active]="status() === 'dictaminado'" (click)="status.set('dictaminado')">Dictaminados</ui-chip>
+          <ui-chip [active]="status() === 'todos'" (click)="setStatus('todos')">Todos</ui-chip>
+          <ui-chip [active]="status() === 'pendiente'" (click)="setStatus('pendiente')">Pendientes</ui-chip>
+          <ui-chip [active]="status() === 'escalado'" (click)="setStatus('escalado')">Escalados</ui-chip>
+          <ui-chip [active]="status() === 'en_revision'" (click)="setStatus('en_revision')">En revisión</ui-chip>
+          <ui-chip [active]="status() === 'dictaminado'" (click)="setStatus('dictaminado')">Dictaminados</ui-chip>
         </div>
       </div>
       <div class="flex items-center justify-end gap-1.5 px-5 py-2 border-b border-line bg-canvas/40">
         <span class="text-[11px] uppercase tracking-wider text-ink-4 mr-1">Riesgo</span>
-        <ui-chip [active]="tier() === 'todos'" (click)="tier.set('todos')">Todos</ui-chip>
-        <ui-chip [active]="tier() === 'rojo'" (click)="tier.set('rojo')">
+        <ui-chip [active]="tier() === 'todos'" (click)="setTier('todos')">Todos</ui-chip>
+        <ui-chip [active]="tier() === 'rojo'" (click)="setTier('rojo')">
           <span class="tier-dot tier-dot-r" style="box-shadow: none"></span> Alto
         </ui-chip>
-        <ui-chip [active]="tier() === 'amarillo'" (click)="tier.set('amarillo')">
+        <ui-chip [active]="tier() === 'amarillo'" (click)="setTier('amarillo')">
           <span class="tier-dot tier-dot-y" style="box-shadow: none"></span> Medio
         </ui-chip>
-        <ui-chip [active]="tier() === 'verde'" (click)="tier.set('verde')">
+        <ui-chip [active]="tier() === 'verde'" (click)="setTier('verde')">
           <span class="tier-dot tier-dot-g" style="box-shadow: none"></span> Bajo
         </ui-chip>
       </div>
@@ -69,7 +70,14 @@ type TierFilter = 'todos' | RiskTier;
           Sin casos con los filtros seleccionados.
         </div>
       } @else {
-        <claims-table [claims]="filtered()" (open)="openCase($event)" />
+        <claims-table [claims]="paged()" (open)="openCase($event)" />
+        <ui-pagination
+          [page]="page()"
+          [pageSize]="pageSize()"
+          [total]="filtered().length"
+          (pageChange)="page.set($event)"
+          (pageSizeChange)="onPageSize($event)"
+        />
       }
     </div>
   `,
@@ -81,6 +89,8 @@ export class InvestigacionPage {
   protected readonly status = signal<StatusFilter>('todos');
   protected readonly tier = signal<TierFilter>('todos');
   protected readonly search = signal<string>('');
+  protected readonly page = signal<number>(0);
+  protected readonly pageSize = signal<number>(25);
 
   protected readonly filtered = computed<Claim[]>(() => {
     const list = this.store.claims();
@@ -104,8 +114,30 @@ export class InvestigacionPage {
       .sort((a, b) => b.score - a.score);
   });
 
+  protected readonly paged = computed(() => {
+    const list = this.filtered();
+    const start = this.page() * this.pageSize();
+    return list.slice(start, start + this.pageSize());
+  });
+
   protected onSearch(v: string): void {
     this.search.set(v);
+    this.page.set(0);
+  }
+
+  protected onPageSize(n: number): void {
+    this.pageSize.set(n);
+    this.page.set(0);
+  }
+
+  protected setStatus(s: StatusFilter): void {
+    this.status.set(s);
+    this.page.set(0);
+  }
+
+  protected setTier(t: TierFilter): void {
+    this.tier.set(t);
+    this.page.set(0);
   }
 
   protected openCase(id: string): void {

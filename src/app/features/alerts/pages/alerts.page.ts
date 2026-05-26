@@ -5,6 +5,7 @@ import { Button } from '../../../shared/ui/button';
 import { Chip } from '../../../shared/ui/chip';
 import { Icon } from '../../../shared/ui/icon';
 import { KpiSmall } from '../../../shared/ui/kpi-small';
+import { Pagination } from '../../../shared/ui/pagination';
 import { NewRuleModal } from '../components/new-rule-modal';
 import { RuleHistoryModal } from '../components/rule-history-modal';
 import { RuleRow } from '../components/rule-row';
@@ -16,7 +17,7 @@ type Filter = 'todas' | RiskTier;
 @Component({
   selector: 'page-alerts',
   standalone: true,
-  imports: [Button, Chip, Icon, KpiSmall, NewRuleModal, RuleHistoryModal, RuleRow],
+  imports: [Button, Chip, Icon, KpiSmall, Pagination, NewRuleModal, RuleHistoryModal, RuleRow],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
@@ -65,14 +66,14 @@ type Filter = 'todas' | RiskTier;
           <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line">{{ filtered().length }} reglas</span>
         </div>
         <div class="flex items-center gap-1.5">
-          <ui-chip [active]="filter() === 'todas'" (click)="filter.set('todas')">Todas</ui-chip>
-          <ui-chip [active]="filter() === 'rojo'" (click)="filter.set('rojo')">
+          <ui-chip [active]="filter() === 'todas'" (click)="setFilter('todas')">Todas</ui-chip>
+          <ui-chip [active]="filter() === 'rojo'" (click)="setFilter('rojo')">
             <span class="tier-dot tier-dot-r" style="box-shadow: none"></span> Rojo
           </ui-chip>
-          <ui-chip [active]="filter() === 'amarillo'" (click)="filter.set('amarillo')">
+          <ui-chip [active]="filter() === 'amarillo'" (click)="setFilter('amarillo')">
             <span class="tier-dot tier-dot-y" style="box-shadow: none"></span> Amarillo
           </ui-chip>
-          <ui-chip [active]="filter() === 'verde'" (click)="filter.set('verde')">
+          <ui-chip [active]="filter() === 'verde'" (click)="setFilter('verde')">
             <span class="tier-dot tier-dot-g" style="box-shadow: none"></span> Verde
           </ui-chip>
         </div>
@@ -87,9 +88,16 @@ type Filter = 'todas' | RiskTier;
         <span class="text-center">Estado</span>
       </div>
 
-      @for (r of filtered(); track r.code) {
+      @for (r of paged(); track r.code) {
         <alerts-rule-row [rule]="r" [maxActivations]="maxActivations()" [readonly]="!canEdit()" (toggle)="onToggle($event)" />
       }
+      <ui-pagination
+        [page]="page()"
+        [pageSize]="pageSize()"
+        [total]="filtered().length"
+        (pageChange)="page.set($event)"
+        (pageSizeChange)="onPageSize($event)"
+      />
     </div>
 
     @if (canEdit()) {
@@ -106,6 +114,8 @@ export class AlertsPage {
   protected readonly historyOpen = signal<boolean>(false);
   protected readonly newRuleOpen = signal<boolean>(false);
   protected readonly stats = this.store.stats;
+  protected readonly page = signal<number>(0);
+  protected readonly pageSize = signal<number>(10);
 
   protected readonly canEdit = computed(() => this.auth.user()?.roleCode === 'antifraude');
 
@@ -118,6 +128,22 @@ export class AlertsPage {
   protected readonly maxActivations = computed(() =>
     Math.max(1, ...this.store.rules().map((r) => r.activaciones30d)),
   );
+
+  protected readonly paged = computed(() => {
+    const list = this.filtered();
+    const start = this.page() * this.pageSize();
+    return list.slice(start, start + this.pageSize());
+  });
+
+  protected onPageSize(n: number): void {
+    this.pageSize.set(n);
+    this.page.set(0);
+  }
+
+  protected setFilter(f: Filter): void {
+    this.filter.set(f);
+    this.page.set(0);
+  }
 
   protected onToggle(code: string): void {
     this.store.toggle(code);

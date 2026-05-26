@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { Icon } from '../../../shared/ui/icon';
 import { KpiSmall } from '../../../shared/ui/kpi-small';
+import { Pagination } from '../../../shared/ui/pagination';
 import { SegmentedTabs, type SegmentedTab } from '../../../shared/ui/segmented-tabs';
 import type { Claim } from '../../claims/models';
 import { ClaimsStore } from '../../claims/services/claims.store';
@@ -14,7 +15,7 @@ type TabKey = 'activos' | 'historico';
 @Component({
   selector: 'page-antifraude-bandeja',
   standalone: true,
-  imports: [Icon, KpiSmall, SegmentedTabs, InboxTable],
+  imports: [Icon, KpiSmall, Pagination, SegmentedTabs, InboxTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
@@ -59,7 +60,14 @@ type TabKey = 'activos' | 'historico';
           }
         </div>
       } @else {
-        <antifraude-inbox-table [claims]="visible()" (open)="openCase($event)" />
+        <antifraude-inbox-table [claims]="paged()" (open)="openCase($event)" />
+        <ui-pagination
+          [page]="page()"
+          [pageSize]="pageSize()"
+          [total]="visible().length"
+          (pageChange)="page.set($event)"
+          (pageSizeChange)="onPageSize($event)"
+        />
       }
     </div>
   `,
@@ -70,6 +78,8 @@ export class BandejaPage {
   private readonly router = inject(Router);
 
   protected readonly tab = signal<TabKey>('activos');
+  protected readonly page = signal<number>(0);
+  protected readonly pageSize = signal<number>(10);
 
   protected readonly greeting = computed(() => {
     const name = this.auth.user()?.name?.split(' ')[0] ?? 'Antifraude';
@@ -115,8 +125,20 @@ export class BandejaPage {
     );
   });
 
+  protected readonly paged = computed(() => {
+    const list = this.visible();
+    const start = this.page() * this.pageSize();
+    return list.slice(start, start + this.pageSize());
+  });
+
   protected onTab(key: string): void {
     this.tab.set(key as TabKey);
+    this.page.set(0);
+  }
+
+  protected onPageSize(n: number): void {
+    this.pageSize.set(n);
+    this.page.set(0);
   }
 
   protected openCase(id: string): void {
