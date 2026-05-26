@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 
+import { AuthStore } from '../../../core/auth/auth.store';
 import { Button } from '../../../shared/ui/button';
 import { Chip } from '../../../shared/ui/chip';
 import { Icon } from '../../../shared/ui/icon';
@@ -20,21 +21,34 @@ type Filter = 'todas' | RiskTier;
   template: `
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
       <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">Reglas y alertas</h1>
+        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">
+          {{ canEdit() ? 'Reglas y alertas' : 'Catálogo de reglas' }}
+        </h1>
         <p class="text-ink-3 text-[13.5px] m-0">
-          Configura los umbrales de las 14 señales y revisa el histórico de activaciones.
+          @if (canEdit()) {
+            Configura los umbrales de las 14 señales y revisa el histórico de activaciones.
+          } @else {
+            Consulta el catálogo de las 14 señales y reglas críticas activas. La edición está reservada al equipo Antifraude.
+          }
         </p>
       </div>
-      <div class="flex gap-2">
-        <ui-button (click)="historyOpen.set(true)">
-          <ui-icon name="history" [size]="14" />
-          Historial de cambios
-        </ui-button>
-        <ui-button variant="primary" (click)="newRuleOpen.set(true)">
-          <ui-icon name="add" [size]="14" />
-          Nueva regla
-        </ui-button>
-      </div>
+      @if (canEdit()) {
+        <div class="flex gap-2">
+          <ui-button (click)="historyOpen.set(true)">
+            <ui-icon name="history" [size]="14" />
+            Historial de cambios
+          </ui-button>
+          <ui-button variant="primary" (click)="newRuleOpen.set(true)">
+            <ui-icon name="add" [size]="14" />
+            Nueva regla
+          </ui-button>
+        </div>
+      } @else {
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-ink-3 bg-soft border border-line">
+          <ui-icon name="visibility" [size]="13" />
+          Vista de consulta
+        </span>
+      }
     </div>
 
     <div class="grid grid-cols-4 gap-3 mb-5">
@@ -74,21 +88,26 @@ type Filter = 'todas' | RiskTier;
       </div>
 
       @for (r of filtered(); track r.code) {
-        <alerts-rule-row [rule]="r" [maxActivations]="maxActivations()" (toggle)="onToggle($event)" />
+        <alerts-rule-row [rule]="r" [maxActivations]="maxActivations()" [readonly]="!canEdit()" (toggle)="onToggle($event)" />
       }
     </div>
 
-    <alerts-rule-history-modal [open]="historyOpen()" (close)="historyOpen.set(false)" />
-    <alerts-new-rule-modal [open]="newRuleOpen()" (close)="newRuleOpen.set(false)" />
+    @if (canEdit()) {
+      <alerts-rule-history-modal [open]="historyOpen()" (close)="historyOpen.set(false)" />
+      <alerts-new-rule-modal [open]="newRuleOpen()" (close)="newRuleOpen.set(false)" />
+    }
   `,
 })
 export class AlertsPage {
   private readonly store = inject(RulesStore);
+  private readonly auth = inject(AuthStore);
 
   protected readonly filter = signal<Filter>('todas');
   protected readonly historyOpen = signal<boolean>(false);
   protected readonly newRuleOpen = signal<boolean>(false);
   protected readonly stats = this.store.stats;
+
+  protected readonly canEdit = computed(() => this.auth.user()?.roleCode === 'antifraude');
 
   protected readonly filtered = computed(() => {
     const list = this.store.rules();

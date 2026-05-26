@@ -1,32 +1,40 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { Button } from '../../../shared/ui/button';
+import { AuthStore } from '../../../core/auth/auth.store';
 import { Chip } from '../../../shared/ui/chip';
 import { Icon } from '../../../shared/ui/icon';
-import { KpiCard } from '../../../shared/ui/kpi-card';
-import { StackChart } from '../../../shared/ui/stack-chart';
+import { KpiSmall } from '../../../shared/ui/kpi-small';
+import { SegmentedTabs, type SegmentedTab } from '../../../shared/ui/segmented-tabs';
 import { ClaimsTable } from '../components/claims-table';
-import { PatternsCard } from '../components/patterns-card';
 import { ClaimsStore } from '../services/claims.store';
+import type { Claim } from '../models';
 import type { RiskTier } from '../../../shared/utils';
 
-type Filter = 'todos' | RiskTier;
+type TabKey = 'activos' | 'historico';
+type TierFilter = 'todos' | RiskTier | 'rebotados';
 
 @Component({
   selector: 'page-claims-list',
   standalone: true,
-  imports: [Button, Chip, Icon, KpiCard, StackChart, ClaimsTable, PatternsCard],
+  imports: [Chip, Icon, KpiSmall, SegmentedTabs, ClaimsTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
       <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">Hola, Lucía</h1>
+        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">{{ greeting() }}</h1>
         <p class="text-ink-3 text-[13.5px] m-0">
-          Tu bandeja tiene <b class="text-tier-red-ink">{{ stats().r }} casos críticos</b> y {{ stats().y }} medios para revisar hoy.
+          @if (kpis().pendientes > 0) {
+            Tienes <b class="text-tier-red-ink">{{ kpis().pendientes }} casos</b> esperando tu decisión de triaje.
+          } @else {
+            Sin casos pendientes — te puedes enfocar en seguimiento.
+          }
+          @if (kpis().rebotados > 0) {
+            <span class="ml-1.5 text-tier-yellow-ink">·  {{ kpis().rebotados }} caso{{ kpis().rebotados > 1 ? 's' : '' }} rebotado{{ kpis().rebotados > 1 ? 's' : '' }} de Antifraude.</span>
+          }
         </p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex items-center gap-2">
         <div class="flex items-center gap-2 bg-surface border border-line rounded-md px-3 py-1.5 w-[280px] text-ink-3 text-[13px] shadow-1">
           <ui-icon name="search" [size]="16" />
           <input
@@ -38,103 +46,109 @@ type Filter = 'todos' | RiskTier;
           />
           <kbd class="text-[10.5px] text-ink-4 border border-line px-1.5 py-px rounded bg-canvas font-sans">⌘K</kbd>
         </div>
-        <ui-button>
-          <ui-icon name="download" [size]="14" />
-          Exportar
-        </ui-button>
       </div>
     </div>
 
     <div class="grid grid-cols-4 gap-3 mb-5">
-      <ui-kpi-card
-        label="Casos en bandeja"
-        [value]="stats().total"
-        [delta]="{ up: true, text: '+8 esta semana' }"
-        [spark]="[34, 40, 33, 46, 49, 42, 37, 45, 50, 47, 54, 52]"
-        color="var(--brand)"
-      />
-      <ui-kpi-card
-        label="Score promedio"
-        [value]="stats().avg"
-        suffix=" / 100"
-        [delta]="{ up: true, text: '+3.2 vs semana anterior', isBad: true }"
-        [spark]="[36, 38, 37, 39, 42, 41, 40, 43, 44, 46, 45, 47]"
-        color="var(--tier-yellow)"
-      />
-      <ui-kpi-card
-        label="Alertas críticas"
-        [value]="stats().r"
-        suffix=" rojos"
-        [delta]="{ up: true, text: '+2 hoy', isBad: true }"
-        [spark]="[2, 4, 3, 6, 5, 7, 8, 6, 9, 11, 8, 12]"
-        color="var(--tier-red)"
-      />
-      <ui-kpi-card
-        label="Exposición en revisión"
-        [value]="exposureValue()"
-        [delta]="{ up: false, text: 'Sobre $0.7M total bandeja' }"
-        [spark]="[120, 140, 135, 155, 160, 145, 170, 165, 180, 175, 190, 205]"
-        color="var(--brand-2)"
-      />
-    </div>
-
-    <div class="grid grid-cols-[1.7fr_1fr] gap-5 mb-5">
-      <div class="bg-surface border border-line rounded-lg shadow-1">
-        <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
-          <div>
-            <h3 class="text-[13px] font-semibold m-0">Casos por nivel de riesgo</h3>
-            <div class="text-[12px] text-ink-3 mt-0.5">Últimas 12 semanas · vista apilada</div>
-          </div>
-          <div class="flex gap-1.5">
-            <ui-chip [active]="true">12s</ui-chip>
-            <ui-chip>30d</ui-chip>
-            <ui-chip>90d</ui-chip>
-          </div>
-        </div>
-        <ui-stack-chart [data]="trend()" />
-      </div>
-      <claims-patterns-card />
+      <ui-kpi-small label="Por triagear hoy" [value]="kpis().pendientes" icon="inbox" tone="brand" />
+      <ui-kpi-small label="Escalados (míos)" [value]="kpis().escalados" icon="flag" tone="yellow" />
+      <ui-kpi-small label="Rebotados" [value]="kpis().rebotados" icon="restart_alt" [tone]="kpis().rebotados > 0 ? 'red' : 'default'" />
+      <ui-kpi-small label="T. medio decisión" value="2h 41m" icon="schedule" />
     </div>
 
     <div class="bg-surface border border-line rounded-lg shadow-1">
-      <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
+      <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line flex-wrap">
         <div class="flex items-center gap-3.5">
-          <h3 class="text-[13px] font-semibold m-0">Bandeja de siniestros</h3>
-          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line">{{ filtered().length }} casos</span>
+          <h3 class="text-[13px] font-semibold m-0">Mi bandeja</h3>
+          <ui-segmented-tabs [tabs]="tabs()" [active]="tab()" (select)="onTab($any($event))" />
         </div>
         <div class="flex items-center gap-1.5 flex-wrap">
-          <ui-chip [active]="filter() === 'todos'" (click)="filter.set('todos')">Todos</ui-chip>
-          <ui-chip [active]="filter() === 'rojo'" (click)="filter.set('rojo')">
-            <span class="tier-dot tier-dot-r" style="box-shadow: none"></span> Alto ({{ stats().r }})
+          @if (tab() === 'activos') {
+            <ui-chip [active]="tierFilter() === 'todos'" (click)="tierFilter.set('todos')">Todos</ui-chip>
+            @if (kpis().rebotados > 0) {
+              <ui-chip [active]="tierFilter() === 'rebotados'" (click)="tierFilter.set('rebotados')">
+                <ui-icon name="restart_alt" [size]="11" /> Rebotados ({{ kpis().rebotados }})
+              </ui-chip>
+            }
+          }
+          <ui-chip [active]="tierFilter() === 'rojo'" (click)="tierFilter.set('rojo')">
+            <span class="tier-dot tier-dot-r" style="box-shadow: none"></span> Alto
           </ui-chip>
-          <ui-chip [active]="filter() === 'amarillo'" (click)="filter.set('amarillo')">
-            <span class="tier-dot tier-dot-y" style="box-shadow: none"></span> Medio ({{ stats().y }})
+          <ui-chip [active]="tierFilter() === 'amarillo'" (click)="tierFilter.set('amarillo')">
+            <span class="tier-dot tier-dot-y" style="box-shadow: none"></span> Medio
           </ui-chip>
-          <ui-chip [active]="filter() === 'verde'" (click)="filter.set('verde')">
-            <span class="tier-dot tier-dot-g" style="box-shadow: none"></span> Bajo ({{ stats().g }})
+          <ui-chip [active]="tierFilter() === 'verde'" (click)="tierFilter.set('verde')">
+            <span class="tier-dot tier-dot-g" style="box-shadow: none"></span> Bajo
           </ui-chip>
         </div>
       </div>
-      <claims-table [claims]="filtered()" (open)="openCase($event)" />
+      @if (filtered().length === 0) {
+        <div class="px-5 py-12 text-center text-ink-3 text-[13px]">
+          @if (tab() === 'activos') {
+            Sin casos activos con los filtros seleccionados.
+          } @else {
+            Todavía no tienes casos en histórico.
+          }
+        </div>
+      } @else {
+        <claims-table [claims]="filtered()" (open)="openCase($event)" />
+      }
     </div>
   `,
 })
 export class ClaimsListPage {
   private readonly store = inject(ClaimsStore);
+  private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
 
-  protected readonly stats = this.store.stats;
-  protected readonly trend = this.store.trend;
-  protected readonly filter = signal<Filter>('todos');
+  protected readonly tab = signal<TabKey>('activos');
+  protected readonly tierFilter = signal<TierFilter>('todos');
   protected readonly search = signal<string>('');
 
-  protected readonly filtered = computed(() => {
+  protected readonly greeting = computed(() => {
+    const name = this.auth.user()?.name?.split(' ')[0] ?? 'Analista';
+    return `Hola, ${name}`;
+  });
+
+  protected readonly tabs = computed<SegmentedTab[]>(() => {
+    const all = this.store.claims();
+    const active = all.filter(isActiveForAnalista).length;
+    const hist = all.filter(isHistoricForAnalista).length;
+    return [
+      { key: 'activos', label: 'Activos', count: active },
+      { key: 'historico', label: 'Histórico', count: hist },
+    ];
+  });
+
+  protected readonly kpis = computed(() => {
     const list = this.store.claims();
-    const f = this.filter();
+    const pendientes = list.filter(
+      (c) => c.review.status === 'pendiente' && c.review.bounce_count === 0,
+    ).length;
+    const escalados = list.filter(
+      (c) => c.review.status === 'escalado' || c.review.status === 'en_revision',
+    ).length;
+    const rebotados = list.filter(
+      (c) => c.review.status === 'pendiente' && c.review.bounce_count > 0,
+    ).length;
+    return { pendientes, escalados, rebotados };
+  });
+
+  protected readonly filtered = computed<Claim[]>(() => {
+    const list = this.store.claims();
+    const t = this.tab();
+    const tier = this.tierFilter();
     const q = this.search().toLowerCase().trim();
-    return list
+
+    const baseSet = list.filter(t === 'activos' ? isActiveForAnalista : isHistoricForAnalista);
+
+    return baseSet
       .filter((c) => {
-        if (f !== 'todos' && c.nivel !== f) return false;
+        if (tier === 'rebotados') {
+          if (!(c.review.status === 'pendiente' && c.review.bounce_count > 0)) return false;
+        } else if (tier !== 'todos' && c.nivel !== tier) {
+          return false;
+        }
         if (q) {
           return (
             c.id.toLowerCase().includes(q) ||
@@ -148,10 +162,10 @@ export class ClaimsListPage {
       .sort((a, b) => b.score - a.score);
   });
 
-  protected readonly exposureValue = computed(() => {
-    const e = this.stats().expuesto;
-    return `$${(e / 1000).toFixed(0)}K`;
-  });
+  protected onTab(key: string): void {
+    this.tab.set(key as TabKey);
+    this.tierFilter.set('todos');
+  }
 
   protected onSearch(value: string): void {
     this.search.set(value);
@@ -160,4 +174,16 @@ export class ClaimsListPage {
   protected openCase(id: string): void {
     void this.router.navigate(['/claims', id]);
   }
+}
+
+function isActiveForAnalista(c: Claim): boolean {
+  return (
+    c.review.status === 'pendiente' ||
+    c.review.status === 'escalado' ||
+    c.review.status === 'en_revision'
+  );
+}
+
+function isHistoricForAnalista(c: Claim): boolean {
+  return c.review.status === 'dictaminado' || c.review.status === 'revisado_sin_escalar';
 }

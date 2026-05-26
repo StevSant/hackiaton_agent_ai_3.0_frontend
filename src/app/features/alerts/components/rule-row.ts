@@ -31,15 +31,22 @@ import type { FraudRule } from '../models';
         <span class="font-mono tabular-nums text-[12px] text-ink-2 min-w-[20px] text-right">{{ rule().activaciones30d }}</span>
       </div>
 
-      <button
-        type="button"
-        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-[12px] border"
-        [class]="toggleClass()"
-        (click)="toggle.emit(rule().code)"
-      >
-        <ui-icon [name]="rule().enabled ? 'toggle_on' : 'toggle_off'" [size]="16" [fill]="rule().enabled" />
-        {{ rule().enabled ? 'Activa' : 'Pausada' }}
-      </button>
+      @if (readonly()) {
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-[12px] border" [class]="toggleClass()">
+          <ui-icon [name]="rule().enabled ? 'toggle_on' : 'toggle_off'" [size]="16" [fill]="rule().enabled" />
+          {{ rule().enabled ? 'Activa' : 'Pausada' }}
+        </span>
+      } @else {
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-[12px] border"
+          [class]="toggleClass()"
+          (click)="toggle.emit(rule().code)"
+        >
+          <ui-icon [name]="rule().enabled ? 'toggle_on' : 'toggle_off'" [size]="16" [fill]="rule().enabled" />
+          {{ rule().enabled ? 'Activa' : 'Pausada' }}
+        </button>
+      }
     </div>
   `,
 })
@@ -47,6 +54,7 @@ export class RuleRow {
   readonly rule = input.required<FraudRule>();
   readonly toggle = output<string>();
   readonly maxActivations = input<number>(20);
+  readonly readonly = input<boolean>(false);
 
   protected readonly activationPct = computed(() =>
     Math.min(100, Math.round((this.rule().activaciones30d / this.maxActivations()) * 100)),

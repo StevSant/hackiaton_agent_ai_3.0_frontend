@@ -1,6 +1,9 @@
-import type { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, type Routes } from '@angular/router';
 
 import { authGuard } from './core/auth/auth.guard';
+import { AuthStore } from './core/auth/auth.store';
+import { roleGuard } from './core/auth/role.guard';
 
 export const routes: Routes = [
   {
@@ -13,13 +16,22 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./layouts/app-shell').then((m) => m.AppShell),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'claims' },
+      {
+        path: '',
+        pathMatch: 'full',
+        // Role-aware default landing. Routes get evaluated again after login.
+        redirectTo: () => {
+          const auth = inject(AuthStore);
+          return auth.user()?.roleCode === 'antifraude' ? 'antifraude/bandeja' : 'claims';
+        },
+      },
       {
         path: 'claims',
         loadChildren: () => import('./features/claims/claims.routes').then((m) => m.routes),
       },
       {
         path: 'antifraude',
+        canActivate: [roleGuard('antifraude')],
         loadChildren: () =>
           import('./features/antifraude/antifraude.routes').then((m) => m.routes),
       },
@@ -29,6 +41,7 @@ export const routes: Routes = [
       },
       {
         path: 'network',
+        canActivate: [roleGuard('antifraude')],
         loadChildren: () => import('./features/network/network.routes').then((m) => m.routes),
       },
       {
@@ -37,6 +50,7 @@ export const routes: Routes = [
       },
       {
         path: 'audit',
+        canActivate: [roleGuard('antifraude')],
         loadChildren: () => import('./features/audit/audit.routes').then((m) => m.routes),
       },
       {

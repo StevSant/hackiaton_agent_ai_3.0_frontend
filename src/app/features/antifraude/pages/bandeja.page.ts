@@ -1,48 +1,66 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AuthStore } from '../../../core/auth/auth.store';
 import { Icon } from '../../../shared/ui/icon';
 import { KpiSmall } from '../../../shared/ui/kpi-small';
+import { SegmentedTabs, type SegmentedTab } from '../../../shared/ui/segmented-tabs';
+import type { Claim } from '../../claims/models';
 import { ClaimsStore } from '../../claims/services/claims.store';
 import { InboxTable } from '../components/inbox-table';
+
+type TabKey = 'activos' | 'historico';
 
 @Component({
   selector: 'page-antifraude-bandeja',
   standalone: true,
-  imports: [Icon, KpiSmall, InboxTable],
+  imports: [Icon, KpiSmall, SegmentedTabs, InboxTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
       <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">Bandeja Antifraude</h1>
+        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">{{ greeting() }}</h1>
         <p class="text-ink-3 text-[13.5px] m-0">
-          Casos elevados desde la bandeja del analista. Toma uno para iniciar la revisión especializada.
+          @if (kpis().porTomar > 0) {
+            Tienes <b class="text-tier-red-ink">{{ kpis().porTomar }} caso{{ kpis().porTomar > 1 ? 's' : '' }}</b> esperando ser tomado{{ kpis().porTomar > 1 ? 's' : '' }}.
+          } @else if (kpis().mineEnRevision > 0) {
+            Estás trabajando en {{ kpis().mineEnRevision }} caso{{ kpis().mineEnRevision > 1 ? 's' : '' }} — emite dictamen cuando estés lista.
+          } @else {
+            Bandeja vacía. Te puedes enfocar en patrones o auditoría.
+          }
         </p>
       </div>
       <div class="flex items-center gap-2 text-[12px] text-ink-3">
         <ui-icon name="info" [size]="14" />
-        Ordenados por tier (rojo primero) y luego por fecha de escalación.
+        Ordenados por tier (rojo primero) y luego por FIFO de escalación.
       </div>
     </div>
 
     <div class="grid grid-cols-4 gap-3 mb-5">
-      <ui-kpi-small label="Pendientes de tomar" [value]="stats().pendingTake" icon="hourglass_top" tone="yellow" />
-      <ui-kpi-small label="En revisión (mías)" [value]="stats().mine" icon="visibility" tone="brand" />
-      <ui-kpi-small label="En revisión (equipo)" [value]="stats().team" icon="group" />
-      <ui-kpi-small label="Re-trabajos" [value]="stats().bounces" icon="restart_alt" tone="red" />
+      <ui-kpi-small label="Por tomar" [value]="kpis().porTomar" icon="hourglass_top" [tone]="kpis().porTomar > 0 ? 'red' : 'default'" />
+      <ui-kpi-small label="En revisión (mías)" [value]="kpis().mineEnRevision" icon="visibility" tone="brand" />
+      <ui-kpi-small label="Re-trabajos abiertos" [value]="kpis().reworks" icon="restart_alt" [tone]="kpis().reworks > 0 ? 'yellow' : 'default'" />
+      <ui-kpi-small label="SLA promedio" value="4h 12m" icon="schedule" />
     </div>
 
     <div class="bg-surface border border-line rounded-lg shadow-1">
       <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
         <div class="flex items-center gap-3.5">
-          <h3 class="text-[13px] font-semibold m-0">Casos escalados</h3>
-          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line">
-            {{ inbox().length }} casos
-          </span>
+          <h3 class="text-[13px] font-semibold m-0">Bandeja Antifraude</h3>
+          <ui-segmented-tabs [tabs]="tabs()" [active]="tab()" (select)="onTab($any($event))" />
         </div>
       </div>
-      <antifraude-inbox-table [claims]="inbox()" (open)="openCase($event)" />
+      @if (visible().length === 0) {
+        <div class="px-5 py-12 text-center text-ink-3 text-[13px]">
+          @if (tab() === 'activos') {
+            La bandeja activa está vacía. Cuando un analista escale un caso, aparecerá aquí.
+          } @else {
+            Todavía no has emitido dictámenes.
+          }
+        </div>
+      } @else {
+        <antifraude-inbox-table [claims]="visible()" (open)="openCase($event)" />
+      }
     </div>
   `,
 })
@@ -51,21 +69,55 @@ export class BandejaPage {
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
 
-  protected readonly inbox = this.claimsStore.antifraudeInbox;
+  protected readonly tab = signal<TabKey>('activos');
 
-  protected readonly stats = computed(() => {
-    const list = this.inbox();
+  protected readonly greeting = computed(() => {
+    const name = this.auth.user()?.name?.split(' ')[0] ?? 'Antifraude';
+    return `Hola, ${name}`;
+  });
+
+  protected readonly tabs = computed<SegmentedTab[]>(() => {
+    const list = this.claimsStore.claims();
     const me = this.auth.user()?.id ?? '';
-    const pendingTake = list.filter((c) => c.review.status === 'escalado').length;
-    const mine = list.filter(
+    const activos = list.filter(
+      (c) => c.review.status === 'escalado' || c.review.status === 'en_revision',
+    ).length;
+    const hist = list.filter(
+      (c) => c.review.status === 'dictaminado' && c.review.dictaminado_by === me,
+    ).length;
+    return [
+      { key: 'activos', label: 'Activos', count: activos },
+      { key: 'historico', label: 'Mi histórico', count: hist },
+    ];
+  });
+
+  protected readonly kpis = computed(() => {
+    const list = this.claimsStore.claims();
+    const me = this.auth.user()?.id ?? '';
+    const porTomar = list.filter((c) => c.review.status === 'escalado').length;
+    const mineEnRevision = list.filter(
       (c) => c.review.status === 'en_revision' && c.review.assigned_to === me,
     ).length;
-    const team = list.filter(
-      (c) => c.review.status === 'en_revision' && c.review.assigned_to !== me,
-    ).length;
-    const bounces = this.claimsStore.claims().filter((c) => c.review.bounce_count > 0).length;
-    return { pendingTake, mine, team, bounces };
+    const reworks = list.filter((c) => c.review.bounce_count > 0).length;
+    return { porTomar, mineEnRevision, reworks };
   });
+
+  protected readonly visible = computed<Claim[]>(() => {
+    const list = this.claimsStore.claims();
+    const me = this.auth.user()?.id ?? '';
+    if (this.tab() === 'activos') {
+      return list.filter(
+        (c) => c.review.status === 'escalado' || c.review.status === 'en_revision',
+      );
+    }
+    return list.filter(
+      (c) => c.review.status === 'dictaminado' && c.review.dictaminado_by === me,
+    );
+  });
+
+  protected onTab(key: string): void {
+    this.tab.set(key as TabKey);
+  }
 
   protected openCase(id: string): void {
     void this.router.navigate(['/claims', id]);

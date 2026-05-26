@@ -15,6 +15,7 @@ import { DocumentsCard } from '../components/documents-card';
 import { EscalationStickyBanner } from '../components/escalation-sticky-banner';
 import { ProviderSummaryCard } from '../components/provider-summary-card';
 import { RecommendationCard } from '../components/recommendation-card';
+import { RevisadoCard } from '../components/revisado-card';
 import { ReviewActionBar } from '../components/review-action-bar';
 import { ReviewTimeline } from '../components/review-timeline';
 import { RuleDetailDialog } from '../components/rule-detail-dialog';
@@ -41,6 +42,7 @@ import { ProvidersStore } from '../../network/services/providers.store';
     EscalationStickyBanner,
     ProviderSummaryCard,
     RecommendationCard,
+    RevisadoCard,
     ReviewActionBar,
     ReviewTimeline,
     RuleDetailDialog,
@@ -92,6 +94,7 @@ import { ProvidersStore } from '../../network/services/providers.store';
               (escalate)="onEscalate()"
               (take)="onTake()"
               (dictaminate)="dictamenOpen.set(true)"
+              (markRevisado)="onMarkRevisado()"
             />
           }
         </div>
@@ -107,6 +110,8 @@ import { ProvidersStore } from '../../network/services/providers.store';
           <claim-score-panel [claim]="c" (ruleClick)="openRule($event)" />
           @if (c.review.status === 'dictaminado') {
             <claim-dictamen-card [review]="c.review" />
+          } @else if (c.review.status === 'revisado_sin_escalar') {
+            <claim-revisado-card [review]="c.review" />
           }
           <claim-ai-explanation-card [claim]="c" />
           <claim-alerts-list [alerts]="c.alertas" />
@@ -197,6 +202,26 @@ export class ClaimDetailPage {
   protected openRule(alert: ClaimAlert): void {
     this.activeAlert.set(alert);
     this.ruleOpen.set(true);
+  }
+
+  protected onMarkRevisado(): void {
+    // Mockup: light prompt so the user can leave a closure note. Real wiring
+    // replaces with a proper modal + POST /claims/{id}/close.
+    const note = typeof window !== 'undefined'
+      ? window.prompt(
+          'Marcar este caso como revisado sin escalación. Opcionalmente, deja una nota:',
+          '',
+        )
+      : null;
+    if (note === null) return; // user cancelled
+    const now = new Date().toISOString();
+    this.claims.patchReview(this.id(), {
+      status: 'revisado_sin_escalar',
+      closed_by: this.currentUserId(),
+      closed_by_name: this.currentUserName(),
+      closed_at: now,
+      closed_note: note.trim() || undefined,
+    });
   }
 
   protected onEscalate(): void {

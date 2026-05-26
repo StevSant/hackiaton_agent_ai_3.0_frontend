@@ -47,7 +47,7 @@ interface NavItem {
       }
 
       <div class="text-[10.5px] font-medium uppercase tracking-[0.06em] text-ink-4 px-2 pt-4 pb-1.5">Operación</div>
-      @for (it of secondary; track it.link) {
+      @for (it of secondary(); track it.link) {
         <a
           [routerLink]="it.link"
           routerLinkActive="bg-surface text-ink shadow-1 font-medium"
@@ -132,32 +132,42 @@ export class SidebarNav {
 
   protected readonly primary = computed<NavItem[]>(() => {
     const r = this.roleCode();
-    const base: NavItem[] = [
-      { link: '/claims', label: 'Bandeja', icon: 'dashboard', count: this.claims.claims().length },
-    ];
     if (r === 'antifraude') {
       const inbox = this.claims
         .claims()
         .filter((c) => c.review.status === 'escalado' || c.review.status === 'en_revision').length;
-      base.push({
-        link: '/antifraude/bandeja',
-        label: 'Bandeja Antifraude',
-        icon: 'shield_person',
-        count: inbox,
-      });
+      return [
+        { link: '/antifraude/bandeja', label: 'Bandeja Antifraude', icon: 'shield_person', count: inbox },
+        { link: '/antifraude/investigacion', label: 'Investigación', icon: 'travel_explore', count: this.claims.claims().length },
+        { link: '/network', label: 'Proveedores', icon: 'hub', count: this.providers.providers().length },
+        { link: '/agent', label: 'Centinela IA', icon: 'auto_awesome', badge: 'Nuevo' },
+      ];
     }
-    base.push(
+    // analista (default)
+    const myActive = this.claims
+      .claims()
+      .filter((c) => c.review.status === 'pendiente' || c.review.status === 'escalado' || c.review.status === 'en_revision')
+      .length;
+    return [
+      { link: '/claims', label: 'Bandeja', icon: 'dashboard', count: myActive },
       { link: '/agent', label: 'Centinela IA', icon: 'auto_awesome', badge: 'Nuevo' },
-      { link: '/network', label: 'Proveedores', icon: 'hub', count: this.providers.providers().length },
-    );
-    return base;
+    ];
   });
 
-  protected readonly secondary: NavItem[] = [
-    { link: '/alerts', label: 'Reglas y alertas', icon: 'rule' },
-    { link: '/audit', label: 'Auditoría', icon: 'description' },
-    { link: '/settings', label: 'Configuración', icon: 'settings' },
-  ];
+  protected readonly secondary = computed<NavItem[]>(() => {
+    const r = this.roleCode();
+    if (r === 'antifraude') {
+      return [
+        { link: '/alerts', label: 'Reglas y alertas', icon: 'rule' },
+        { link: '/audit', label: 'Auditoría', icon: 'description' },
+        { link: '/settings', label: 'Configuración', icon: 'settings' },
+      ];
+    }
+    return [
+      { link: '/alerts', label: 'Reglas (consulta)', icon: 'menu_book' },
+      { link: '/settings', label: 'Configuración', icon: 'settings' },
+    ];
+  });
 
   protected toggleRole(): void {
     const r = this.roleCode();

@@ -1,4 +1,9 @@
-export type ReviewStatus = 'pendiente' | 'escalado' | 'en_revision' | 'dictaminado';
+export type ReviewStatus =
+  | 'pendiente'
+  | 'escalado'
+  | 'en_revision'
+  | 'dictaminado'
+  | 'revisado_sin_escalar';
 
 export type DictamenOutcome = 'confirmado_sospecha' | 'descartado' | 'requiere_mas_info';
 
@@ -18,4 +23,9 @@ export interface ClaimReview {
   dictaminado_at?: string;
   bounce_count: number;
   bounce_note?: string;
+  // analista terminal close (revisado_sin_escalar)
+  closed_by?: string;
+  closed_by_name?: string;
+  closed_at?: string;
+  closed_note?: string;
 }

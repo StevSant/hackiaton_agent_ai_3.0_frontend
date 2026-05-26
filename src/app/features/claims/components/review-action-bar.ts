@@ -20,6 +20,10 @@ import type { ClaimReview } from '../models/claim-review.model';
     <div class="flex flex-wrap items-center gap-2 justify-end">
       @switch (variant()) {
         @case ('analista-can-escalate') {
+          <ui-button (click)="markRevisado.emit()">
+            <ui-icon name="check_circle" [size]="14" />
+            Marcar como revisado
+          </ui-button>
           <ui-button variant="primary" (click)="escalate.emit()">
             <ui-icon name="flag" [size]="14" />
             Escalar a Unidad Antifraude
@@ -71,6 +75,12 @@ import type { ClaimReview } from '../models/claim-review.model';
             Caso dictaminado
           </span>
         }
+        @case ('cerrado-sin-escalar-terminal') {
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-tier-green-ink bg-tier-green-soft border border-transparent">
+            <ui-icon name="check_circle" [size]="13" />
+            Cerrado sin escalación
+          </span>
+        }
         @default {
           <!-- nothing for verde / no-context fallback -->
         }
@@ -86,6 +96,7 @@ export class ReviewActionBar {
   readonly escalate = output<void>();
   readonly take = output<void>();
   readonly dictaminate = output<void>();
+  readonly markRevisado = output<void>();
 
   protected readonly variant = computed<
     | 'analista-can-escalate'
@@ -96,6 +107,7 @@ export class ReviewActionBar {
     | 'antifraude-can-dictamen'
     | 'antifraude-other-owns'
     | 'dictaminado-terminal'
+    | 'cerrado-sin-escalar-terminal'
     | 'none'
   >(() => {
     const r = this.review();
@@ -103,6 +115,7 @@ export class ReviewActionBar {
     const me = this.currentUserId();
 
     if (r.status === 'dictaminado') return 'dictaminado-terminal';
+    if (r.status === 'revisado_sin_escalar') return 'cerrado-sin-escalar-terminal';
 
     if (role === 'analista') {
       if (r.status === 'pendiente') {
