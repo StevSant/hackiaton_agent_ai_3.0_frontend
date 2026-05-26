@@ -1,6 +1,6 @@
 # CLAUDE.md — Frontend (Angular)
 
-This file governs everything inside `hackiaton_agent_ai_3.0_frontend/`. Read the [root `CLAUDE.md`](../CLAUDE.md) first for cross-stack rules.
+This file governs everything inside `hackiaton_agent_ai_3.0_frontend/`. Read the [root `CLAUDE.md`](../CLAUDE.md) first for cross-stack rules, and especially **§2 Challenge spec — ground truth** (Aseguradora del Sur). The product spec lives at `docs/superpowers/specs/2026-05-26-fraudia-claims-design.md`.
 
 > If you're an AI assistant and you're about to write `*ngIf`, `@Input()`, `NgModule`, `HttpClientModule`, or `BehaviorSubject` for component state — **stop**. This project uses modern Angular. See §2.
 
@@ -14,6 +14,7 @@ This file governs everything inside `hackiaton_agent_ai_3.0_frontend/`. Read the
 - **TypeScript** — strict mode, no `any`.
 - **Package manager** — `pnpm`.
 - **Generated API types** — `openapi-typescript` against the backend's `/openapi.json`.
+- **Force-graph (stretch)** — `force-graph` or `sigma.js` for the relationship network view.
 
 ---
 
@@ -28,6 +29,8 @@ This file governs everything inside `hackiaton_agent_ai_3.0_frontend/`. Read the
 - **Functional APIs in `app.config.ts`** — `provideRouter`, `provideHttpClient(withFetch(), withInterceptors([...]))`, `provideAnimationsAsync`. No `RouterModule.forRoot`, no `HttpClientModule`.
 - **Functional guards / interceptors** — `CanActivateFn`, `HttpInterceptorFn`. No class-based guards/interceptors.
 - **No deprecated APIs.** If you're unsure whether an API is current, consult <https://angular.dev>. Do **not** pattern-match from pre-v17 examples in memory.
+- **Spanish UI strings only.** Code, identifiers, comments stay in English. Every user-visible string is Spanish.
+- **Never use `"fraude"` as a UI label** without `"posible"`. Use `"posible fraude"`, `"alerta"`, `"requiere revisión"`. The framing is *alerta para revisión*, never *acusación*. Root CLAUDE.md §2.10.
 
 ---
 
@@ -38,31 +41,43 @@ src/app/
 ├── core/                       ← app-wide singletons; provided in app.config.ts
 │   ├── api/
 │   │   ├── generated/          ← openapi-typescript output — DO NOT EDIT
-│   │   └── clients/            ← thin typed wrappers around generated types
-│   ├── auth/                   ← AuthStore (signal-based), auth.guard.ts, auth.interceptor.ts
+│   │   └── clients/            ← claims.api.ts, agent.api.ts, reports.api.ts (typed wrappers)
 │   ├── config/                 ← env.ts, runtime config
-│   ├── interceptors/           ← error.interceptor.ts, etc.
+│   ├── interceptors/           ← error.interceptor.ts
 │   ├── realtime/               ← SseClient
 │   └── errors/                 ← AppError model, error mapping
 ├── shared/                     ← reusable across features
-│   ├── ui/                     ← Button, Card, Spinner, Avatar, EmptyState, ... (presentational)
-│   ├── pipes/                  ← MarkdownPipe (sanitized), RelativeTimePipe, ...
+│   ├── ui/                     ← Button, Card, Spinner, EmptyState, TrafficLightBadge, ScoreBar, RuleChip, CitationChip (presentational)
+│   ├── pipes/                  ← RelativeTimePipe, ScoreColorPipe, …
 │   ├── directives/
 │   └── utils/
 ├── features/                   ← vertical slices, lazy-loaded
-│   ├── chat/
-│   │   ├── pages/              ← routed smart components (ChatPage)
-│   │   ├── components/         ← MessageList, MessageItem, MessageComposer, ToolCallCard, AgentStepCard, ...
-│   │   ├── services/           ← ChatStore (signal-based), chat.api.ts
+│   ├── claims/
+│   │   ├── pages/              ← ClaimsListPage, ClaimDetailPage (smart)
+│   │   ├── components/         ← ClaimsTable, FilterBar, ClaimDetailHeader,
+│   │   │                          RulesFiredAccordion, MlFactorsAccordion, SimilarNarrativesAccordion,
+│   │   │                          AnomalyIndicatorCard
+│   │   ├── services/           ← ClaimsStore (signal-based), claims.api.ts wrapper
 │   │   ├── models/             ← feature-local types (re-exporting from core/api/generated when needed)
-│   │   └── chat.routes.ts
-│   ├── auth/
-│   ├── uploads/
-│   └── memory/
-├── layouts/                    ← AppShell, AuthShell
+│   │   └── claims.routes.ts
+│   ├── agent/
+│   │   ├── components/         ← ChatPanel, MessageItem, ToolCallCard, AgentStepCard, CitationChip
+│   │   ├── services/           ← AgentStore (signal-based), agent.api.ts wrapper
+│   │   └── agent.routes.ts     ← (none today; rendered as a right-rail inside claims)
+│   ├── network/                ← stretch: NetworkGraphPage + force-graph wrapper
+│   │   ├── pages/              ← NetworkGraphPage
+│   │   ├── components/         ← ForceGraphView, NodeTooltip
+│   │   └── network.routes.ts
+│   └── reports/                ← stretch: ExecutiveReportPage + CSV/PDF download
+│       ├── pages/              ← ExecutiveReportPage
+│       ├── components/         ← ReportTilesGrid, ProviderRanking, RamoDistributionChart, ReportDownloadButton
+│       └── reports.routes.ts
+├── layouts/                    ← AppShell
 ├── app.routes.ts               ← top-level lazy-loaded routes
 └── app.config.ts               ← providers
 ```
+
+**Deferred (do NOT scaffold for the hackathon submission):** `features/auth/`, `features/uploads/`, `features/memory/`. See spec §11 for re-introduction triggers.
 
 **Import rules (enforced by ESLint where possible):**
 
@@ -84,9 +99,9 @@ src/app/
 ## 5. State management
 
 - **Signals** for UI and feature state. Period.
-- One `*Store` service per feature (e.g. `ChatStore` in `features/chat/services/chat.store.ts`) exposing signals + methods. Provided at the feature route level, not globally.
+- One `*Store` service per feature (e.g. `ClaimsStore` in `features/claims/services/claims.store.ts`, `AgentStore` in `features/agent/services/agent.store.ts`) exposing signals + methods. Provided at the feature route level, not globally.
 - **`computed()`** for derived state. **`effect()`** for side-effects (rarely — usually a method on the store is cleaner).
-- **RxJS** for streams: SSE events, websocket frames, debounced search inputs. Pipe into a signal via `toSignal()` once you cross the boundary.
+- **RxJS** for streams: SSE events, debounced search inputs. Pipe into a signal via `toSignal()` once you cross the boundary.
 - **No NgRx.** If we ever need it, flag it and ask. We won't.
 - **No `BehaviorSubject` for component state.** Use `signal()`.
 
@@ -94,7 +109,7 @@ src/app/
 
 ## 6. API service conventions
 
-- Every feature gets **one** `*.api.ts` in `core/api/clients/` (e.g. `chat.api.ts`, `files.api.ts`, `auth.api.ts`).
+- Every feature gets **one** `*.api.ts` in `core/api/clients/` (e.g. `claims.api.ts`, `agent.api.ts`, `reports.api.ts`).
 - Each `*.api.ts` wraps the generated types from `core/api/generated/`. Components and stores call the api wrapper, **never** `HttpClient` directly.
 - Errors flow through `core/interceptors/error.interceptor.ts` which maps HTTP failures to a typed `AppError` (in `core/errors/`).
 - Regenerate types after every backend schema change:
@@ -102,12 +117,13 @@ src/app/
   pnpm gen:api
   ```
   This script runs `openapi-typescript $BACKEND_URL/openapi.json -o src/app/core/api/generated/schema.ts`.
+- **Spanish schema field names** — generated types will have Spanish snake_case (`id_siniestro`, `monto_reclamado`, `documentos_completos`). Don't write a camelCase adapter layer. Render Spanish field names directly in templates where they appear.
 
 ---
 
 ## 7. Streaming AI responses (SSE)
 
-The backend streams `ChatStreamEvent`s over Server-Sent Events. The shape (must match `hackiaton_agent_ai_3.0_backend/CLAUDE.md` §7):
+The backend streams `ChatStreamEvent`s from the claims agent over Server-Sent Events. The shape (must match `hackiaton_agent_ai_3.0_backend/CLAUDE.md` §7):
 
 ```ts
 // Discriminated union — regenerated from backend OpenAPI
@@ -124,14 +140,14 @@ type ChatStreamEvent =
 
 - **Use `fetch` + `ReadableStream`**, not `EventSource`. `EventSource` cannot send `Authorization` headers or POST bodies.
 - Implement once in `core/realtime/sse.client.ts` as `SseClient.stream<T>(req): Observable<T>`. Features subscribe.
-- The feature pipes the stream into the store's signals:
+- `AgentStore.ask(query, context?)` opens the stream against `POST /api/v1/agent/ask`, pipes events into the store's signals:
   ```ts
-  // ChatStore (sketch)
-  send(prompt: string) {
+  // AgentStore (sketch)
+  ask(query: string, context?: { focus_claim_id?: string }) {
     this.streaming.set(true);
     const id = uuid();
-    this.messages.update(m => [...m, { id, role: 'assistant', content: '' }]);
-    this.sse.stream<ChatStreamEvent>({ url: '/api/v1/chat/stream', body: { prompt } })
+    this.messages.update(m => [...m, { id, role: 'assistant', content: '', steps: [], citations: [] }]);
+    this.sse.stream<ChatStreamEvent>({ url: '/api/v1/agent/ask', body: { query, context } })
       .subscribe({
         next: e => this.applyEvent(id, e),
         complete: () => this.streaming.set(false),
@@ -140,55 +156,57 @@ type ChatStreamEvent =
   }
   ```
 - The token applier uses `messages.update(...)` to append to the last assistant message. Never mutate signal values in place.
+- `agent_step` and `tool_call` / `tool_result` events render as collapsible `AgentStepCard` / `ToolCallCard` inside the message thread — **this transparency is part of the explainability story we're graded on** (root CLAUDE.md §2.4, 25% bucket).
 
 ---
 
-## 8. AI chat UI architecture
+## 8. UI architecture overview
 
-`features/chat/`:
+Two primary features wire together for the demo: **`features/claims/`** owns the dashboard, and **`features/agent/`** provides a right-rail chat panel that the dashboard mounts.
 
-- **`ChatPage`** (smart): holds `messages: Signal<Message[]>`, `streaming: Signal<boolean>`, `error: Signal<AppError | null>`. Wires `MessageList` ← messages, `MessageComposer` → `chatStore.send()`.
-- **`MessageList`** (presentational): `input<Message[]>('messages')`. Uses `@for (m of messages(); track m.id)`.
-- **`MessageItem`**: renders user / assistant / tool messages. Uses `MarkdownPipe` for assistant content. Renders `ToolCallCard` for tool messages.
-- **`MessageComposer`**: textarea + send button. Emits `output<string>('submit')`.
-- **`ToolCallCard`**, **`AgentStepCard`**: collapsible cards for transparency into the agent's reasoning.
+### `features/claims/`
 
-**Incremental rendering:** signal updates only. `MessageList` is `ChangeDetectionStrategy.OnPush` (Angular default for standalone in modern versions but be explicit). Tracking by `m.id` keeps the DOM stable as tokens stream in.
+- **`ClaimsListPage`** (smart): holds `claims: Signal<ClaimSummary[]>`, `loading: Signal<boolean>`, `error: Signal<AppError | null>`. Filter bar (`tier`, `ramo`, date range) drives the API call. Table sorted by `score` desc with `TrafficLightBadge` per row.
+- **`ClaimDetailPage`** (smart): loads one claim via `ClaimsStore.loadDetail(id)`. Renders:
+  - `ClaimDetailHeader` — asegurado, póliza, fechas, montos.
+  - `TrafficLightBadge` + `ScoreBar` (0-100 with tier color).
+  - Three accordions in this exact order: **"Reglas activadas"** (`RulesFiredAccordion`), **"Factores del modelo"** (`MlFactorsAccordion` — SHAP top-3), **"Narrativas similares"** (`SimilarNarrativesAccordion` — clickable cards linking back to /claims/:id).
+  - `AnomalyIndicatorCard` between header and accordions.
+  - Right-rail mount point for `ChatPanel` with `context: { focus_claim_id: id }`.
+
+### `features/agent/`
+
+- **`ChatPanel`** (smart): holds `messages: Signal<AgentMessage[]>`, `streaming`, `error`. NL query box + send. Streams responses via `AgentStore.ask(...)`. Citations render as `CitationChip` that navigates to `/claims/:id`.
+- **`MessageItem`** (presentational): renders user / assistant messages. Uses `MarkdownPipe` for assistant content. Shows `AgentStepCard` + `ToolCallCard` inline for transparency.
+- **`ToolCallCard`**, **`AgentStepCard`**: collapsible cards exposing the agent's reasoning.
+
+### `features/network/` (stretch)
+
+- **`NetworkGraphPage`**: force-directed graph of asegurados ↔ proveedores ↔ claims. Color by claim tier, size by degree. Clicking a node updates a route-level signal that filters the claims list when the analyst returns.
+
+### `features/reports/` (stretch)
+
+- **`ExecutiveReportPage`**: KPI tiles (top-10 claims, top providers by alerts, ramo distribution, alert reasons histogram) + a download button (CSV + printable HTML for PDF).
+
+**Incremental rendering for the chat panel:** signal updates only. `MessageList` uses `ChangeDetectionStrategy.OnPush`. Tracking by `m.id` keeps the DOM stable as tokens stream in.
 
 **Markdown:** `shared/pipes/markdown.pipe.ts` wraps a markdown lib (e.g. `marked`) and sanitizes with `DomSanitizer`. Never bind raw HTML.
 
 ---
 
-## 9. Authentication
+## 9. Explainability accordion pattern
 
-- **Library:** `@supabase/supabase-js` on the client. Configured once in `core/auth/supabase.client.ts`.
-- **Token storage:**
-  - **Access token** lives in memory only — a signal inside `AuthStore` (`core/auth/auth.store.ts`).
-  - **Refresh token** lives in an `httpOnly` cookie set by the backend's `/auth/session` endpoint. The frontend never reads or writes it.
-  - **Never** persist the access token in `localStorage` or `sessionStorage`. On page reload, the frontend calls `/auth/session/refresh` which uses the httpOnly cookie to mint a fresh access token.
-- **`authInterceptor`** (functional) attaches `Authorization: Bearer <token>` to every `/api/**` request.
-- **`authGuard`** (functional `CanActivateFn`) protects feature routes:
-  ```ts
-  // chat.routes.ts
-  export const routes: Routes = [
-    { path: '', loadComponent: () => import('./pages/chat.page'), canActivate: [authGuard] },
-  ];
-  ```
-- **Sign-in/up flows** live in `features/auth/`. Magic link + OAuth providers (Google, GitHub) via Supabase.
+The three accordions on `ClaimDetailPage` are **the** explainability surface — they're 25% of our grade (root CLAUDE.md §2.4). They follow a shared visual + interaction pattern; build them as one component family.
+
+- **Common shape:** each accordion is a `BaseAccordion` (in `shared/ui/`) wrapping a header (icon + label + count) and a body slot. Closed by default; click toggles. Persist open/closed state in the route fragment.
+- **Empty states are mandatory.** A 🟢 claim with no rules fired shows the "Reglas activadas" accordion with the body "No se activaron reglas para este caso." — never hide the accordion. The empty-state copy is part of the explainability story.
+- **Citations are clickable.** Rule chips inside "Reglas activadas" link to the rules-engine doc anchor; similar-narratives cards link to `/claims/:other_id`.
+- **Evidence shows numbers, not adjectives.** The rule evidence payload (root CLAUDE.md backend §9) is rendered as a small key-value strip below the rule chip — `proveedor_id P-0042 · casos observados 7` reads better than "recurrent provider".
+- **Loading states use skeletons**, not spinners. The detail page is fetched eagerly; skeletons keep the layout stable while data lands.
 
 ---
 
-## 10. File uploads
-
-- UI lives in `features/uploads/`.
-- `UploadsApi` posts `multipart/form-data` to `POST /api/v1/files`, receives `{ file_id }`.
-- Ingestion progress streamed via `SseClient.stream(/api/v1/files/{file_id}/events)`. Shape matches backend `FileIngestEvent` (`uploaded`, `parsing`, `embedding`, `ready`, `error`).
-- **Validation:** mime type allow-list + size limit on the client (cheap UX) **and** on the server (source of truth). Show the user friendly errors for both.
-- **Optimistic UI:** show the file in the list immediately with a `uploading` status; transition to `ready` on the SSE `ready` event.
-
----
-
-## 11. Loading, error, optimistic UI
+## 10. Loading, error, optimistic UI
 
 Every async surface exposes three signals:
 
@@ -199,39 +217,42 @@ error:   Signal<AppError | null>
 ```
 
 - Components render `@if (loading()) { ... } @else if (error()) { ... } @else if (data()) { ... }`.
-- **Optimistic updates** only where the server confirms idempotently (chat message send, "like" actions). Reconcile on the `done` event; revert on `error`.
+- **Optimistic updates** only where the server confirms idempotently (chat send). Reconcile on the `done` event; revert on `error`.
 
 ---
 
-## 12. Styling & UX
+## 11. Styling & UX
 
 - **Tailwind utility-first.** When a class string repeats twice, extract a presentational component (not an `@apply` rule).
 - **Design tokens** in `tailwind.config.ts` (colors, spacing, radii, shadows). Reference tokens, not raw values, in components.
+- **Tier colors** are first-class design tokens — `tier-green`, `tier-yellow`, `tier-red`. Used by `TrafficLightBadge`, `ScoreBar`, and any chart that shows tier data.
 - **Dark mode** via Tailwind's `class` strategy. Toggle stored in a signal-backed `ThemeStore` and persisted to a single non-secret cookie.
 - **Icons:** Angular Material `mat-icon` with the Material Symbols set.
-- **Animations:** keep them tasteful and purposeful. Tailwind transitions for hover/state. `@angular/animations` only for non-trivial sequences (drawer slide, chat scroll-into-view).
-- **Microcopy** matters for hackathon impact — empty states, loading states, and error states all deserve a one-liner that says what's happening and what the user can do.
+- **Animations:** keep them tasteful and purposeful. Tailwind transitions for hover/state. `@angular/animations` only for non-trivial sequences (accordion expand, chat scroll-into-view).
+- **Microcopy in Spanish.** Empty / loading / error states all deserve a one-liner that says what's happening and what the user can do. Never use *"fraude"* without *"posible"*.
 
 ---
 
-## 13. Accessibility
+## 12. Accessibility
 
 - Every interactive element must be keyboard-reachable. Visible focus rings (Tailwind `focus-visible:` utilities).
 - Chat transcript uses `role="log" aria-live="polite" aria-relevant="additions"`.
-- Use `LiveAnnouncer` from `@angular/cdk/a11y` for important non-visual updates (e.g. "Tool call completed").
-- Color contrast meets WCAG AA. Don't ship a UI you can't navigate with the keyboard.
+- Use `LiveAnnouncer` from `@angular/cdk/a11y` for important non-visual updates (e.g. "Análisis completado").
+- Color contrast meets WCAG AA. The 🟢🟡🔴 traffic light is NEVER conveyed by color alone — always paired with a label or symbol.
+- Don't ship a UI you can't navigate with the keyboard.
 
 ---
 
-## 14. Responsive design
+## 13. Responsive design
 
 - **Mobile-first.** Default styles target small screens; use Tailwind `md:`/`lg:` to layer up.
-- The chat layout collapses the sidebar to a drawer at `md`. The composer stays sticky-bottom on mobile.
+- The claims layout collapses the right-rail chat panel into a bottom sheet at `md`. The composer stays sticky-bottom on mobile.
 - Test at 360px width before declaring a feature done.
+- The pitch will likely happen on a wide laptop screen — but if a juror opens the deployed URL on a phone, it should still look right.
 
 ---
 
-## 15. Anti-patterns (do NOT do these)
+## 14. Anti-patterns (do NOT do these)
 
 - ❌ `*.component.ts` > **250 LOC** → split into smart + presentational + signals/store.
 - ❌ Template > **100 lines** → extract child components.
@@ -245,10 +266,12 @@ error:   Signal<AppError | null>
 - ❌ Putting feature components in `shared/ui/` → `shared/ui/` is for cross-feature primitives only.
 - ❌ Inline secrets, hardcoded backend URLs → use `core/config/env.ts`.
 - ❌ Calling `console.log` in committed code → use a `Logger` service if you need conditional logging.
+- ❌ A UI string with `"fraude"` not preceded by `"posible"` — see §2 and root §2.10.
+- ❌ Scaffolding `features/auth/`, `features/uploads/`, `features/memory/` — deferred (§3).
 
 ---
 
-## 16. Commands
+## 15. Commands
 
 ```bash
 pnpm install              # install deps
@@ -263,7 +286,7 @@ pnpm gen:api              # regenerate src/app/core/api/generated/ from $BACKEND
 
 ---
 
-## 17. AI-assistant checklist (Claude Code, Cursor, Copilot)
+## 16. AI-assistant checklist (Claude Code, Cursor, Copilot)
 
 Before you submit a change, verify:
 
@@ -274,6 +297,8 @@ Before you submit a change, verify:
 - [ ] API calls go through `core/api/clients/*.api.ts`.
 - [ ] If you changed an API surface, you ran `pnpm gen:api`.
 - [ ] Streaming events use the `ChatStreamEvent` shape from generated types.
-- [ ] Access token never written to `localStorage`/`sessionStorage`.
 - [ ] Loading / error / data signals exist for every async surface.
-- [ ] Keyboard works. Focus rings visible. Contrast passes.
+- [ ] All user-visible strings are Spanish.
+- [ ] No `"fraude"` literal in any user-facing string without `"posible"`.
+- [ ] All three accordions on `ClaimDetailPage` render with empty-state copy when there's nothing to show.
+- [ ] Keyboard works. Focus rings visible. Contrast passes. Traffic-light not color-only.
