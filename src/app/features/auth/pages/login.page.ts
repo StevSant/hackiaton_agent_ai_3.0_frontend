@@ -90,14 +90,43 @@ import { AuthStore } from '../../../core/auth/auth.store';
 
         <div class="flex items-center gap-2 my-1.5">
           <div class="flex-1 h-px bg-line"></div>
-          <span class="text-[11px] text-ink-4 uppercase tracking-wider">o</span>
+          <span class="text-[11px] text-ink-4 uppercase tracking-wider">demo · elige perspectiva</span>
           <div class="flex-1 h-px bg-line"></div>
         </div>
 
-        <button type="button" class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-sm text-[13px] border border-line bg-surface hover:bg-hover" (click)="onDemo()">
-          <ui-icon name="auto_awesome" [size]="14" [fill]="true" />
-          Entrar como analista demo (Lucía Vélez)
-        </button>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button
+            type="button"
+            class="flex items-start gap-2.5 text-left px-3 py-2.5 rounded-sm border border-line bg-surface hover:bg-hover hover:border-line-2 transition-colors"
+            (click)="onDemo('analista')"
+          >
+            <span class="mt-0.5 w-7 h-7 rounded-full grid place-items-center bg-soft text-ink-2 border border-line">
+              <ui-icon name="badge" [size]="14" />
+            </span>
+            <span class="flex-1 leading-tight">
+              <span class="block text-[13px] font-medium">Analista de siniestros</span>
+              <span class="block text-[11.5px] text-ink-3 mt-0.5">Ana Lema · triaje y escalación</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            class="flex items-start gap-2.5 text-left px-3 py-2.5 rounded-sm border border-tier-red-ink/20 bg-tier-red-soft/30 hover:bg-tier-red-soft/50 transition-colors"
+            (click)="onDemo('antifraude')"
+          >
+            <span class="mt-0.5 w-7 h-7 rounded-full grid place-items-center bg-tier-red-soft text-tier-red-ink border border-transparent">
+              <ui-icon name="shield_person" [size]="14" />
+            </span>
+            <span class="flex-1 leading-tight">
+              <span class="block text-[13px] font-medium">Analista antifraude</span>
+              <span class="block text-[11.5px] text-ink-3 mt-0.5">Lucía Vélez · dictamen + bandeja escalada</span>
+            </span>
+          </button>
+        </div>
+
+        <p class="text-[11px] text-ink-4 text-center mt-1">
+          Una vez dentro puedes alternar la perspectiva desde el panel lateral.
+        </p>
       </form>
 
       <p class="text-[11.5px] text-ink-3 mt-5 leading-relaxed">
@@ -119,11 +148,14 @@ export class LoginPage {
   protected onSubmit(e: Event): void {
     e.preventDefault();
     const ok = this.auth.loginMock(this.email(), this.password());
-    if (ok) void this.router.navigateByUrl('/claims');
+    if (!ok) return;
+    const landing = this.auth.user()?.roleCode === 'antifraude' ? '/antifraude/bandeja' : '/claims';
+    void this.router.navigateByUrl(landing);
   }
 
-  protected onDemo(): void {
-    this.auth.loginDemo();
-    void this.router.navigateByUrl('/claims');
+  protected onDemo(role: 'analista' | 'antifraude'): void {
+    this.auth.loginDemoAs(role);
+    const landing = role === 'antifraude' ? '/antifraude/bandeja' : '/claims';
+    void this.router.navigateByUrl(landing);
   }
 }

@@ -98,15 +98,37 @@ export class AuthStore {
   }
 
   loginDemo(): void {
-    this._user.set({
-      id: 'usr_lucia',
-      name: 'Lucía Vélez',
-      email: 'lucia.velez@aseguradorasur.ec',
-      role: ROLE_LABEL.antifraude,
-      roleCode: 'antifraude',
-      sucursal: 'Quito Norte',
-      initials: 'LV',
-    });
+    this.loginDemoAs('antifraude');
+  }
+
+  /**
+   * Mockup helper: drops the chosen demo persona into the session so the
+   * presenter can pick a role from the login screen.
+   * - analista  → Ana Lema  (sees /claims default landing)
+   * - antifraude → Lucía Vélez (sees /antifraude/bandeja default landing)
+   */
+  loginDemoAs(roleCode: RoleCode): void {
+    const user: AuthUser =
+      roleCode === 'antifraude'
+        ? {
+            id: 'usr_lucia',
+            name: 'Lucía Vélez',
+            email: 'lucia.velez@aseguradorasur.ec',
+            role: ROLE_LABEL.antifraude,
+            roleCode: 'antifraude',
+            sucursal: 'Quito Norte',
+            initials: 'LV',
+          }
+        : {
+            id: 'usr_ana',
+            name: 'Ana Lema',
+            email: 'ana.lema@aseguradorasur.ec',
+            role: ROLE_LABEL.analista,
+            roleCode: 'analista',
+            sucursal: 'Quito Norte',
+            initials: 'AL',
+          };
+    this._user.set(user);
     this._token.set(`mock_demo_${Date.now()}`);
     this._error.set(null);
   }
