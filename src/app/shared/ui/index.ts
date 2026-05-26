@@ -13,3 +13,4 @@ export { Chip } from './chip';
 export { Button } from './button';
 export { ComingSoon } from './coming-soon';
 export { Modal } from './modal';
+export { RoleBadge } from './role-badge';

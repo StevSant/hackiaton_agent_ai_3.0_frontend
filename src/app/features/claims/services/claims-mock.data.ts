@@ -1,7 +1,7 @@
 import { riskTier } from '../../../shared/utils';
 import type { Claim } from '../models';
 
-const RAW: Omit<Claim, 'nivel'>[] = [
+const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
   {
     id: 'SIN-2026-08412',
     ramo: 'vehiculos',
@@ -597,4 +597,78 @@ const RAW: Omit<Claim, 'nivel'>[] = [
   },
 ];
 
-export const MOCK_CLAIMS: Claim[] = RAW.map((c) => ({ ...c, nivel: riskTier(c.score) }));
+import type { ClaimReview } from '../models/claim-review.model';
+
+function synthReview(index: number, claimId: string): ClaimReview {
+  // Deterministic mockup review state, distributed so the demo shows every variant.
+  switch (index) {
+    case 0:
+      // SIN-2026-08412 (score 91) — pendiente: the analista's first action target.
+      return { status: 'pendiente', bounce_count: 0 };
+    case 1:
+      // SIN-2026-08398 (score 87) — escalado: visible in antifraude bandeja, not yet taken.
+      return {
+        status: 'escalado',
+        escalated_by: 'usr_ana',
+        escalated_by_name: 'Ana Lema',
+        escalated_at: '2026-05-26T09:14:00-05:00',
+        escalation_note:
+          'Tercer evento con narrativa similar. Sugiero revisión cruzada con SIN-2025-07112 y SIN-2025-07955.',
+        bounce_count: 0,
+      };
+    case 2:
+      // Third highest — en_revision: antifraude has taken it.
+      return {
+        status: 'en_revision',
+        escalated_by: 'usr_ana',
+        escalated_by_name: 'Ana Lema',
+        escalated_at: '2026-05-25T16:02:00-05:00',
+        escalation_note: 'Documentación incompleta y proveedor con historial denso.',
+        assigned_to: 'usr_lucia',
+        assigned_to_name: 'Lucía Vélez',
+        taken_at: '2026-05-26T08:42:00-05:00',
+        bounce_count: 0,
+      };
+    case 3:
+      // Fourth — dictaminado confirmado_sospecha: shows DictamenCard.
+      return {
+        status: 'dictaminado',
+        escalated_by: 'usr_ana',
+        escalated_by_name: 'Ana Lema',
+        escalated_at: '2026-05-24T11:20:00-05:00',
+        escalation_note: 'Pérdida total cerca del borde de vigencia, taller en lista observada.',
+        assigned_to: 'usr_lucia',
+        assigned_to_name: 'Lucía Vélez',
+        taken_at: '2026-05-24T14:05:00-05:00',
+        dictamen_outcome: 'confirmado_sospecha',
+        dictamen_justificacion:
+          'Cruzando proveedor PRV-0142 con casos previos se observa patrón consistente con simulación. Recomiendo elevar a comité antifraude y solicitar inspección pericial del vehículo previo a cualquier liquidación.',
+        dictaminado_by: 'usr_lucia',
+        dictaminado_by_name: 'Lucía Vélez',
+        dictaminado_at: '2026-05-25T17:48:00-05:00',
+        bounce_count: 0,
+      };
+    case 4:
+      // Fifth — pendiente con bounce: shows EscalationStickyBanner.
+      return {
+        status: 'pendiente',
+        bounce_count: 1,
+        bounce_note:
+          'Falta acta de inspección física del taller y reporte ampliatorio del ajustador. Sin esos documentos no puedo descartar la sospecha — re-escalar una vez adjuntos.',
+        escalated_by_name: 'Ana Lema',
+        escalated_at: '2026-05-24T08:10:00-05:00',
+        assigned_to_name: 'Lucía Vélez',
+        dictaminado_by_name: 'Lucía Vélez',
+        dictaminado_at: '2026-05-25T10:32:00-05:00',
+      };
+    default:
+      // The rest stay pendiente without bounce — the analista's regular triage queue.
+      return { status: 'pendiente', bounce_count: 0 };
+  }
+}
+
+export const MOCK_CLAIMS: Claim[] = RAW.map((c, i) => ({
+  ...c,
+  nivel: riskTier(c.score),
+  review: synthReview(i, c.id),
+}));

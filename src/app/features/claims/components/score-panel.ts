@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 import { RiskRing } from '../../../shared/ui/risk-ring';
 import { suggestedAction } from '../utils/ai-explanation';
-import type { Claim } from '../models';
+import type { Claim, ClaimAlert } from '../models';
 
 @Component({
   selector: 'claim-score-panel',
@@ -24,9 +24,15 @@ import type { Claim } from '../models';
           </p>
           <div class="flex items-center gap-1.5 mt-3.5 flex-wrap">
             @for (a of topAlerts(); track a.code) {
-              <span class="font-mono text-[11px] px-2 py-0.5 rounded" [class]="chipClass(a.severidad)">
+              <button
+                type="button"
+                class="font-mono text-[11px] px-2 py-0.5 rounded transition-all cursor-pointer hover:ring-2 hover:ring-line-2 hover:ring-offset-1 hover:ring-offset-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-2"
+                [class]="chipClass(a.severidad)"
+                [title]="tooltipFor(a)"
+                (click)="ruleClick.emit(a)"
+              >
                 {{ a.code }} · +{{ a.puntos }}
-              </span>
+              </button>
             }
           </div>
         </div>
@@ -36,6 +42,7 @@ import type { Claim } from '../models';
 })
 export class ScorePanel {
   readonly claim = input.required<Claim>();
+  readonly ruleClick = output<ClaimAlert>();
 
   protected readonly suggestedAction = suggestedAction;
 
@@ -62,5 +69,9 @@ export class ScorePanel {
       : sev === 'med'
         ? 'bg-tier-yellow-soft text-tier-yellow-ink'
         : 'bg-tier-green-soft text-tier-green-ink';
+  }
+
+  protected tooltipFor(a: ClaimAlert): string {
+    return `${a.code} · +${a.puntos} pts — ${a.detalle} (clic para ver detalle)`;
   }
 }

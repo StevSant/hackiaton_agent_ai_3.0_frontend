@@ -4,4 +4,5 @@ export type { ClaimTimelineEvent, TimelineTone } from './claim-timeline-event.mo
 export type { ClaimDocument } from './claim-document.model';
 export type { ClaimVehicle } from './claim-vehicle.model';
 export type { TrendPoint } from './trend-point.model';
+export type { ClaimReview, ReviewStatus, DictamenOutcome } from './claim-review.model';
 export { ALERT_CATALOG, type AlertCatalogEntry } from './alert-catalog';

@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AuthStore } from '../../../core/auth/auth.store';
 import { Button } from '../../../shared/ui/button';
 import { Icon } from '../../../shared/ui/icon';
 import { RiskBadge } from '../../../shared/ui/risk-badge';
@@ -8,12 +9,19 @@ import { ramoIcon, ramoLabel } from '../../../shared/utils';
 import { AiExplanationCard } from '../components/ai-explanation-card';
 import { AlertsList } from '../components/alerts-list';
 import { CaseMetaCard } from '../components/case-meta-card';
+import { DictamenCard } from '../components/dictamen-card';
+import { DictamenFormModal } from '../components/dictamen-form-modal';
 import { DocumentsCard } from '../components/documents-card';
+import { EscalationStickyBanner } from '../components/escalation-sticky-banner';
 import { ProviderSummaryCard } from '../components/provider-summary-card';
 import { RecommendationCard } from '../components/recommendation-card';
+import { ReviewActionBar } from '../components/review-action-bar';
+import { ReviewTimeline } from '../components/review-timeline';
+import { RuleDetailDialog } from '../components/rule-detail-dialog';
 import { ScorePanel } from '../components/score-panel';
 import { TimelineCard } from '../components/timeline-card';
 import { VehicleCard } from '../components/vehicle-card';
+import type { ClaimAlert, DictamenOutcome } from '../models';
 import { ClaimsStore } from '../services/claims.store';
 import { ProvidersStore } from '../../network/services/providers.store';
 
@@ -27,9 +35,15 @@ import { ProvidersStore } from '../../network/services/providers.store';
     AiExplanationCard,
     AlertsList,
     CaseMetaCard,
+    DictamenCard,
+    DictamenFormModal,
     DocumentsCard,
+    EscalationStickyBanner,
     ProviderSummaryCard,
     RecommendationCard,
+    ReviewActionBar,
+    ReviewTimeline,
+    RuleDetailDialog,
     ScorePanel,
     TimelineCard,
     VehicleCard,
@@ -40,7 +54,7 @@ import { ProvidersStore } from '../../network/services/providers.store';
     @if (c) {
       <div class="flex items-center gap-2 mb-3.5">
         <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[13px] text-ink-2 hover:bg-hover hover:text-ink" (click)="back()">
-          <ui-icon name="arrow_back" [size]="14" /> Bandeja
+          <ui-icon name="arrow_back" [size]="14" /> {{ backLabel() }}
         </button>
         <span class="text-ink-3 text-[12.5px]">/</span>
         <span class="font-mono text-[12.5px] whitespace-nowrap">{{ c.id }}</span>
@@ -59,25 +73,41 @@ import { ProvidersStore } from '../../network/services/providers.store';
             {{ c.asegurado }} · {{ c.ciudad }} · ocurrió el {{ c.fecha_ocurrencia }} · reportado {{ c.fecha_reporte }}
           </p>
         </div>
-        <div class="flex gap-2">
-          <ui-button (click)="askAI()">
-            <ui-icon name="auto_awesome" [size]="14" />
-            Preguntar a la IA
-          </ui-button>
-          <ui-button>
-            <ui-icon name="download" [size]="14" />
-            PDF
-          </ui-button>
-          <ui-button variant="primary">
-            <ui-icon name="flag" [size]="14" />
-            Escalar
-          </ui-button>
+        <div class="flex flex-col items-end gap-2">
+          <div class="flex gap-2">
+            <ui-button (click)="askAI()">
+              <ui-icon name="auto_awesome" [size]="14" />
+              Preguntar a la IA
+            </ui-button>
+            <ui-button>
+              <ui-icon name="download" [size]="14" />
+              PDF
+            </ui-button>
+          </div>
+          @if (roleCode(); as r) {
+            <claim-review-action-bar
+              [role]="r"
+              [currentUserId]="currentUserId()"
+              [review]="c.review"
+              (escalate)="onEscalate()"
+              (take)="onTake()"
+              (dictaminate)="dictamenOpen.set(true)"
+            />
+          }
         </div>
+      </div>
+
+      <!-- Bounce-back banner (only when applicable; component renders nothing otherwise) -->
+      <div class="mb-4">
+        <claim-escalation-sticky-banner [review]="c.review" />
       </div>
 
       <div class="grid grid-cols-[1fr_360px] gap-5 max-[1100px]:grid-cols-1">
         <div class="flex flex-col gap-5">
-          <claim-score-panel [claim]="c" />
+          <claim-score-panel [claim]="c" (ruleClick)="openRule($event)" />
+          @if (c.review.status === 'dictaminado') {
+            <claim-dictamen-card [review]="c.review" />
+          }
           <claim-ai-explanation-card [claim]="c" />
           <claim-alerts-list [alerts]="c.alertas" />
           <claim-timeline-card [events]="c.timeline" />
@@ -85,6 +115,7 @@ import { ProvidersStore } from '../../network/services/providers.store';
         </div>
 
         <div class="flex flex-col gap-5">
+          <claim-review-timeline [review]="c.review" />
           <claim-meta-card [claim]="c" />
           @if (c.vehiculo) {
             <claim-vehicle-card [vehicle]="c.vehiculo" />
@@ -101,6 +132,20 @@ import { ProvidersStore } from '../../network/services/providers.store';
           <claim-recommendation-card [claim]="c" />
         </div>
       </div>
+
+      <!-- Modals -->
+      @if (activeAlert(); as a) {
+        <claim-rule-detail-dialog
+          [open]="ruleOpen()"
+          [alert]="a"
+          (close)="ruleOpen.set(false)"
+        />
+      }
+      <claim-dictamen-form-modal
+        [open]="dictamenOpen()"
+        (close)="dictamenOpen.set(false)"
+        (submit)="onDictamen($event)"
+      />
     } @else {
       <div class="py-20 text-center text-ink-3">
         Caso no encontrado.
@@ -114,10 +159,15 @@ export class ClaimDetailPage {
 
   private readonly claims = inject(ClaimsStore);
   private readonly providers = inject(ProvidersStore);
+  private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
 
   protected readonly ramoIcon = ramoIcon;
   protected readonly ramoLabel = ramoLabel;
+
+  protected readonly ruleOpen = signal(false);
+  protected readonly activeAlert = signal<ClaimAlert | null>(null);
+  protected readonly dictamenOpen = signal(false);
 
   protected readonly claim = computed(() => this.claims.findById(this.id()));
 
@@ -127,11 +177,83 @@ export class ClaimDetailPage {
     return this.providers.findById(c.proveedor) ?? null;
   });
 
+  protected readonly roleCode = computed(() => this.auth.user()?.roleCode ?? null);
+  protected readonly currentUserId = computed(() => this.auth.user()?.id ?? 'usr_anon');
+  protected readonly currentUserName = computed(() => this.auth.user()?.name ?? 'Sin sesión');
+
+  protected readonly backLabel = computed(() =>
+    this.roleCode() === 'antifraude' ? 'Bandeja Antifraude' : 'Bandeja',
+  );
+
   protected back(): void {
-    void this.router.navigate(['/claims']);
+    const route = this.roleCode() === 'antifraude' ? '/antifraude/bandeja' : '/claims';
+    void this.router.navigate([route]);
   }
 
   protected askAI(): void {
     void this.router.navigate(['/agent'], { queryParams: { case: this.id() } });
+  }
+
+  protected openRule(alert: ClaimAlert): void {
+    this.activeAlert.set(alert);
+    this.ruleOpen.set(true);
+  }
+
+  protected onEscalate(): void {
+    const id = this.id();
+    const now = new Date().toISOString();
+    // Mockup: synchronously transition. Real wiring calls POST /escalate.
+    this.claims.patchReview(id, {
+      status: 'escalado',
+      escalated_by: this.currentUserId(),
+      escalated_by_name: this.currentUserName(),
+      escalated_at: now,
+      escalation_note: 'Escalado desde la bandeja (mockup).',
+      // Clear bounce visibility after re-escalation
+      bounce_note: undefined,
+    });
+  }
+
+  protected onTake(): void {
+    const now = new Date().toISOString();
+    this.claims.patchReview(this.id(), {
+      status: 'en_revision',
+      assigned_to: this.currentUserId(),
+      assigned_to_name: this.currentUserName(),
+      taken_at: now,
+    });
+  }
+
+  protected onDictamen(payload: { outcome: DictamenOutcome; justificacion: string }): void {
+    const now = new Date().toISOString();
+    const id = this.id();
+    this.dictamenOpen.set(false);
+
+    if (payload.outcome === 'requiere_mas_info') {
+      // Bounce-back: return to pendiente with the antifraude's note as bounce_note.
+      const current = this.claim();
+      const nextBounce = (current?.review.bounce_count ?? 0) + 1;
+      this.claims.patchReview(id, {
+        status: 'pendiente',
+        bounce_count: nextBounce,
+        bounce_note: payload.justificacion,
+        dictaminado_by: this.currentUserId(),
+        dictaminado_by_name: this.currentUserName(),
+        dictaminado_at: now,
+        // Clear taken_at so the timeline collapses cleanly
+        assigned_to: undefined,
+        taken_at: undefined,
+      });
+      return;
+    }
+
+    this.claims.patchReview(id, {
+      status: 'dictaminado',
+      dictamen_outcome: payload.outcome,
+      dictamen_justificacion: payload.justificacion,
+      dictaminado_by: this.currentUserId(),
+      dictaminado_by_name: this.currentUserName(),
+      dictaminado_at: now,
+    });
   }
 }

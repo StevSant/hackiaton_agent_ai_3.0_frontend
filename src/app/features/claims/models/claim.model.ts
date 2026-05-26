@@ -1,6 +1,7 @@
 import type { RiskTier } from '../../../shared/utils';
 import type { ClaimAlert } from './claim-alert.model';
 import type { ClaimDocument } from './claim-document.model';
+import type { ClaimReview } from './claim-review.model';
 import type { ClaimTimelineEvent } from './claim-timeline-event.model';
 import type { ClaimVehicle } from './claim-vehicle.model';
 
@@ -26,4 +27,5 @@ export interface Claim {
   alertas: ClaimAlert[];
   timeline: ClaimTimelineEvent[];
   documentos: ClaimDocument[];
+  review: ClaimReview;
 }

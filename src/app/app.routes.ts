@@ -19,6 +19,11 @@ export const routes: Routes = [
         loadChildren: () => import('./features/claims/claims.routes').then((m) => m.routes),
       },
       {
+        path: 'antifraude',
+        loadChildren: () =>
+          import('./features/antifraude/antifraude.routes').then((m) => m.routes),
+      },
+      {
         path: 'agent',
         loadChildren: () => import('./features/agent/agent.routes').then((m) => m.routes),
       },

@@ -2,7 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 
 import { MOCK_CLAIMS } from './claims-mock.data';
 import { MOCK_TREND } from './trend-mock.data';
-import type { Claim, TrendPoint } from '../models';
+import type { Claim, ClaimReview, TrendPoint } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ClaimsStore {
@@ -22,7 +22,23 @@ export class ClaimsStore {
     return { r, y, g, avg, expuesto, total: list.length };
   });
 
+  readonly antifraudeInbox = computed(() =>
+    this._claims().filter(
+      (c) => c.review.status === 'escalado' || c.review.status === 'en_revision',
+    ),
+  );
+
   findById(id: string): Claim | undefined {
     return this._claims().find((c) => c.id === id);
+  }
+
+  /**
+   * Mockup-only: mutates the in-memory claim. Real wiring replaces this with
+   * calls to `POST /claims/{id}/escalate|take|dictamen` per design spec V2.6.
+   */
+  patchReview(id: string, patch: Partial<ClaimReview>): void {
+    this._claims.update((list) =>
+      list.map((c) => (c.id === id ? { ...c, review: { ...c.review, ...patch } } : c)),
+    );
   }
 }
