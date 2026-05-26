@@ -41,22 +41,28 @@ src/app/
 ├── core/                       ← app-wide singletons; provided in app.config.ts
 │   ├── api/
 │   │   ├── generated/          ← openapi-typescript output — DO NOT EDIT
-│   │   └── clients/            ← claims.api.ts, agent.api.ts, reports.api.ts (typed wrappers)
-│   ├── config/                 ← env.ts, runtime config
-│   ├── interceptors/           ← error.interceptor.ts
+│   │   └── clients/            ← claims.api.ts, agent.api.ts, reports.api.ts, auth.api.ts (typed wrappers)
+│   ├── auth/                   ← auth.store.ts (signals: user, token), token storage (V0)
+│   ├── config/                 ← env.ts, runtime config (incl. demoMode flag)
+│   ├── interceptors/           ← error.interceptor.ts, auth.interceptor.ts (Bearer header)
+│   ├── guards/                 ← auth.guard.ts (CanActivateFn → /login if no token)
 │   ├── realtime/               ← SseClient
 │   └── errors/                 ← AppError model, error mapping
 ├── shared/                     ← reusable across features
-│   ├── ui/                     ← Button, Card, Spinner, EmptyState, TrafficLightBadge, ScoreBar, RuleChip, CitationChip (presentational)
+│   ├── ui/                     ← Button, Card, Spinner, EmptyState, TrafficLightBadge, ScoreBar, RuleChip, CitationChip, RoleBadge (presentational)
 │   ├── pipes/                  ← RelativeTimePipe, ScoreColorPipe, …
 │   ├── directives/
 │   └── utils/
 ├── features/                   ← vertical slices, lazy-loaded
+│   ├── auth/
+│   │   ├── pages/              ← LoginPage (V0)
+│   │   └── auth.routes.ts
 │   ├── claims/
 │   │   ├── pages/              ← ClaimsListPage, ClaimDetailPage (smart)
 │   │   ├── components/         ← ClaimsTable, FilterBar, ClaimDetailHeader,
 │   │   │                          RulesFiredAccordion, MlFactorsAccordion, SimilarNarrativesAccordion,
-│   │   │                          AnomalyIndicatorCard
+│   │   │                          AnomalyIndicatorCard, WorkflowActions, WorkflowStatusBadge,
+│   │   │                          DebugFechaEdit (Ctrl+Shift+D-revealed fire-test affordance)
 │   │   ├── services/           ← ClaimsStore (signal-based), claims.api.ts wrapper
 │   │   ├── models/             ← feature-local types (re-exporting from core/api/generated when needed)
 │   │   └── claims.routes.ts
@@ -77,7 +83,9 @@ src/app/
 └── app.config.ts               ← providers
 ```
 
-**Deferred (do NOT scaffold for the hackathon submission):** `features/auth/`, `features/uploads/`, `features/memory/`. See spec §11 for re-introduction triggers.
+**Deferred (do NOT scaffold for the hackathon submission):** `features/uploads/`, `features/memory/`. See spec §11 for re-introduction triggers.
+
+> **Auth is in scope now (V0):** `features/auth/`, `core/auth/`, `core/guards/`, and `core/interceptors/auth.interceptor.ts` are first-class. They were originally on the deferred list; spec §17 (2026-05-26) added them back as **local JWT only** (Bearer header, no OAuth, no third-party SDK).
 
 **Import rules (enforced by ESLint where possible):**
 
@@ -221,6 +229,55 @@ error:   Signal<AppError | null>
 
 ---
 
+## 10b. Auth pattern (V0 — local JWT)
+
+*(Added 2026-05-26 — see backend CLAUDE.md §6 and design spec §17.)*
+
+The frontend authenticates against `POST /api/v1/auth/login` and stores a single short-lived JWT. Scope is intentionally minimal — login only, no signup, no refresh tokens, no role-based UI gating.
+
+**Three pieces wire it together:**
+
+1. **`core/auth/auth.store.ts`** — signals:
+   ```ts
+   user:    Signal<CurrentUser | null>
+   token:   Signal<string | null>
+   loading: Signal<boolean>
+   error:   Signal<AppError | null>
+   ```
+   Methods: `login(email, password)`, `logout()`. Initializes `token` from `localStorage` on construction. Persists token writes on every change. Calls `auth.api.login()` and routes to `/claims` on success.
+2. **`core/interceptors/auth.interceptor.ts`** — `HttpInterceptorFn` that injects `Authorization: Bearer <token>` on every request except `/auth/login`. Registered alongside `errorInterceptor` in `app.config.ts`.
+3. **`core/guards/auth.guard.ts`** — `CanActivateFn` returning `true` if `AuthStore.token() != null`, else `router.navigate(['/login'])`. Applied to the `claims` lazy route in `app.routes.ts`.
+
+**Hard rules:**
+
+- The token lives in `localStorage` for hackathon speed. **Document this as a known limitation** in `docs/limitaciones.md` (XSS exposure). Post-hackathon: httpOnly cookie + refresh tokens.
+- **Never** read the token outside `AuthStore`. Components that need the user read `authStore.user()`.
+- **Never** call `HttpClient` directly — go through `core/api/clients/*.api.ts` so the interceptor runs.
+- The login page is the **only** route that the auth guard doesn't gate. The error interceptor must surface a 401 from any other route by redirecting to `/login` (token may have expired).
+- Spanish copy only: "Iniciar sesión", "Correo", "Contraseña", "Entrar", "Credenciales inválidas", "Sesión expirada — vuelve a iniciar sesión".
+
+### Role-aware UI (RBAC on the client)
+
+The backend gates state-changing endpoints by role (see backend CLAUDE.md §6b). The client mirrors that with **two design rules**:
+
+1. **Hide forbidden actions — don't disable them.** A button the user can't successfully click is worse than no button. `WorkflowActions` decides visibility off `AuthStore.user().role` + `claim.workflow_status` + `claim.tier`; if the action isn't allowed, the button doesn't render. Reserve disabled state for "valid action, momentarily blocked" (e.g. while a save is in flight).
+2. **One place per role check.** Components branch on role *only* in two spots: `WorkflowActions` (button visibility) and `ClaimsListPage.ngOnInit` (role-seeded default filter). Everywhere else, role is invisible — components consume the data the backend returns, and forbidden actions never reach the UI.
+
+**Components:**
+- **`RoleBadge`** (`shared/ui/`) — renders "Analista" or "Antifraude" pill in the app shell header. Stateless, takes a `Role` input.
+- **`WorkflowActions`** (`features/claims/components/`) — the only component that contains role-based branching for action buttons. Inputs: `claim: ClaimDetail`. Emits `escalate` / `resolve` events handled by the page.
+- **`WorkflowStatusBadge`** (`features/claims/components/`) — "Pendiente" / "Escalado" / "Resuelto" pill on detail-page header. Role-agnostic — it just renders `claim.workflow_status`.
+
+**Default view per role.** `ClaimsListPage` reads `authStore.user().role` once on init and seeds the filter signal:
+- analista → `status=pending` (their queue is the unfiltered triage list).
+- antifraude → `status=escalated` (their queue is the escalation list).
+
+The user can override the filter via the FilterBar. Don't lock the filter — the role only sets the *default*, never the *available options*.
+
+**Backend 403 handling.** If the user somehow triggers a forbidden action (e.g. via API debug tools), the error interceptor maps 403 to a Spanish toast: "No tienes permisos para esa acción." Don't crash, don't redirect — just surface the message.
+
+---
+
 ## 11. Styling & UX
 
 - **Tailwind utility-first.** When a class string repeats twice, extract a presentational component (not an `@apply` rule).
@@ -267,7 +324,9 @@ error:   Signal<AppError | null>
 - ❌ Inline secrets, hardcoded backend URLs → use `core/config/env.ts`.
 - ❌ Calling `console.log` in committed code → use a `Logger` service if you need conditional logging.
 - ❌ A UI string with `"fraude"` not preceded by `"posible"` — see §2 and root §2.10.
-- ❌ Scaffolding `features/auth/`, `features/uploads/`, `features/memory/` — deferred (§3).
+- ❌ Scaffolding `features/uploads/`, `features/memory/` — deferred (§3). *(`features/auth/` was removed from this list 2026-05-26 — it's V0 and in scope.)*
+- ❌ Storing the JWT outside the `AuthStore` / `localStorage` — no other components read or write the token directly.
+- ❌ Calling `HttpClient` without the auth interceptor in the chain — every protected request needs Bearer header automatically; never set it by hand.
 
 ---
 
