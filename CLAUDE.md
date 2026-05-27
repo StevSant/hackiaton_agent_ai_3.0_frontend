@@ -83,9 +83,16 @@ src/app/
 └── app.config.ts               ← providers
 ```
 
-**Deferred (do NOT scaffold for the hackathon submission):** `features/uploads/`, `features/memory/`. See spec §11 for re-introduction triggers.
+**Deferred (do NOT scaffold for the hackathon submission):** `features/memory/`. See spec §11 for re-introduction triggers.
 
 > **Auth is in scope now (V0):** `features/auth/`, `core/auth/`, `core/guards/`, and `core/interceptors/auth.interceptor.ts` are first-class. They were originally on the deferred list; spec §17 (2026-05-26) added them back as **local JWT only** (Bearer header, no OAuth, no third-party SDK).
+
+> **Originally deferred, landed during the hackathon — now first-class:**
+> - `features/uploads/` — claim-import wizard + document upload UI.
+> - `features/agent/` voice-recording + Whisper transcription components.
+> - `features/agent/` conversation history sidebar + drawer.
+> - `features/agent/components/agent-chart.ts` — ECharts rendering of agent SSE chart events.
+> Don't move these back behind the deferred line.
 
 **Import rules (enforced by ESLint where possible):**
 
@@ -324,7 +331,7 @@ The user can override the filter via the FilterBar. Don't lock the filter — th
 - ❌ Inline secrets, hardcoded backend URLs → use `core/config/env.ts`.
 - ❌ Calling `console.log` in committed code → use a `Logger` service if you need conditional logging.
 - ❌ A UI string with `"fraude"` not preceded by `"posible"` — see §2 and root §2.10.
-- ❌ Scaffolding `features/uploads/`, `features/memory/` — deferred (§3). *(`features/auth/` was removed from this list 2026-05-26 — it's V0 and in scope.)*
+- ❌ Scaffolding `features/memory/` — deferred (§3). *(`features/auth/` and `features/uploads/` were removed from this list during the hackathon — both are now V0 and in scope.)*
 - ❌ Storing the JWT outside the `AuthStore` / `localStorage` — no other components read or write the token directly.
 - ❌ Calling `HttpClient` without the auth interceptor in the chain — every protected request needs Bearer header automatically; never set it by hand.
 
