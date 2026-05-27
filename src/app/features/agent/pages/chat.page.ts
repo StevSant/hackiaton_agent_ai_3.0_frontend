@@ -16,7 +16,6 @@ import { firstValueFrom } from 'rxjs';
 
 import { AgentApi } from '@core/api/clients/agent.api';
 import { TextToSpeechService } from '@core/tts/text-to-speech.service';
-import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { ChatMessage } from '../components/chat-message';
 import { ConversationRenameModal } from '../components/conversation-rename-modal';
@@ -48,7 +47,6 @@ function generateUuid(): string {
   selector: 'page-chat',
   standalone: true,
   imports: [
-    Button,
     Icon,
     ChatMessage,
     ConversationsSidebar,

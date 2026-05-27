@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { ConversationsApi } from '@core/api/clients/conversations.api';
 import { environment } from '@core/config/env';
+import { AppError } from '@core/errors/app-error';
 import { SseClient } from '@core/realtime/sse.client';
 import type { AgentMessage, AgentStep, ChartPayload } from '../models';
 import { ConversationsStore } from './conversations.store';
@@ -141,7 +142,11 @@ export class AgentStore {
           },
         ]);
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof AppError && err.status === 404) {
+        this.startNewConversation(id);
+        return;
+      }
       this._messages.set([
         {
           id: newId(),

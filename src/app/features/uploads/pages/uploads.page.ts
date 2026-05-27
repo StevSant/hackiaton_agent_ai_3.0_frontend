@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
@@ -7,6 +7,21 @@ import { ImportsApi, type ImportResultDto } from '@core/api/clients/imports.api'
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { ClaimsStore } from '../../claims/services/claims.store';
+
+/** Paquete demo vehicular (backend: data/sample_documents/SIN-2026-08412/). */
+const DEMO_VEHICLE_DOCUMENTS: readonly { file: string; tipo: string }[] = [
+  { file: '01_solicitud_siniestro.pdf', tipo: 'Solicitud de siniestro' },
+  { file: '02_denuncia_fiscal.pdf', tipo: 'Denuncia fiscal' },
+  { file: '03_acta_policial.pdf', tipo: 'Acta policial' },
+  { file: '04_matricula_vehicular.pdf', tipo: 'Matrícula del vehículo' },
+  { file: '05_cedula_identidad.pdf', tipo: 'Cédula de identidad' },
+  { file: '06_caratula_poliza.pdf', tipo: 'Carátula de póliza' },
+  { file: '07_licencia_conducir.pdf', tipo: 'Licencia de conducir' },
+  { file: '08_certificado_endoso.pdf', tipo: 'Certificado de endoso' },
+  { file: '09_peritaje_tecnico.pdf', tipo: 'Peritaje técnico' },
+  { file: '10_proforma_taller.pdf', tipo: 'Proforma de taller' },
+  { file: '11_comprobante_reporte.pdf', tipo: 'Comprobante de reporte' },
+];
 
 @Component({
   selector: 'page-uploads',
@@ -18,8 +33,26 @@ import { ClaimsStore } from '../../claims/services/claims.store';
       <div class="mb-8">
         <h1 class="text-[26px] font-semibold tracking-tight m-0">Importar casos</h1>
         <p class="mt-2 text-[13.5px] text-ink-3 m-0">
-          Sube un CSV o JSON con siniestros nuevos y, opcionalmente, adjunta los PDFs de respaldo.
+          Paso 1 importa los casos (CSV/JSON). Paso 2 adjunta PDFs — <strong class="text-ink-2 font-medium">opcional</strong>,
+          pero recomendado para demos con respaldo documental.
         </p>
+      </div>
+
+      <div class="mb-5 rounded-lg border border-line bg-soft px-4 py-3 text-[13px] text-ink-2 leading-relaxed">
+        <p class="m-0 mb-2 font-medium text-ink">¿Cuántos documentos debo subir?</p>
+        <ul class="m-0 pl-4 space-y-1">
+          <li>
+            <strong>Importación CSV:</strong> no necesitas subir ninguno — el sistema crea
+            <strong>2 documentos base</strong> por caso (cédula y matrícula) ya marcados como entregados.
+          </li>
+          <li>
+            <strong>Demo vehicular completo:</strong> sube los <strong>11 PDFs</strong> del paquete
+            <code class="text-[12px]">SIN-2026-08412</code> (carpeta en el repo backend).
+          </li>
+          <li>
+            <strong>Otros casos:</strong> sube solo los PDFs que quieras respaldar; el tipo se infiere del nombre del archivo.
+          </li>
+        </ul>
       </div>
 
       <div class="grid gap-5">
@@ -83,10 +116,60 @@ import { ClaimsStore } from '../../claims/services/claims.store';
 
         @if (importedClaimIds().length) {
           <div class="bg-surface border border-line rounded-lg shadow-1 p-5">
-            <h2 class="text-[15px] font-semibold m-0 mb-1">2. Documentos del caso</h2>
+            <h2 class="text-[15px] font-semibold m-0 mb-1">2. Documentos del caso (opcional)</h2>
             <p class="text-[13px] text-ink-3 mt-0 mb-4">
-              Adjunta PDFs o imágenes. El tipo se infiere del nombre del archivo.
+              Selecciona el caso importado y adjunta PDFs. No hay mínimo obligatorio; para el demo vehicular usa
+              los 11 archivos listados abajo.
             </p>
+
+            @if (documentStats(); as stats) {
+              <div class="mb-4 rounded-md border border-line bg-soft px-4 py-3">
+                <p class="text-[13px] font-medium m-0 mb-2">
+                  Estado documental de {{ selectedClaimId() }}
+                </p>
+                <p class="text-[12.5px] text-ink-3 m-0 mb-3">
+                  {{ stats.complete }} / {{ stats.total }} completos
+                  @if (stats.pending > 0) {
+                    · {{ stats.pending }} pendiente(s)
+                  }
+                  @if (stats.uploadedFiles > 0) {
+                    · {{ stats.uploadedFiles }} archivo(s) ya subido(s) en storage
+                  }
+                </p>
+                <ul class="m-0 pl-0 list-none space-y-1.5">
+                  @for (doc of selectedClaim()?.documentos ?? []; track doc.tipo) {
+                    <li class="flex items-center gap-2 text-[12.5px]">
+                      <span [class.text-tier-green-ink]="!doc.falta" [class.text-tier-red-ink]="doc.falta">
+                        <ui-icon
+                          [name]="doc.falta ? 'radio_button_unchecked' : 'check_circle'"
+                          [size]="14"
+                        />
+                      </span>
+                      <span>{{ doc.tipo }}</span>
+                      <span class="text-ink-3">· {{ doc.estado }}</span>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+
+            <details class="mb-4 rounded-md border border-line px-4 py-3">
+              <summary class="cursor-pointer text-[13px] font-medium text-ink-2">
+                Paquete demo vehicular — 11 PDFs de referencia
+              </summary>
+              <p class="mt-2 mb-2 text-[12.5px] text-ink-3">
+                Ruta en el repo:
+                <code class="text-[11.5px]">hackiaton_agent_ai_3.0_backend/data/sample_documents/SIN-2026-08412/</code>
+              </p>
+              <ol class="m-0 pl-4 text-[12.5px] text-ink-2 space-y-1">
+                @for (item of demoVehicleDocuments; track item.file) {
+                  <li>
+                    <code class="text-[11.5px]">{{ item.file }}</code>
+                    — {{ item.tipo }}
+                  </li>
+                }
+              </ol>
+            </details>
 
             <div class="flex flex-wrap items-center gap-3 mb-4">
               <label class="text-[13px] text-ink-2">Caso</label>
@@ -118,7 +201,9 @@ import { ClaimsStore } from '../../claims/services/claims.store';
                     : 'Seleccionar PDFs o imágenes'
                 }}
               </span>
-              <span class="text-[12px] text-ink-3">Puedes elegir varios archivos</span>
+              <span class="text-[12px] text-ink-3">
+                PDF o imagen · varios archivos · el nombre del archivo define el tipo
+              </span>
               <input
                 type="file"
                 class="hidden"
@@ -176,6 +261,36 @@ export class UploadsPage {
   protected readonly uploadErrors = signal<string[]>([]);
   protected readonly uploadSuccessCount = signal(0);
 
+  protected readonly demoVehicleDocuments = DEMO_VEHICLE_DOCUMENTS;
+
+  protected readonly selectedClaim = computed(() => {
+    const claimId = this.selectedClaimId();
+    if (!claimId) return null;
+    return this.claims.findById(claimId) ?? null;
+  });
+
+  protected readonly documentStats = computed(() => {
+    const claim = this.selectedClaim();
+    if (!claim) return null;
+    const docs = claim.documentos ?? [];
+    const complete = docs.filter((doc) => !doc.falta).length;
+    const pending = docs.filter((doc) => doc.falta).length;
+    return {
+      total: docs.length,
+      complete,
+      pending,
+      uploadedFiles: this.uploadSuccessCount(),
+    };
+  });
+
+  constructor() {
+    effect(() => {
+      const claimId = this.selectedClaimId();
+      if (!claimId) return;
+      void this.claims.reloadDetail(claimId);
+    });
+  }
+
   protected readonly hasImportedClaims = computed(() => this.importedClaimIds().length > 0);
 
   protected onClaimsFileSelected(event: Event): void {
@@ -226,6 +341,7 @@ export class UploadsPage {
       this.importedClaimIds.set(result.claim_ids);
       if (result.claim_ids.length) {
         this.selectedClaimId.set(result.claim_ids[0] ?? '');
+        await this.claims.reloadDetail(result.claim_ids[0] ?? '');
       }
       await this.claims.loadList();
     } finally {
