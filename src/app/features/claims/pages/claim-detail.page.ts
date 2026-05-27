@@ -135,7 +135,11 @@ import { ProvidersStore } from '../../network/services/providers.store';
           <claim-anomaly-indicator-card [claim]="c" />
           <claim-similar-narratives-card [claim]="c" />
           <claim-timeline-card [events]="c.timeline" />
-          <claim-documents-card [docs]="c.documentos" />
+          <claim-documents-card
+            [docs]="c.documentos"
+            [claimId]="c.id"
+            (uploaded)="onDocumentsUploaded()"
+          />
         </div>
 
         <div class="flex flex-col gap-5">
@@ -265,5 +269,9 @@ export class ClaimDetailPage {
     const c = this.claim();
     if (!c) return;
     exportClaimPdf(c);
+  }
+
+  protected async onDocumentsUploaded(): Promise<void> {
+    await this.claims.reloadDetail(this.id());
   }
 }

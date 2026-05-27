@@ -102,6 +102,15 @@ export class ClaimsStore {
   async loadDetail(id: string): Promise<Claim | null> {
     const cached = this._detailLoads.get(id);
     if (cached) return cached;
+    return this.fetchDetail(id);
+  }
+
+  async reloadDetail(id: string): Promise<Claim | null> {
+    this._detailLoads.delete(id);
+    return this.fetchDetail(id);
+  }
+
+  private fetchDetail(id: string): Promise<Claim | null> {
     const promise = (async (): Promise<Claim | null> => {
       try {
         const dto = await firstValueFrom(this.api.detail(id));

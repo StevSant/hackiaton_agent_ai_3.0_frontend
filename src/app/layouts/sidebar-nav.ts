@@ -157,6 +157,7 @@ export class SidebarNav {
         { link: '/insights', label: 'Insights IA', icon: 'insights' },
         { link: '/network', label: 'Proveedores', icon: 'hub', count: this.providers.providers().length },
         { link: '/agent', label: 'Centinela IA', icon: 'visibility', badge: 'Nuevo' },
+        { link: '/uploads', label: 'Importar casos', icon: 'cloud_upload' },
       ];
     }
     // analista (default)
@@ -168,6 +169,7 @@ export class SidebarNav {
       { link: '/claims', label: 'Bandeja', icon: 'dashboard', count: myActive },
       { link: '/insights', label: 'Insights IA', icon: 'insights' },
       { link: '/agent', label: 'Centinela IA', icon: 'visibility', badge: 'Nuevo' },
+      { link: '/uploads', label: 'Importar casos', icon: 'cloud_upload' },
     ];
   });
 
