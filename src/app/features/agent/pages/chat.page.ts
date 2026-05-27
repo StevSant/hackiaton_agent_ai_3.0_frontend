@@ -34,9 +34,12 @@ const SUGGESTIONS = [
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
       <div>
         <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1 flex items-center gap-2.5">
-          <span class="w-8 h-8 rounded-md grid place-items-center text-white"
+          <span class="w-8 h-8 rounded-md grid place-items-center"
                 style="background: linear-gradient(135deg, var(--brand), var(--brand-2)); box-shadow: 0 4px 12px color-mix(in oklch, var(--brand) 30%, transparent);">
-            <ui-icon name="auto_awesome" [size]="18" [fill]="true" />
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+              <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2"/>
+            </svg>
           </span>
           Centinela IA
         </h1>
@@ -52,13 +55,20 @@ const SUGGESTIONS = [
 
     <div class="grid grid-rows-[1fr_auto] bg-surface border border-line rounded-xl shadow-2 overflow-hidden h-[calc(100vh-150px)] max-h-[880px]">
       <div #scroll class="overflow-y-auto scroll-pretty px-8 pt-7 pb-3 flex flex-col gap-5">
-        @for (m of store.messages(); track m.id) {
-          <agent-chat-message [message]="m" (openCase)="openCase($event)" />
+        @for (m of store.messages(); track m.id; let last = $last) {
+          <agent-chat-message
+            [message]="m"
+            [streaming]="last && m.role === 'assistant' && !store.thinking()"
+            (openCase)="openCase($event)"
+          />
         }
         @if (store.thinking()) {
           <div class="max-w-[720px] flex gap-3.5">
-            <div class="w-7 h-7 rounded-full grid place-items-center shrink-0 text-white" style="background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);">
-              <ui-icon name="auto_awesome" [size]="14" [fill]="true" />
+            <div class="w-7 h-7 rounded-full grid place-items-center shrink-0" style="background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2"/>
+              </svg>
             </div>
             <div class="text-[13.5px] px-3.5 py-3.5 rounded-2xl border border-line bg-surface">
               <span class="dots"><span></span><span></span><span></span></span>
@@ -86,7 +96,7 @@ const SUGGESTIONS = [
           @for (s of suggestions; track s) {
             <span (click)="quickSend(s)">
               <ui-chip>
-                <ui-icon name="auto_awesome" [size]="11" />
+                <ui-icon name="visibility" [size]="11" />
                 {{ s }}
               </ui-chip>
             </span>

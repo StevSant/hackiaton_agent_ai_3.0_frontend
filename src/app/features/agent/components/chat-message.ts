@@ -3,6 +3,8 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { Icon } from '../../../shared/ui/icon';
 import type { AgentMessage } from '../models';
 
+// Exposed so the chat page can skip the external thinking indicator
+
 interface Part {
   kind: 'text' | 'id';
   value: string;
@@ -21,22 +23,29 @@ const SIN_PATTERN = /SIN-\d{4}-\d{4,6}/g;
         @if (isUser()) {
           LV
         } @else {
-          <ui-icon name="auto_awesome" [size]="14" [fill]="true" />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2"/>
+          </svg>
         }
       </div>
       <div
         class="text-[13.5px] leading-relaxed px-3.5 py-2.5 rounded-2xl border whitespace-pre-wrap break-words"
         [class]="bubbleClasses()"
       >
-        @for (p of parts(); track $index) {
-          @if (p.kind === 'id') {
-            <span
-              class="font-mono text-[0.9em] px-1.5 py-px rounded cursor-pointer underline decoration-dotted underline-offset-2"
-              [class]="idChipClass()"
-              (click)="openCase.emit(p.value)"
-            >{{ p.value }}</span>
-          } @else {
-            <span>{{ p.value }}</span>
+        @if (isEmpty()) {
+          <span class="dots"><span></span><span></span><span></span></span>
+        } @else {
+          @for (p of parts(); track $index) {
+            @if (p.kind === 'id') {
+              <span
+                class="font-mono text-[0.9em] px-1.5 py-px rounded cursor-pointer underline decoration-dotted underline-offset-2"
+                [class]="idChipClass()"
+                (click)="openCase.emit(p.value)"
+              >{{ p.value }}</span>
+            } @else {
+              <span>{{ p.value }}</span>
+            }
           }
         }
       </div>
@@ -45,9 +54,11 @@ const SIN_PATTERN = /SIN-\d{4}-\d{4,6}/g;
 })
 export class ChatMessage {
   readonly message = input.required<AgentMessage>();
+  readonly streaming = input<boolean>(false);
   readonly openCase = output<string>();
 
   protected readonly isUser = computed(() => this.message().role === 'user');
+  protected readonly isEmpty = computed(() => !this.isUser() && this.message().content === '');
 
   protected readonly avatarBg = computed(() =>
     this.isUser()

@@ -58,51 +58,59 @@ interface NavItem {
         </a>
       }
 
-      <div class="mt-auto pt-3 px-2 border-t border-line flex flex-col gap-2">
+      <div class="mt-auto pt-4 border-t border-line flex flex-col gap-3">
         @if (roleCode(); as r) {
           <button
             type="button"
-            class="flex items-center gap-2 px-2 py-1.5 rounded-sm text-[11.5px] text-ink-3 hover:bg-hover hover:text-ink border border-dashed border-line text-left"
+            class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-[12.5px] font-medium text-ink-2 hover:bg-hover hover:text-ink border border-dashed border-line-2 transition-colors"
             (click)="toggleRole()"
             [title]="otherRoleHint()"
           >
-            <ui-icon name="swap_horiz" [size]="14" />
-            <span class="flex-1 truncate">Cambiar a {{ otherRoleLabel() }}</span>
+            <ui-icon name="swap_horiz" [size]="16" />
+            <span class="truncate">Cambiar a {{ otherRoleLabel() }}</span>
           </button>
         }
-        <div class="flex items-center gap-2.5">
-          <div
-            class="w-7 h-7 rounded-full grid place-items-center font-semibold text-[12px] text-white shrink-0"
-            style="background: linear-gradient(135deg, oklch(0.55 0.16 30), oklch(0.5 0.18 350));"
-          >
-            {{ initials() }}
-          </div>
-          <div class="leading-tight min-w-0 flex-1">
-            <div class="font-medium text-[13px] truncate">{{ displayName() }}</div>
-            <div class="flex items-center gap-1.5 mt-0.5">
-              @if (roleCode(); as r) {
-                <ui-role-badge [role]="r" />
-              }
-              <span class="text-[11px] text-ink-4 truncate">{{ sucursal() }}</span>
+
+        <div class="bg-soft rounded-lg p-3 flex flex-col gap-3">
+          <div class="flex items-center gap-3">
+            <div
+              class="w-10 h-10 rounded-full grid place-items-center font-semibold text-[14px] text-white shrink-0 shadow-sm"
+              style="background: linear-gradient(135deg, oklch(0.55 0.16 30), oklch(0.5 0.18 350));"
+            >
+              {{ initials() }}
+            </div>
+            <div class="leading-tight min-w-0 flex-1">
+              <div class="font-semibold text-[13.5px] truncate">{{ displayName() }}</div>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                @if (roleCode(); as r) {
+                  <ui-role-badge [role]="r" />
+                }
+              </div>
+              <div class="text-[11px] text-ink-4 mt-0.5 truncate">{{ sucursal() }}</div>
             </div>
           </div>
-          <button
-            type="button"
-            class="rounded-sm w-7 h-7 grid place-items-center text-ink-3 hover:bg-hover hover:text-ink"
-            (click)="theme.toggle()"
-            [attr.aria-label]="theme.dark() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
-          >
-            <ui-icon [name]="theme.dark() ? 'light_mode' : 'dark_mode'" [size]="16" />
-          </button>
-          <button
-            type="button"
-            class="rounded-sm w-7 h-7 grid place-items-center text-ink-3 hover:bg-tier-red-soft hover:text-tier-red-ink"
-            (click)="onLogout()"
-            aria-label="Cerrar sesión"
-            title="Cerrar sesión"
-          >
-            <ui-icon name="logout" [size]="16" />
-          </button>
+
+          <div class="flex items-center gap-1.5 border-t border-line pt-2.5">
+            <button
+              type="button"
+              class="flex-1 flex items-center justify-center gap-1.5 rounded-sm px-2 py-1.5 text-[11.5px] text-ink-3 hover:bg-hover hover:text-ink transition-colors"
+              (click)="theme.toggle()"
+              [attr.aria-label]="theme.dark() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+            >
+              <ui-icon [name]="theme.dark() ? 'light_mode' : 'dark_mode'" [size]="15" />
+              <span>{{ theme.dark() ? 'Claro' : 'Oscuro' }}</span>
+            </button>
+            <div class="w-px h-5 bg-line shrink-0"></div>
+            <button
+              type="button"
+              class="flex-1 flex items-center justify-center gap-1.5 rounded-sm px-2 py-1.5 text-[11.5px] text-tier-red-ink hover:bg-tier-red-soft transition-colors"
+              (click)="onLogout()"
+              aria-label="Cerrar sesión"
+            >
+              <ui-icon name="logout" [size]="15" />
+              <span>Salir</span>
+            </button>
+          </div>
         </div>
       </div>
     </aside>
@@ -141,7 +149,7 @@ export class SidebarNav {
         { link: '/antifraude/investigacion', label: 'Investigación', icon: 'travel_explore', count: this.claims.claims().length },
         { link: '/insights', label: 'Insights IA', icon: 'insights' },
         { link: '/network', label: 'Proveedores', icon: 'hub', count: this.providers.providers().length },
-        { link: '/agent', label: 'Centinela IA', icon: 'auto_awesome', badge: 'Nuevo' },
+        { link: '/agent', label: 'Centinela IA', icon: 'visibility', badge: 'Nuevo' },
       ];
     }
     // analista (default)
@@ -152,7 +160,7 @@ export class SidebarNav {
     return [
       { link: '/claims', label: 'Bandeja', icon: 'dashboard', count: myActive },
       { link: '/insights', label: 'Insights IA', icon: 'insights' },
-      { link: '/agent', label: 'Centinela IA', icon: 'auto_awesome', badge: 'Nuevo' },
+      { link: '/agent', label: 'Centinela IA', icon: 'visibility', badge: 'Nuevo' },
     ];
   });
 

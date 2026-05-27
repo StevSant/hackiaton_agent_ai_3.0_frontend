@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { Button } from '../../../shared/ui/button';
 import { Icon } from '../../../shared/ui/icon';
 import { Pagination } from '../../../shared/ui/pagination';
-import { RAMOS, type RamoKey, type RiskTier } from '../../../shared/utils';
+import { RAMOS, reviewStatusLabel, type RamoKey, type RiskTier } from '../../../shared/utils';
 import { InvestigacionTable } from '../components/investigacion-table';
 import type { Claim } from '../../claims/models';
 import { ClaimsStore } from '../../claims/services/claims.store';
@@ -41,11 +41,11 @@ const TIER_LABELS: Record<RiskTier, string> = {
 };
 
 const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
-  pendiente: 'Pendiente',
-  escalado: 'Escalado',
-  en_revision: 'En revisión',
-  dictaminado: 'Dictaminado',
-  revisado_sin_escalar: 'Revisado sin escalar',
+  pendiente: reviewStatusLabel('pendiente'),
+  escalado: reviewStatusLabel('escalado'),
+  en_revision: reviewStatusLabel('en_revision'),
+  dictaminado: reviewStatusLabel('dictaminado'),
+  revisado_sin_escalar: reviewStatusLabel('revisado_sin_escalar'),
 };
 
 @Component({
@@ -76,13 +76,13 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
     <div class="bg-surface border border-line rounded-lg shadow-1 mb-4">
       <div class="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
         <label class="block min-w-0">
-          <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Nivel de Riesgo IA</span>
+          <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Nivel de riesgo IA</span>
           <select
             class="w-full bg-surface border border-line rounded-md px-3 py-2 text-[13px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-2"
             [value]="filters().tier"
             (change)="patchFilter('tier', $any($event.target).value)"
           >
-            <option value="todos">Todos los niveles</option>
+            <option value="todos">Todos</option>
             <option value="rojo">Alto</option>
             <option value="amarillo">Medio</option>
             <option value="verde">Bajo</option>
@@ -96,7 +96,7 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
             [value]="filters().ramo"
             (change)="patchFilter('ramo', $any($event.target).value)"
           >
-            <option value="todos">Todos los ramos</option>
+            <option value="todos">Todos</option>
             @for (ramo of ramoFilters; track ramo.key) {
               <option [value]="ramo.key">{{ ramo.label }}</option>
             }
@@ -104,7 +104,7 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
         </label>
 
         <label class="block min-w-0">
-          <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Ciudad / Región</span>
+          <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Ciudad o región</span>
           <div class="flex items-center gap-2 bg-surface border border-line rounded-md px-3 py-2">
             <ui-icon name="location_on" [size]="16" class="text-ink-3 shrink-0" />
             <input
@@ -118,7 +118,7 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
         </label>
 
         <label class="block min-w-0">
-          <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Rango de fecha</span>
+          <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Fecha desde</span>
           <div class="flex items-center gap-2 bg-surface border border-line rounded-md px-3 py-2">
             <ui-icon name="calendar_today" [size]="16" class="text-ink-3 shrink-0" />
             <input
@@ -131,17 +131,18 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
         </label>
 
         <label class="block min-w-0">
-          <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Estado de siniestro</span>
+          <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Estado de revisión</span>
           <select
             class="w-full bg-surface border border-line rounded-md px-3 py-2 text-[13px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-2"
             [value]="filters().status"
             (change)="patchFilter('status', $any($event.target).value)"
           >
-            <option value="todos">Todos los estados</option>
-            <option value="pendiente">Pendiente</option>
-            <option value="escalado">Escalado</option>
-            <option value="en_revision">En revisión</option>
-            <option value="dictaminado">Dictaminado</option>
+            <option value="todos">Todos</option>
+            <option value="pendiente">{{ reviewStatusLabel('pendiente') }}</option>
+            <option value="escalado">{{ reviewStatusLabel('escalado') }}</option>
+            <option value="en_revision">{{ reviewStatusLabel('en_revision') }}</option>
+            <option value="dictaminado">{{ reviewStatusLabel('dictaminado') }}</option>
+            <option value="revisado_sin_escalar">{{ reviewStatusLabel('revisado_sin_escalar') }}</option>
           </select>
         </label>
       </div>
@@ -218,7 +219,7 @@ export class InvestigacionPage {
     const tags: ActiveFilterTag[] = [];
 
     if (filterState.tier !== 'todos') {
-      tags.push({ key: 'tier', label: `Riesgo: ${TIER_LABELS[filterState.tier]}` });
+      tags.push({ key: 'tier', label: `Riesgo IA: ${TIER_LABELS[filterState.tier]}` });
     }
     if (filterState.ramo !== 'todos') {
       tags.push({ key: 'ramo', label: `Ramo: ${RAMOS[filterState.ramo].label}` });
@@ -227,7 +228,7 @@ export class InvestigacionPage {
       tags.push({ key: 'city', label: `Ciudad: ${filterState.city.trim()}` });
     }
     if (filterState.dateFrom) {
-      tags.push({ key: 'dateFrom', label: `Desde: ${filterState.dateFrom}` });
+      tags.push({ key: 'dateFrom', label: `Fecha desde: ${formatFilterDate(filterState.dateFrom)}` });
     }
     if (filterState.status !== 'todos') {
       tags.push({ key: 'status', label: `Estado: ${STATUS_LABELS[filterState.status]}` });
@@ -276,6 +277,8 @@ export class InvestigacionPage {
     void this.router.navigate(['/claims', id]);
   }
 
+  protected readonly reviewStatusLabel = reviewStatusLabel;
+
   private matchesFilters(claim: Claim, filters: InvestigationFilters): boolean {
     if (filters.status !== 'todos' && claim.review.status !== filters.status) return false;
     if (filters.tier !== 'todos' && claim.nivel !== filters.tier) return false;
@@ -288,4 +291,10 @@ export class InvestigacionPage {
 
     return true;
   }
+}
+
+function formatFilterDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-');
+  if (!year || !month || !day) return isoDate;
+  return `${day}/${month}/${year}`;
 }

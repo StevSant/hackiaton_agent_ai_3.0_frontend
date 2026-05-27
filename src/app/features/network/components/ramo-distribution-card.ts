@@ -11,28 +11,41 @@ import { computeRamoStats } from '../utils/ramo-stats';
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="bg-surface border border-line rounded-lg shadow-1 h-full">
-      <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
-        <div>
-          <h3 class="text-[13px] font-semibold m-0">Alertas por ramo</h3>
-          <div class="text-[12px] text-ink-3 mt-0.5">% de siniestros con score ≥ 40</div>
-        </div>
+    <div class="bg-surface border border-line rounded-lg shadow-1 h-full flex flex-col min-h-[420px]">
+      <div class="px-5 py-3.5 border-b border-line shrink-0">
+        <h3 class="text-[13px] font-semibold m-0">Alertas por ramo</h3>
+        <div class="text-[12px] text-ink-3 mt-0.5">% de siniestros con score ≥ 40</div>
       </div>
-      @for (r of stats(); track r.key) {
-        <div class="grid grid-cols-[120px_1fr_40px] gap-3 items-center px-5 py-2.5 border-t border-line first:border-t-0">
-          <div class="flex items-center gap-2.5">
-            <ui-icon [name]="ramoIcon(r.key)" [size]="14" />
-            <div>
-              <div class="text-[13px]">{{ ramoLabel(r.key) }}</div>
-              <div class="text-[11.5px] text-ink-3">{{ r.total }} casos</div>
+
+      <div class="flex-1 py-2">
+        @for (ramoStat of stats(); track ramoStat.key; let index = $index) {
+          <div
+            class="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_44px] gap-3 items-center px-5 py-3"
+            [class.border-t]="index > 0"
+            [class.border-line]="index > 0"
+          >
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-8 h-8 rounded-lg grid place-items-center shrink-0 bg-soft text-ink-2">
+                <ui-icon [name]="ramoIcon(ramoStat.key)" [size]="16" />
+              </span>
+              <div class="min-w-0">
+                <div class="text-[13px] font-medium truncate">{{ ramoLabel(ramoStat.key) }}</div>
+                <div class="text-[11.5px] text-ink-3 whitespace-nowrap">{{ ramoStat.total }} casos</div>
+              </div>
             </div>
+
+            <div class="h-2.5 bg-soft rounded-full overflow-hidden">
+              <div
+                class="h-full rounded-full transition-all duration-500"
+                [style.width.%]="ramoStat.pct"
+                [style.background]="barColor(ramoStat.pct)"
+              ></div>
+            </div>
+
+            <div class="text-[13px] tabular-nums font-semibold text-ink text-right">{{ ramoStat.pct }}%</div>
           </div>
-          <div class="h-2 bg-soft rounded-full relative overflow-hidden">
-            <div class="bar-fill h-full rounded-full" [style.width.%]="r.pct" [style.background]="barColor(r.pct)"></div>
-          </div>
-          <div class="text-[12.5px] tabular-nums text-ink-2 text-right">{{ r.pct }}%</div>
-        </div>
-      }
+        }
+      </div>
     </div>
   `,
 })
@@ -43,7 +56,11 @@ export class RamoDistributionCard {
   protected readonly ramoIcon = ramoIcon;
   protected readonly ramoLabel = ramoLabel;
 
-  protected barColor(pct: number): string {
-    return pct >= 60 ? 'var(--tier-red)' : pct >= 30 ? 'var(--tier-yellow)' : 'var(--tier-green)';
+  protected barColor(percentage: number): string {
+    return percentage >= 60
+      ? 'var(--tier-red)'
+      : percentage >= 30
+        ? 'var(--tier-yellow)'
+        : 'var(--tier-green)';
   }
 }
