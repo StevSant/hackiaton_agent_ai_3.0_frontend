@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { Button } from '../../../shared/ui/button';
-import { Chip } from '../../../shared/ui/chip';
-import { Icon } from '../../../shared/ui/icon';
-import { KpiSmall } from '../../../shared/ui/kpi-small';
+import { Button } from '@shared/ui/button';
+import { Chip } from '@shared/ui/chip';
+import { Icon } from '@shared/ui/icon';
+import { KpiSmall } from '@shared/ui/kpi-small';
 import { AdvancedFiltersModal } from '../components/advanced-filters-modal';
 import { AuditRow } from '../components/audit-row';
 import { ExportCsvModal } from '../components/export-csv-modal';

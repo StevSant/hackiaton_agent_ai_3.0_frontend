@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { Button } from '../../../shared/ui/button';
-import { Icon } from '../../../shared/ui/icon';
-import { Modal } from '../../../shared/ui/modal';
+import { Button } from '@shared/ui/button';
+import { Icon } from '@shared/ui/icon';
+import { Modal } from '@shared/ui/modal';
 import type { ClaimAlert } from '../models';
 import { RULE_NARRATIVES } from '../services/rule-narratives-mock';
 

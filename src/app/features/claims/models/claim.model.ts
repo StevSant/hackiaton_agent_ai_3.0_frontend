@@ -1,4 +1,4 @@
-import type { RiskTier } from '../../../shared/utils';
+import type { RiskTier } from '@shared/utils';
 import type { ClaimAlert } from './claim-alert.model';
 import type { ClaimDocument } from './claim-document.model';
 import type { ClaimReview } from './claim-review.model';

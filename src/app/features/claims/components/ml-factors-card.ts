@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { EmptyState } from '../../../shared/ui/empty-state';
-import { Icon } from '../../../shared/ui/icon';
+import { EmptyState } from '@shared/ui/empty-state';
+import { Icon } from '@shared/ui/icon';
 import type { Claim } from '../models';
 import { featureLabel } from '../utils/feature-labels';
 

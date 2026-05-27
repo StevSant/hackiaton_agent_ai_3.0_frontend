@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { EmptyState } from '../../../shared/ui/empty-state';
-import { Icon } from '../../../shared/ui/icon';
+import { EmptyState } from '@shared/ui/empty-state';
+import { Icon } from '@shared/ui/icon';
 import { ALERT_CATALOG } from '../models/alert-catalog';
 import type { ClaimAlert } from '../models';
 

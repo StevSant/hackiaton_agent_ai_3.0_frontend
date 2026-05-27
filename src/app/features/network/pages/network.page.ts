@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 
-import { Button } from '../../../shared/ui/button';
-import { Icon } from '../../../shared/ui/icon';
-import { KpiSmall } from '../../../shared/ui/kpi-small';
+import { Button } from '@shared/ui/button';
+import { Icon } from '@shared/ui/icon';
+import { KpiSmall } from '@shared/ui/kpi-small';
 import { NetworkGraph } from '../components/network-graph';
 import { ProviderRanking } from '../components/provider-ranking';
 import { RamoDistributionCard } from '../components/ramo-distribution-card';
 import { ProvidersStore } from '../services/providers.store';
-import { formatMoneyShort } from '../../../shared/utils';
+import { formatMoneyShort } from '@shared/utils';
 
 @Component({
   selector: 'page-network',

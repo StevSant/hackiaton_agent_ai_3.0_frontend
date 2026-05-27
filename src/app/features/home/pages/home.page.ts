@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { Button } from '../../../shared/ui/button';
+import { Button } from '@shared/ui/button';
 
 @Component({
   selector: 'page-home',

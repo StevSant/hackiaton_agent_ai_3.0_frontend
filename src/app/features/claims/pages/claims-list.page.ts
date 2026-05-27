@@ -1,16 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { AuthStore } from '../../../core/auth/auth.store';
-import { Chip } from '../../../shared/ui/chip';
-import { Icon } from '../../../shared/ui/icon';
-import { KpiSmall } from '../../../shared/ui/kpi-small';
-import { Pagination } from '../../../shared/ui/pagination';
-import { SegmentedTabs, type SegmentedTab } from '../../../shared/ui/segmented-tabs';
+import { AuthStore } from '@core/auth/auth.store';
+import { Chip } from '@shared/ui/chip';
+import { Icon } from '@shared/ui/icon';
+import { KpiSmall } from '@shared/ui/kpi-small';
+import { Pagination } from '@shared/ui/pagination';
+import { SegmentedTabs, type SegmentedTab } from '@shared/ui/segmented-tabs';
 import { ClaimsTable } from '../components/claims-table';
 import { ClaimsStore } from '../services/claims.store';
 import type { Claim } from '../models';
-import type { RiskTier } from '../../../shared/utils';
+import type { RiskTier } from '@shared/utils';
 
 type TabKey = 'activos' | 'historico';
 type TierFilter = 'todos' | RiskTier | 'rebotados';

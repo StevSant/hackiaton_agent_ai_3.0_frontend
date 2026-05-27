@@ -1,16 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 
-import { AuthStore } from '../../../core/auth/auth.store';
-import { Button } from '../../../shared/ui/button';
-import { Chip } from '../../../shared/ui/chip';
-import { Icon } from '../../../shared/ui/icon';
-import { KpiSmall } from '../../../shared/ui/kpi-small';
-import { Pagination } from '../../../shared/ui/pagination';
+import { AuthStore } from '@core/auth/auth.store';
+import { Button } from '@shared/ui/button';
+import { Chip } from '@shared/ui/chip';
+import { Icon } from '@shared/ui/icon';
+import { KpiSmall } from '@shared/ui/kpi-small';
+import { Pagination } from '@shared/ui/pagination';
 import { NewRuleModal } from '../components/new-rule-modal';
 import { RuleHistoryModal } from '../components/rule-history-modal';
 import { RuleRow } from '../components/rule-row';
 import { RulesStore } from '../services/rules.store';
-import type { RiskTier } from '../../../shared/utils';
+import type { RiskTier } from '@shared/utils';
 
 type Filter = 'todas' | RiskTier;
 

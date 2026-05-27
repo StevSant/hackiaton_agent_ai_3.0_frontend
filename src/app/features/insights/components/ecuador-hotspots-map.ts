@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import * as L from 'leaflet';
 
-import { Icon } from '../../../shared/ui/icon';
+import { Icon } from '@shared/ui/icon';
 import { ECUADOR_FRAUD_HOTSPOTS } from '../services/ecuador-hotspots.data';
 import {
   ECUADOR_MAP_FIT_PADDING,

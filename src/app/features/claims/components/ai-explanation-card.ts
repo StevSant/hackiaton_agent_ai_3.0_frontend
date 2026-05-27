@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { Icon } from '../../../shared/ui/icon';
+import { Icon } from '@shared/ui/icon';
 import { aiExplanation } from '../utils/ai-explanation';
 import type { Claim } from '../models';
 

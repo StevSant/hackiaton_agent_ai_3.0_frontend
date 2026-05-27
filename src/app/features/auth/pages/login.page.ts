@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { environment } from '../../../core/config/env';
-import { Button } from '../../../shared/ui/button';
-import { Icon } from '../../../shared/ui/icon';
-import { AuthStore } from '../../../core/auth/auth.store';
-import type { RoleCode } from '../../../core/auth/auth-user.model';
+import { environment } from '@core/config/env';
+import { Button } from '@shared/ui/button';
+import { Icon } from '@shared/ui/icon';
+import { AuthStore } from '@core/auth/auth.store';
+import type { RoleCode } from '@core/auth/auth-user.model';
 
 @Component({
   selector: 'page-login',

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
-import { Button } from '../../../shared/ui/button';
-import { Icon } from '../../../shared/ui/icon';
+import { Button } from '@shared/ui/button';
+import { Icon } from '@shared/ui/icon';
 import { AiAnomaliesPanel } from '../components/ai-anomalies-panel';
 import { ClaimTypeDonut } from '../components/claim-type-donut';
 import { EcuadorHotspotsMap } from '../components/ecuador-hotspots-map';

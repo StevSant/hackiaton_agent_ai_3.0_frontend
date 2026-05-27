@@ -1,4 +1,4 @@
-import type { RiskTier } from '../../../shared/utils';
+import type { RiskTier } from '@shared/utils';
 
 export type RuleKind = 'critica' | 'amarilla' | 'scored';
 

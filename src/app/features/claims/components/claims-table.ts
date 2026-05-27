@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
-import { Avatar } from '../../../shared/ui/avatar';
-import { Icon } from '../../../shared/ui/icon';
-import { RiskRing } from '../../../shared/ui/risk-ring';
-import { formatMoney, ramoIcon, ramoLabel } from '../../../shared/utils';
+import { Avatar } from '@shared/ui/avatar';
+import { Icon } from '@shared/ui/icon';
+import { RiskRing } from '@shared/ui/risk-ring';
+import { formatMoney, ramoIcon, ramoLabel } from '@shared/utils';
 import type { Claim } from '../models';
 
 @Component({

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { Icon } from '../../../shared/ui/icon';
-import { formatDateTime } from '../../../shared/utils';
+import { Icon } from '@shared/ui/icon';
+import { formatDateTime } from '@shared/utils';
 import type { ClaimReview, DictamenOutcome } from '../models/claim-review.model';
 
 interface OutcomeMeta {

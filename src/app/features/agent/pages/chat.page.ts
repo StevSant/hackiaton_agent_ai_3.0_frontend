@@ -10,9 +10,9 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { Button } from '../../../shared/ui/button';
-import { Chip } from '../../../shared/ui/chip';
-import { Icon } from '../../../shared/ui/icon';
+import { Button } from '@shared/ui/button';
+import { Chip } from '@shared/ui/chip';
+import { Icon } from '@shared/ui/icon';
 import { ChatMessage } from '../components/chat-message';
 import { AgentStore } from '../services/agent.store';
 

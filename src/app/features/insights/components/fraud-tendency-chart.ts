@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
-import { Icon } from '../../../shared/ui/icon';
+import { Icon } from '@shared/ui/icon';
 import { STITCH_REGIONAL_BARS } from '../constants/stitch-insights.constants';
 
 @Component({

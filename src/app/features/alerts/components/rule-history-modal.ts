@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
-import { Button } from '../../../shared/ui/button';
-import { Icon } from '../../../shared/ui/icon';
-import { Modal } from '../../../shared/ui/modal';
+import { Button } from '@shared/ui/button';
+import { Icon } from '@shared/ui/icon';
+import { Modal } from '@shared/ui/modal';
 import { MOCK_RULE_CHANGES } from '../services/rule-changes-mock.data';
 import type { RuleChange, RuleChangeKind } from '../models/rule-change.model';
 

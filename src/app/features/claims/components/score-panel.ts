@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
-import { RiskRing } from '../../../shared/ui/risk-ring';
+import { RiskRing } from '@shared/ui/risk-ring';
 import { suggestedAction } from '../utils/ai-explanation';
 import type { Claim, ClaimAlert } from '../models';
 

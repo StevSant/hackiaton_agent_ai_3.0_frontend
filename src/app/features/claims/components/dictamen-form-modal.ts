@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { Button } from '../../../shared/ui/button';
-import { Icon } from '../../../shared/ui/icon';
-import { Modal } from '../../../shared/ui/modal';
+import { Button } from '@shared/ui/button';
+import { Icon } from '@shared/ui/icon';
+import { Modal } from '@shared/ui/modal';
 import type { DictamenOutcome } from '../models/claim-review.model';
 
 interface OutcomeOption {
