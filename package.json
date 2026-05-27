@@ -26,6 +26,7 @@
     "@angular/router": "^21.2.0",
     "@supabase/supabase-js": "^2.106.2",
     "leaflet": "^1.9.4",
+    "marked": "^18.0.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
