@@ -310,7 +310,7 @@ export class AgentChart implements OnDestroy {
         if (!label && typeof params.dataIndex === 'number') {
           label = this.payload().labels[params.dataIndex] ?? '';
         }
-        if (label && isClaimId(label)) this.openCase.emit(label);
+        if (label) this.openCase.emit(label);
       });
       this.observer = new ResizeObserver(() => this.chart?.resize());
       this.observer.observe(this.host().nativeElement);

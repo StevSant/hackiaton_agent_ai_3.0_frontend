@@ -25,6 +25,7 @@ import { ConversationsSidebar } from '../components/conversations-sidebar';
 import { TtsPlayer } from '../components/tts-player';
 import { VoiceEqualizer } from '../components/voice-equalizer';
 import type { ConversationSummary } from '../models';
+import { ProvidersStore } from '@core/state/providers.store';
 import { AgentStore } from '../services/agent.store';
 import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
 import { ConversationsStore } from '../services/conversations.store';
@@ -326,6 +327,7 @@ export class ChatPage implements AfterViewChecked {
   protected readonly conversations = inject(ConversationsStore);
   protected readonly voice = inject(VoiceRecorderService);
   protected readonly uiPrefs = inject(ChatUiPrefsStore);
+  private readonly providers = inject(ProvidersStore);
   protected readonly tts = inject(TextToSpeechService);
   private readonly agentApi = inject(AgentApi);
   private readonly route = inject(ActivatedRoute);
@@ -535,8 +537,19 @@ export class ChatPage implements AfterViewChecked {
     }
   }
 
-  protected openCase(id: string): void {
-    void this.router.navigate(['/claims', id]);
+  protected openCase(idOrLabel: string): void {
+    // Claim chips emit raw IDs (SIN-…, IMP-…, CL-…) — route to the case page.
+    if (/^(SIN|IMP|CL)-/i.test(idOrLabel)) {
+      void this.router.navigate(['/claims', idOrLabel]);
+      return;
+    }
+    // Provider names emitted by aggregate charts — look up the id and route.
+    const match = this.providers
+      .providers()
+      .find((p) => p.nombre.toLowerCase() === idOrLabel.toLowerCase());
+    if (match) {
+      void this.router.navigate(['/providers', match.id]);
+    }
   }
 
   private scrollToBottom(): void {
