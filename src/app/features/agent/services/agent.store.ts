@@ -102,10 +102,12 @@ export class AgentStore {
     },
   ]);
   private readonly _thinking = signal<boolean>(false);
+  private readonly _responding = signal<boolean>(false);
   private readonly _conversationId = signal<string | null>(null);
 
   readonly messages = this._messages.asReadonly();
   readonly thinking = this._thinking.asReadonly();
+  readonly isResponding = this._responding.asReadonly();
   readonly conversationId = this._conversationId.asReadonly();
 
   startNewConversation(id: string): void {
@@ -183,6 +185,7 @@ export class AgentStore {
       { id: newId(), role: 'user', content: trimmed },
     ]);
     this._thinking.set(true);
+    this._responding.set(true);
 
     const assistantId = newId();
     let assistantAdded = false;
@@ -280,6 +283,7 @@ export class AgentStore {
               break;
             case 'error':
               this._thinking.set(false);
+              this._responding.set(false);
               this._messages.update((messages) => [
                 ...messages,
                 {
@@ -291,12 +295,14 @@ export class AgentStore {
               break;
             case 'done':
               this._thinking.set(false);
+              this._responding.set(false);
               void this.conversationsStore.refresh();
               break;
           }
         },
         complete: () => {
           this._thinking.set(false);
+          this._responding.set(false);
           if (!assistantAdded) {
             this._messages.update((messages) => [
               ...messages,
@@ -310,6 +316,7 @@ export class AgentStore {
         },
         error: () => {
           this._thinking.set(false);
+          this._responding.set(false);
           this._messages.update((messages) => [
             ...messages,
             {

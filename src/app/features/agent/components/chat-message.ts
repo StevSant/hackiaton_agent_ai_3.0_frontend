@@ -4,55 +4,42 @@ import type { TtsState } from '@core/tts/text-to-speech.service';
 import { MarkdownPipe } from '@shared/pipes';
 import { Icon } from '@shared/ui/icon';
 import { AgentChart } from './agent-chart';
+import { AgentEyeIcon } from './agent-eye-icon';
 import { AgentSteps } from './agent-steps';
 import type { AgentMessage } from '../models';
 
 @Component({
   selector: 'agent-chat-message',
   standalone: true,
-  imports: [AgentSteps, MarkdownPipe, Icon, AgentChart],
+  imports: [AgentSteps, MarkdownPipe, Icon, AgentChart, AgentEyeIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div
-      class="max-w-[720px] flex gap-3.5"
-      [class.ml-auto]="isUser()"
-      [class.flex-row-reverse]="isUser()"
-    >
-      <div
-        class="w-7 h-7 rounded-full grid place-items-center shrink-0 font-semibold text-[11px] text-white"
-        [style.background]="avatarBg()"
-      >
-        @if (isUser()) {
-          LV
-        } @else {
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
-            <path
-              d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z"
-              stroke="white"
-              stroke-width="2"
-              stroke-linejoin="round"
-            />
-            <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" />
-          </svg>
-        }
-      </div>
+    <div class="w-full flex gap-3 items-start" [class.justify-end]="isUser()">
+      @if (!isUser()) {
+        <div
+          class="w-10 h-10 rounded-full grid place-items-center shrink-0 font-semibold text-[12px] text-white"
+          [style.background]="avatarBg()"
+        >
+          <agent-eye-icon [size]="18" [tracking]="tracking()" />
+        </div>
+      }
+
       @if (isUser()) {
         <div
-          class="text-[13.5px] leading-relaxed px-3.5 py-2.5 rounded-2xl border bg-brand text-white border-transparent whitespace-pre-wrap break-words"
+          class="chat-message__bubble chat-message__bubble--user text-[13.5px] leading-relaxed px-3.5 py-2.5 rounded-2xl border bg-brand text-white border-transparent whitespace-pre-wrap break-words"
         >
           {{ message().content }}
         </div>
+        <div
+          class="w-10 h-10 rounded-full grid place-items-center shrink-0 font-semibold text-[12px] text-white"
+          [style.background]="avatarBg()"
+        >
+          LV
+        </div>
       } @else {
-        <div class="flex flex-col items-start gap-1.5 min-w-0">
+        <div class="flex flex-col items-start gap-1.5 min-w-0 chat-message__bubble">
           <div
-            class="text-[13.5px] leading-relaxed px-3.5 py-2.5 rounded-2xl border bg-surface text-ink border-line break-words"
+            class="text-[13.5px] leading-relaxed px-3.5 py-2.5 rounded-2xl border bg-surface text-ink border-line break-words w-full"
             (click)="onBubbleClick($event)"
           >
             @if (steps().length > 0) {
@@ -100,10 +87,24 @@ import type { AgentMessage } from '../models';
       }
     </div>
   `,
+  styles: [
+    `
+      .chat-message__bubble {
+        flex: 1;
+        min-width: 0;
+        max-width: min(720px, calc(100% - 3.25rem));
+      }
+
+      .chat-message__bubble--user {
+        flex: 0 1 auto;
+      }
+    `,
+  ],
 })
 export class ChatMessage {
   readonly message = input.required<AgentMessage>();
   readonly streaming = input<boolean>(false);
+  readonly tracking = input<boolean>(false);
   readonly ttsSupported = input<boolean>(true);
   /** This message is the one currently being read aloud. */
   readonly ttsActive = input<boolean>(false);
