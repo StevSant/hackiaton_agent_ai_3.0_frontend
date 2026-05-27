@@ -6,6 +6,7 @@ import {
   type AiAnomalyDto,
   type ClaimTypeSliceDto,
   type HotspotDto,
+  type IncidentDto,
   type InsightsBundleDto,
   type RegionalFraudPointDto,
 } from '@core/api/clients/insights.api';
@@ -16,11 +17,23 @@ import { ECUADOR_CITY_COORDS } from '../utils/ecuador-city-coords';
 
 const REGION_PALETTE = ['#1e293b', '#334155', '#475569', '#64748b', '#94a3b8'];
 const SLICE_COLORS: Record<string, string> = {
-  auto: '#1e293b',
-  health: '#3b82f6',
-  life: '#6366f1',
+  auto: '#6366f1',
+  health: '#06b6d4',
+  life: '#a855f7',
   other: '#94a3b8',
 };
+
+const HIGH_RISK_THRESHOLD = 70;
+
+export interface IncidentPoint {
+  id: string;
+  sucursal: string;
+  score: number;
+  tier: 'verde' | 'amarillo' | 'rojo';
+  latitude: number;
+  longitude: number;
+  fechaOcurrencia: string | null;
+}
 
 interface QuarterlyOutlookView {
   body: string;
@@ -48,8 +61,6 @@ function dtoToSlice(dto: ClaimTypeSliceDto): ClaimTypeSlice {
   };
 }
 
-const HIGH_RISK_THRESHOLD = 70;
-
 function dtoToHotspot(dto: HotspotDto): MapHotspot | null {
   const coords = ECUADOR_CITY_COORDS[dto.sucursal];
   if (!coords) return null;
@@ -61,6 +72,19 @@ function dtoToHotspot(dto: HotspotDto): MapHotspot | null {
     latitude: coords.latitude,
     longitude: coords.longitude,
     fraudProbability: Math.round(dto.avg_score),
+  };
+}
+
+function dtoToIncident(dto: IncidentDto): IncidentPoint | null {
+  if (dto.latitude == null || dto.longitude == null) return null;
+  return {
+    id: dto.id_siniestro,
+    sucursal: dto.sucursal,
+    score: dto.score,
+    tier: dto.tier as 'verde' | 'amarillo' | 'rojo',
+    latitude: dto.latitude,
+    longitude: dto.longitude,
+    fechaOcurrencia: dto.fecha_ocurrencia ?? null,
   };
 }
 
@@ -100,6 +124,13 @@ export class InsightsStore {
     return rows
       .map(dtoToHotspot)
       .filter((h): h is MapHotspot => h !== null);
+  });
+
+  readonly incidents = computed<IncidentPoint[]>(() => {
+    const rows = this._bundle()?.incidents ?? [];
+    return rows
+      .map(dtoToIncident)
+      .filter((p): p is IncidentPoint => p !== null);
   });
 
   readonly quarterlyOutlook = computed<QuarterlyOutlookView>(() => {

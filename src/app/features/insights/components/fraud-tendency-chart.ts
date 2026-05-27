@@ -1,7 +1,14 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 
 import { Icon } from '@shared/ui/icon';
-import { STITCH_REGIONAL_BARS } from '../constants/stitch-insights.constants';
+import { InsightsStore } from '../services/insights.store';
+
+interface FraudBar {
+  region: string;
+  value: number;
+  heightPct: number;
+  opacity: number;
+}
 
 @Component({
   selector: 'insights-fraud-tendency',
@@ -9,30 +16,51 @@ import { STITCH_REGIONAL_BARS } from '../constants/stitch-insights.constants';
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="bg-surface border border-line rounded-lg p-3 h-full">
-      <div class="flex justify-between items-center mb-2">
-        <h3 class="text-[12px] font-bold text-ink m-0">Tendencia de fraude por región</h3>
-        <div class="flex items-center gap-1 text-ink-3">
-          <span class="text-[10px] font-mono">12 meses</span>
-          <ui-icon name="calendar_today" [size]="13" />
+    <section class="bg-surface border border-line rounded-lg shadow-1 p-4">
+      <header class="flex justify-between items-start gap-2 mb-3.5">
+        <div class="min-w-0">
+          <h3 class="text-[13px] font-semibold text-ink m-0">Tendencia de fraude</h3>
+          <p class="text-[11.5px] text-ink-3 m-0 mt-0.5">Concentración por región</p>
         </div>
-      </div>
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-soft text-ink-3 border border-line shrink-0">
+          <ui-icon name="calendar_today" [size]="11" />
+          12 meses
+        </span>
+      </header>
 
-      <div class="flex items-end justify-between h-24 gap-2">
-        @for (bar of bars; track bar.region) {
-          <div class="flex flex-col items-center flex-1 gap-1 h-full justify-end">
+      <div class="flex items-end justify-between h-28 gap-1.5">
+        @for (bar of bars(); track bar.region) {
+          <div class="flex flex-col items-center flex-1 gap-1.5 h-full justify-end min-w-0">
+            <span class="font-mono text-[10px] text-ink-3 tabular-nums leading-none">
+              {{ bar.value }}
+            </span>
             <div
-              class="w-full bg-brand rounded-t-sm insights-chart-bar transition-all duration-1000 ease-out"
+              class="w-full rounded-t-sm transition-all duration-700 ease-out"
               [style.height.%]="bar.heightPct"
+              [style.background]="'var(--brand)'"
               [style.opacity]="bar.opacity"
             ></div>
-            <span class="text-[9px] font-mono text-ink-3 text-center leading-none">{{ bar.region }}</span>
+            <span class="text-[10.5px] font-medium text-ink-2 truncate w-full text-center leading-none">
+              {{ bar.region }}
+            </span>
           </div>
         }
       </div>
-    </div>
+    </section>
   `,
 })
 export class FraudTendencyChart {
-  protected readonly bars = STITCH_REGIONAL_BARS;
+  private readonly store = inject(InsightsStore);
+
+  protected readonly bars = computed<FraudBar[]>(() => {
+    const points = this.store.regionalFraud();
+    if (!points.length) return [];
+    const max = Math.max(...points.map((p) => p.value), 1);
+    return points.map((p, idx) => ({
+      region: p.region,
+      value: p.value,
+      heightPct: (p.value / max) * 100,
+      opacity: Math.max(1 - idx * 0.18, 0.25),
+    }));
+  });
 }

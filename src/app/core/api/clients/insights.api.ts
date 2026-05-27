@@ -35,6 +35,16 @@ export interface HotspotDto {
   avg_score: number;
 }
 
+export interface IncidentDto {
+  id_siniestro: string;
+  sucursal: string;
+  score: number;
+  tier: string;
+  latitude: number | null;
+  longitude: number | null;
+  fecha_ocurrencia: string | null;
+}
+
 export interface InsightsBundleDto {
   anomalies: AiAnomalyDto[];
   regional_fraud: RegionalFraudPointDto[];
@@ -42,6 +52,7 @@ export interface InsightsBundleDto {
   total_claims_label: string;
   quarterly_outlook: QuarterlyOutlookDto;
   hotspots: HotspotDto[];
+  incidents: IncidentDto[];
 }
 
 @Injectable({ providedIn: 'root' })

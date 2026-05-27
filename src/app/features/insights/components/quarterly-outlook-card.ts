@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 
 import { Icon } from '@shared/ui/icon';
 import { InsightsStore } from '../services/insights.store';
@@ -9,17 +9,40 @@ import { InsightsStore } from '../services/insights.store';
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="bg-surface border border-line border-l-2 border-l-brand rounded-lg p-3">
-      <h3 class="text-[12px] font-bold text-ink mb-1 m-0">Perspectiva trimestral</h3>
-      <p class="text-[10px] leading-snug text-ink-3 mb-1.5 m-0 line-clamp-2">{{ outlook().body }}</p>
-      <div class="flex items-center gap-1 text-[#10b981]">
-        <ui-icon name="trending_down" [size]="14" />
-        <span class="text-[10px] font-mono font-medium truncate">Fraude {{ outlook().systematicFraudDelta }}</span>
+    <section class="bg-surface border border-line rounded-lg shadow-1 p-4 relative overflow-hidden">
+      <span
+        class="absolute top-0 left-0 right-0 h-[3px]"
+        style="background: linear-gradient(90deg, var(--brand) 0%, var(--tier-yellow) 100%);"
+      ></span>
+
+      <header class="flex items-center justify-between gap-2 mb-2">
+        <h3 class="text-[13px] font-semibold text-ink m-0">Perspectiva trimestral</h3>
+        <span class="text-[11px] text-ink-3 font-medium">Q2 2026</span>
+      </header>
+
+      <p class="text-[12.5px] leading-snug text-ink-2 m-0 mb-3">{{ outlook().body }}</p>
+
+      <div class="flex items-center gap-2">
+        <span
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11.5px] font-medium bg-tier-green-soft text-tier-green-ink"
+          [class.bg-tier-red-soft]="isPositiveDelta()"
+          [class.text-tier-red-ink]="isPositiveDelta()"
+        >
+          <ui-icon [name]="isPositiveDelta() ? 'trending_up' : 'trending_down'" [size]="12" />
+          {{ outlook().systematicFraudDelta }}
+        </span>
+        <span class="text-[11.5px] text-ink-3">Fraude sistémico</span>
       </div>
-    </div>
+    </section>
   `,
 })
 export class QuarterlyOutlookCard {
   private readonly store = inject(InsightsStore);
   protected readonly outlook = this.store.quarterlyOutlook;
+
+  protected readonly isPositiveDelta = computed(() => {
+    // "+" or no leading sign = fraud is increasing (bad). "-" = fraud is decreasing (good).
+    const d = this.outlook().systematicFraudDelta.trim();
+    return d.startsWith('+') || (!d.startsWith('-') && d.length > 0);
+  });
 }

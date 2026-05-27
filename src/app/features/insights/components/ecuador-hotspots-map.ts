@@ -12,7 +12,7 @@ import {
 import * as L from 'leaflet';
 
 import { Icon } from '@shared/ui/icon';
-import { InsightsStore } from '../services/insights.store';
+import { InsightsStore, type IncidentPoint } from '../services/insights.store';
 import type { MapHotspot } from '../models';
 import {
   ECUADOR_MAP_FIT_PADDING,
@@ -116,16 +116,20 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
 
   private map: L.Map | null = null;
   private readonly markers: L.Marker[] = [];
+  private readonly incidentMarkers: L.CircleMarker[] = [];
   private resizeObserver: ResizeObserver | null = null;
 
   protected readonly hintOpen = signal(false);
 
   constructor() {
-    // Re-render markers whenever the store's hotspots change. Runs after
-    // initMap() in ngAfterViewInit lays down the Leaflet map.
+    // Re-render markers whenever the store's hotspots or incidents change.
     effect(() => {
       const hotspots = this.store.hotspots();
-      if (this.map) this.renderMarkers(hotspots);
+      const incidents = this.store.incidents();
+      if (this.map) {
+        this.renderMarkers(hotspots);
+        this.renderIncidents(incidents);
+      }
     });
   }
 
@@ -140,6 +144,7 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
     this.map?.remove();
     this.map = null;
     this.markers.length = 0;
+    this.incidentMarkers.length = 0;
   }
 
   protected toggleHint(): void {
@@ -184,6 +189,7 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
     // Seed markers from whatever the store already has; the effect() in
     // the constructor keeps them in sync on subsequent loads.
     this.renderMarkers(this.store.hotspots());
+    this.renderIncidents(this.store.incidents());
 
     requestAnimationFrame(() => {
       this.map?.invalidateSize({ animate: false });
@@ -257,4 +263,42 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
 
     this.markers.push(marker);
   }
+
+  private renderIncidents(incidents: readonly IncidentPoint[]): void {
+    if (!this.map) return;
+
+    for (const m of this.incidentMarkers) m.remove();
+    this.incidentMarkers.length = 0;
+
+    for (const incident of incidents) {
+      this.addIncidentMarker(incident);
+    }
+  }
+
+  private addIncidentMarker(incident: IncidentPoint): void {
+    if (!this.map) return;
+
+    const color = INCIDENT_TIER_COLORS[incident.tier];
+    const circle = L.circleMarker([incident.latitude, incident.longitude], {
+      radius: incident.tier === 'rojo' ? 6 : 5,
+      color,
+      weight: 1,
+      fillColor: color,
+      fillOpacity: 0.55,
+      pane: 'markerPane',
+    }).addTo(this.map);
+
+    circle.bindTooltip(
+      `<strong>${incident.id}</strong><br>${incident.sucursal} · score ${incident.score}`,
+      { direction: 'top', offset: [0, -4], opacity: 0.92 },
+    );
+
+    this.incidentMarkers.push(circle);
+  }
 }
+
+const INCIDENT_TIER_COLORS: Record<IncidentPoint['tier'], string> = {
+  rojo: 'var(--tier-red)',
+  amarillo: 'var(--tier-yellow)',
+  verde: 'var(--tier-green)',
+};
