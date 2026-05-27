@@ -11,7 +11,6 @@ export { KpiCard, type KpiDelta } from './kpi-card';
 export { KpiSmall } from './kpi-small';
 export { Chip } from './chip';
 export { Button } from './button';
-export { ComingSoon } from './coming-soon';
 export { Modal } from './modal';
 export { Pagination } from './pagination';
 export { RoleBadge } from './role-badge';

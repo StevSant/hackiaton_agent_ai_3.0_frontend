@@ -2,13 +2,14 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
+import { Skeleton } from '@shared/ui/skeleton';
 import type { ConversationSummary } from '../models';
 import { ConversationItem } from './conversation-item';
 
 @Component({
   selector: 'agent-conversations-sidebar',
   standalone: true,
-  imports: [Button, Icon, ConversationItem],
+  imports: [Button, Icon, Skeleton, ConversationItem],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col h-full border-r border-line bg-surface overflow-hidden">
@@ -37,7 +38,15 @@ import { ConversationItem } from './conversation-item';
       <!-- List -->
       <div class="flex-1 overflow-y-auto scroll-pretty p-2 flex flex-col gap-0.5">
         @if (loading()) {
-          <p class="text-[12.5px] text-ink-3 px-3 py-2">Cargando…</p>
+          <div class="flex flex-col gap-2 px-2 py-2" aria-label="Cargando conversaciones">
+            @for (i of [1, 2, 3, 4, 5]; track i) {
+              <div class="px-2.5 py-2">
+                <ui-skeleton variant="text" width="85%" [height]="11" />
+                <div class="h-1"></div>
+                <ui-skeleton variant="text" width="55%" [height]="9" />
+              </div>
+            }
+          </div>
         } @else if (items().length === 0) {
           <p class="text-[12.5px] text-ink-3 px-3 py-2">Sin conversaciones todavía.</p>
         } @else {
