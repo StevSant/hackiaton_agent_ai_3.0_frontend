@@ -9,7 +9,7 @@ import {
   reviewStatusLabel,
   type RiskTier,
 } from '@shared/utils';
-import type { Claim } from '../../claims/models';
+import type { Claim } from '@shared/models';
 
 @Component({
   selector: 'investigacion-table',

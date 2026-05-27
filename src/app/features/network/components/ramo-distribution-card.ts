@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 
 import { Icon } from '@shared/ui/icon';
 import { ramoIcon, ramoLabel } from '@shared/utils';
-import { ClaimsStore } from '../../claims/services/claims.store';
+import { ClaimsStore } from '@core/state/claims.store';
 import { computeRamoStats } from '../utils/ramo-stats';
 
 @Component({

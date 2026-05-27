@@ -6,8 +6,8 @@ import { Icon } from '@shared/ui/icon';
 import { RoleBadge } from '@shared/ui/role-badge';
 import { ThemeStore } from '@core/theme/theme.store';
 import { AuthStore } from '@core/auth/auth.store';
-import { ClaimsStore } from '@features/claims/services/claims.store';
-import { ProvidersStore } from '@features/network/services/providers.store';
+import { ClaimsStore } from '@core/state/claims.store';
+import { ProvidersStore } from '@core/state/providers.store';
 
 interface NavItem {
   link: string;

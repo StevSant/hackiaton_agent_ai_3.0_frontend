@@ -5,9 +5,9 @@ import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { Pagination } from '@shared/ui/pagination';
 import { RAMOS, reviewStatusLabel, type RamoKey, type RiskTier } from '@shared/utils';
+import type { Claim } from '@shared/models';
 import { InvestigacionTable } from '../components/investigacion-table';
-import type { Claim } from '../../claims/models';
-import { ClaimsStore } from '../../claims/services/claims.store';
+import { ClaimsStore } from '@core/state/claims.store';
 
 type StatusFilter = 'todos' | 'pendiente' | 'escalado' | 'en_revision' | 'dictaminado' | 'revisado_sin_escalar';
 type TierFilter = 'todos' | RiskTier;

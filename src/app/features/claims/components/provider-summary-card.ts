@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { initials } from '@shared/utils';
-import type { Provider } from '../../network/models';
+import type { Provider } from '@shared/models';
 
 @Component({
   selector: 'claim-provider-summary-card',

@@ -26,9 +26,9 @@ import { ScorePanel } from '../components/score-panel';
 import { SimilarNarrativesCard } from '../components/similar-narratives-card';
 import { TimelineCard } from '../components/timeline-card';
 import { VehicleCard } from '../components/vehicle-card';
-import type { ClaimAlert, DictamenOutcome } from '../models';
-import { ClaimsStore } from '../services/claims.store';
-import { ProvidersStore } from '../../network/services/providers.store';
+import type { ClaimAlert, DictamenOutcome } from '@shared/models';
+import { ClaimsStore } from '@core/state/claims.store';
+import { ProvidersStore } from '@core/state/providers.store';
 
 @Component({
   selector: 'page-claim-detail',

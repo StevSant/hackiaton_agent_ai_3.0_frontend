@@ -14,8 +14,8 @@ import {
 import { NetworkGraph } from '../components/network-graph';
 import { ProviderRanking } from '../components/provider-ranking';
 import { RamoDistributionCard } from '../components/ramo-distribution-card';
-import type { Provider } from '../models';
-import { ProvidersStore } from '../services/providers.store';
+import type { Provider } from '@shared/models';
+import { ProvidersStore } from '@core/state/providers.store';
 
 type RamoFilter = 'todos' | RamoKey;
 type GraphTierFilter = 'todos' | 'rojo' | 'amarillo_rojo' | 'estandar';

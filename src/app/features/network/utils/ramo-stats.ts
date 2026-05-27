@@ -1,4 +1,4 @@
-import type { Claim } from '../../claims/models';
+import type { Claim } from '@shared/models';
 
 export interface RamoStat {
   key: string;

@@ -6,7 +6,7 @@ import { DocumentsApi } from '@core/api/clients/documents.api';
 import { ImportsApi, type ImportResultDto } from '@core/api/clients/imports.api';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
-import { ClaimsStore } from '../../claims/services/claims.store';
+import { ClaimsStore } from '@core/state/claims.store';
 
 /** Paquete demo vehicular (backend: data/sample_documents/SIN-2026-08412/). */
 const DEMO_VEHICLE_DOCUMENTS: readonly { file: string; tipo: string }[] = [

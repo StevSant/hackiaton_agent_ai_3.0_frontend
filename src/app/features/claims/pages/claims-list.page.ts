@@ -8,8 +8,8 @@ import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
 import { SegmentedTabs, type SegmentedTab } from '@shared/ui/segmented-tabs';
 import { ClaimsTable } from '../components/claims-table';
-import { ClaimsStore } from '../services/claims.store';
-import type { Claim } from '../models';
+import { ClaimsStore } from '@core/state/claims.store';
+import type { Claim } from '@shared/models';
 import type { RiskTier } from '@shared/utils';
 
 type TabKey = 'activos' | 'historico';

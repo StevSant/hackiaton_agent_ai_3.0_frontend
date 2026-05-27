@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { NetworkApi, type ProviderDto } from '@core/api/clients/network.api';
 import { AuthStore } from '@core/auth/auth.store';
 import { AppError } from '@core/errors/app-error';
-import type { Provider } from '../models';
+import type { Provider } from '@shared/models';
 
 function alertasToColor(alertas: number): string {
   if (alertas >= 9) return 'oklch(0.6 0.18 25)';

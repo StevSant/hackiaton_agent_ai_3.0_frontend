@@ -5,7 +5,7 @@ import { ClaimsApi } from '@core/api/clients/claims.api';
 import type { ClaimDto, ClaimSummaryDto } from '@core/api/clients/claim.dto';
 import { AuthStore } from '@core/auth/auth.store';
 import { AppError } from '@core/errors/app-error';
-import type { Claim, ClaimReview, DictamenOutcome } from '../models';
+import type { Claim, ClaimReview, DictamenOutcome } from '@shared/models';
 
 /**
  * Default page size for the initial claims fetch. The list-page filtering

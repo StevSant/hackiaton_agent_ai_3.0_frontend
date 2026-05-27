@@ -1,10 +1,20 @@
-export type { Claim } from './claim.model';
-export type { ClaimAlert, AlertSeverity } from './claim-alert.model';
-export type { ClaimTimelineEvent, TimelineTone } from './claim-timeline-event.model';
-export type { ClaimDocument } from './claim-document.model';
-export type { ClaimVehicle } from './claim-vehicle.model';
-export type { TrendPoint } from './trend-point.model';
-export type { ClaimReview, ReviewStatus, DictamenOutcome } from './claim-review.model';
-export type { FactorContribution } from './factor-contribution.model';
-export type { SimilarClaim } from './similar-claim.model';
-export { ALERT_CATALOG, type AlertCatalogEntry } from './alert-catalog';
+// Thin re-exports — the canonical definitions live in `@shared/models`.
+// New code should import from `@shared/models` directly. This barrel exists
+// only to keep feature-internal imports (`../models`) working without churn.
+export type {
+  Claim,
+  ClaimAlert,
+  AlertSeverity,
+  ClaimTimelineEvent,
+  TimelineTone,
+  ClaimDocument,
+  ClaimVehicle,
+  TrendPoint,
+  ClaimReview,
+  ReviewStatus,
+  DictamenOutcome,
+  FactorContribution,
+  SimilarClaim,
+  AlertCatalogEntry,
+} from '@shared/models';
+export { ALERT_CATALOG } from '@shared/models';

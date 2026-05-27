@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
-import { ClaimsStore } from '../../claims/services/claims.store';
+import { ClaimsStore } from '@core/state/claims.store';
 import { AiAnomaliesPanel } from '../components/ai-anomalies-panel';
 import { ClaimTypeDonut } from '../components/claim-type-donut';
 import { EcuadorHotspotsMap } from '../components/ecuador-hotspots-map';
