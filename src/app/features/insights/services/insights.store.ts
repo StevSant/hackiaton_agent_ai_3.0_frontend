@@ -5,12 +5,14 @@ import {
   InsightsApi,
   type AiAnomalyDto,
   type ClaimTypeSliceDto,
+  type HotspotDto,
   type InsightsBundleDto,
   type RegionalFraudPointDto,
 } from '@core/api/clients/insights.api';
 import { AuthStore } from '@core/auth/auth.store';
 import { AppError } from '@core/errors/app-error';
-import type { AiAnomaly, ClaimTypeSlice, RegionalFraudPoint } from '../models';
+import type { AiAnomaly, ClaimTypeSlice, MapHotspot, RegionalFraudPoint } from '../models';
+import { ECUADOR_CITY_COORDS } from '../utils/ecuador-city-coords';
 
 const REGION_PALETTE = ['#1e293b', '#334155', '#475569', '#64748b', '#94a3b8'];
 const SLICE_COLORS: Record<string, string> = {
@@ -46,6 +48,22 @@ function dtoToSlice(dto: ClaimTypeSliceDto): ClaimTypeSlice {
   };
 }
 
+const HIGH_RISK_THRESHOLD = 70;
+
+function dtoToHotspot(dto: HotspotDto): MapHotspot | null {
+  const coords = ECUADOR_CITY_COORDS[dto.sucursal];
+  if (!coords) return null;
+  return {
+    id: dto.sucursal.toLowerCase().replace(/\s+/g, '-'),
+    city: dto.sucursal,
+    province: coords.province,
+    risk: dto.avg_score >= HIGH_RISK_THRESHOLD ? 'high' : 'medium',
+    latitude: coords.latitude,
+    longitude: coords.longitude,
+    fraudProbability: Math.round(dto.avg_score),
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class InsightsStore {
   private readonly api = inject(InsightsApi);
@@ -76,6 +94,13 @@ export class InsightsStore {
   });
 
   readonly totalClaimsLabel = computed<string>(() => this._bundle()?.total_claims_label ?? '—');
+
+  readonly hotspots = computed<MapHotspot[]>(() => {
+    const rows = this._bundle()?.hotspots ?? [];
+    return rows
+      .map(dtoToHotspot)
+      .filter((h): h is MapHotspot => h !== null);
+  });
 
   readonly quarterlyOutlook = computed<QuarterlyOutlookView>(() => {
     const o = this._bundle()?.quarterly_outlook;

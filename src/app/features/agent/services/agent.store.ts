@@ -1,19 +1,14 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
+import { ConversationsApi } from '@core/api/clients/conversations.api';
 import { environment } from '@core/config/env';
 import { SseClient } from '@core/realtime/sse.client';
-import { ClaimsStore } from '../../claims/services/claims.store';
 import type { AgentMessage, AgentStep } from '../models';
+import { ConversationsStore } from './conversations.store';
 
 let nextId = 0;
 const newId = (): string => `m_${Date.now()}_${++nextId}`;
-
-const newConversationId = (): string => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `c_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-};
 
 interface TokenEvent {
   type: 'token';
@@ -88,7 +83,8 @@ function summarizeResult(result: unknown): string | undefined {
 @Injectable({ providedIn: 'root' })
 export class AgentStore {
   private readonly sse = inject(SseClient);
-  private readonly claims = inject(ClaimsStore);
+  private readonly conversationsApi = inject(ConversationsApi);
+  private readonly conversationsStore = inject(ConversationsStore);
 
   private readonly _messages = signal<AgentMessage[]>([
     {
@@ -99,45 +95,69 @@ export class AgentStore {
     },
   ]);
   private readonly _thinking = signal<boolean>(false);
-  private currentContextClaimId: string | null = null;
-  private conversationId: string | null = null;
+  private readonly _conversationId = signal<string | null>(null);
 
   readonly messages = this._messages.asReadonly();
   readonly thinking = this._thinking.asReadonly();
+  readonly conversationId = this._conversationId.asReadonly();
 
-  primeForCase(caseId: string | null | undefined): void {
-    if (!caseId) return;
-    const claim = this.claims.findById(caseId);
-    if (!claim) return;
-    this.currentContextClaimId = caseId;
-    this.conversationId = null;
+  startNewConversation(id: string): void {
+    this._conversationId.set(id);
     this._messages.set([
       {
-        id: newId(),
+        id: `m_${Date.now()}_new`,
         role: 'assistant',
-        content: `Hola, soy Centinela IA. Estás revisando el caso **${claim.id}** — ${claim.cobertura} de ${claim.asegurado} (score ${claim.score}/100). ¿En qué te puedo ayudar con este caso?`,
+        content:
+          'Hola, soy Centinela IA. Puedo ayudarte a explorar tu bandeja: rankings, patrones, casos atípicos y resúmenes ejecutivos. ¿En qué te puedo ayudar?',
       },
     ]);
   }
 
-  reset(): void {
-    this.currentContextClaimId = null;
-    this.conversationId = null;
-    this._messages.set([
-      {
-        id: newId(),
-        role: 'assistant',
-        content: 'Conversación nueva. ¿Qué quieres consultar?',
-      },
-    ]);
+  async loadConversation(id: string): Promise<void> {
+    try {
+      const detail = await firstValueFrom(this.conversationsApi.get(id));
+      this._conversationId.set(id);
+      this._messages.set(
+        detail.messages.map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          steps: [],
+        })),
+      );
+      if (this._messages().length === 0) {
+        this._messages.set([
+          {
+            id: newId(),
+            role: 'assistant',
+            content:
+              'Hola, soy Centinela IA. Puedo ayudarte a explorar tu bandeja: rankings, patrones, casos atípicos y resúmenes ejecutivos. ¿En qué te puedo ayudar?',
+          },
+        ]);
+      }
+    } catch {
+      this._messages.set([
+        {
+          id: newId(),
+          role: 'assistant',
+          content: 'No se pudo cargar el historial de esta conversación.',
+        },
+      ]);
+    }
   }
 
-  async ask(text: string): Promise<void> {
+  async ask(text: string, conversationId?: string): Promise<void> {
     const trimmed = text.trim();
     if (!trimmed || this._thinking()) return;
 
-    if (!this.conversationId) {
-      this.conversationId = newConversationId();
+    if (conversationId) {
+      this._conversationId.set(conversationId);
+    } else if (!this._conversationId()) {
+      this._conversationId.set(
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `c_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      );
     }
 
     this._messages.update((messages) => [
@@ -193,8 +213,8 @@ export class AgentStore {
         method: 'POST',
         body: {
           message: trimmed,
-          conversation_id: this.conversationId,
-          context_claim_id: this.currentContextClaimId,
+          conversation_id: this._conversationId(),
+          context_claim_id: null,
         },
       })
       .subscribe({
@@ -243,6 +263,7 @@ export class AgentStore {
               break;
             case 'done':
               this._thinking.set(false);
+              void this.conversationsStore.refresh();
               break;
           }
         },

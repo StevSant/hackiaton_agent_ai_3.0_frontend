@@ -28,12 +28,20 @@ export interface QuarterlyOutlookDto {
   systematic_fraud_delta: string;
 }
 
+export interface HotspotDto {
+  sucursal: string;
+  count: number;
+  alertas: number;
+  avg_score: number;
+}
+
 export interface InsightsBundleDto {
   anomalies: AiAnomalyDto[];
   regional_fraud: RegionalFraudPointDto[];
   claim_type_slices: ClaimTypeSliceDto[];
   total_claims_label: string;
   quarterly_outlook: QuarterlyOutlookDto;
+  hotspots: HotspotDto[];
 }
 
 @Injectable({ providedIn: 'root' })

@@ -2,6 +2,7 @@ import {
   AfterViewChecked,
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   afterNextRender,
   effect,
@@ -9,15 +10,20 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 
+import { AgentApi } from '@core/api/clients/agent.api';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
-import { AgentApi } from '@core/api/clients/agent.api';
-import { firstValueFrom } from 'rxjs';
 import { ChatMessage } from '../components/chat-message';
+import { ConversationRenameModal } from '../components/conversation-rename-modal';
+import { ConversationsSidebar } from '../components/conversations-sidebar';
 import { VoiceEqualizer } from '../components/voice-equalizer';
+import type { ConversationSummary } from '../models';
 import { AgentStore } from '../services/agent.store';
+import { ConversationsStore } from '../services/conversations.store';
 import { VoiceRecorderService } from '../services/voice-recorder.service';
 
 const SUGGESTIONS = [
@@ -29,178 +35,212 @@ const SUGGESTIONS = [
   '¿Qué patrones se repiten?',
 ];
 
+function generateUuid(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `c_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
 @Component({
   selector: 'page-chat',
   standalone: true,
-  imports: [Button, Icon, ChatMessage, VoiceEqualizer],
+  imports: [
+    Button,
+    Icon,
+    ChatMessage,
+    ConversationsSidebar,
+    ConversationRenameModal,
+    VoiceEqualizer,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-end justify-between gap-6 py-2 pb-6">
-      <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1 flex items-center gap-2.5">
-          <span
-            class="w-8 h-8 rounded-md grid place-items-center"
-            style="background: linear-gradient(135deg, var(--brand), var(--brand-2)); box-shadow: 0 4px 12px color-mix(in oklch, var(--brand) 30%, transparent);"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z"
-                stroke="white"
-                stroke-width="2"
-                stroke-linejoin="round"
-              />
-              <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" />
-            </svg>
-          </span>
-          Centinela IA
-        </h1>
-        <p class="text-ink-3 text-[13.5px] m-0">
-          Conversa con tu bandeja. Pregúntame por casos, patrones, proveedores o ramos.
-        </p>
-      </div>
-      <div class="flex gap-2">
-        <ui-button (click)="reset()">
-          <ui-icon name="refresh" [size]="13" />
-          Nueva conversación
-        </ui-button>
-      </div>
-    </div>
+    <div class="grid grid-cols-1 md:grid-cols-[260px_1fr] h-[calc(100vh-64px)]">
+      <!-- Sidebar -->
+      <agent-conversations-sidebar
+        class="hidden md:flex flex-col"
+        [items]="conversations.list()"
+        [activeId]="activeConversationId()"
+        [query]="conversations.query()"
+        [loading]="conversations.loading()"
+        (select)="onSelect($event)"
+        (rename)="onRename($event)"
+        (remove)="onRemove($event)"
+        (newChat)="newChat()"
+        (queryChange)="conversations.setQuery($event)"
+      />
 
-    <div
-      class="grid grid-rows-[1fr_auto] bg-surface border border-line rounded-xl shadow-2 overflow-hidden h-[calc(100vh-150px)] max-h-[880px]"
-    >
-      <div #scroll class="overflow-y-auto scroll-pretty px-8 pt-7 pb-3 flex flex-col gap-5">
-        @for (m of store.messages(); track m.id; let last = $last) {
-          <agent-chat-message
-            [message]="m"
-            [streaming]="last && m.role === 'assistant' && !store.thinking()"
-            (openCase)="openCase($event)"
-          />
-        }
-        @if (store.thinking()) {
-          <div class="max-w-[720px] flex gap-3.5">
-            <div
-              class="w-7 h-7 rounded-full grid place-items-center shrink-0"
-              style="background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
+      <!-- Chat column -->
+      <div class="flex flex-col overflow-hidden">
+        <div class="flex items-end justify-between gap-6 py-2 pb-6 px-4">
+          <div>
+            <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1 flex items-center gap-2.5">
+              <span
+                class="w-8 h-8 rounded-md grid place-items-center"
+                style="background: linear-gradient(135deg, var(--brand), var(--brand-2)); box-shadow: 0 4px 12px color-mix(in oklch, var(--brand) 30%, transparent);"
               >
-                <path
-                  d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z"
-                  stroke="white"
-                  stroke-width="2"
-                  stroke-linejoin="round"
-                />
-                <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" />
-              </svg>
-            </div>
-            <div class="text-[13.5px] px-3.5 py-3.5 rounded-2xl border border-line bg-surface">
-              <span class="dots"><span></span><span></span><span></span></span>
-            </div>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z"
+                    stroke="white"
+                    stroke-width="2"
+                    stroke-linejoin="round"
+                  />
+                  <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" />
+                </svg>
+              </span>
+              Centinela IA
+            </h1>
+            <p class="text-ink-3 text-[13.5px] m-0">
+              Conversa con tu bandeja. Pregúntame por casos, patrones, proveedores o ramos.
+            </p>
           </div>
-        }
-      </div>
+        </div>
 
-      <div class="border-t border-line px-4 py-3.5 bg-surface">
         <div
-          class="chat-composer"
-          [class.chat-composer--recording]="voice.recording()"
-          [class.chat-composer--transcribing]="transcribing()"
+          class="mx-4 grid grid-rows-[1fr_auto] bg-surface border border-line rounded-xl shadow-2 overflow-hidden flex-1 min-h-0"
         >
-          @if (voice.recording()) {
-            <div class="chat-composer__voice">
-              <span class="chat-composer__pulse" aria-hidden="true"></span>
-              <agent-voice-equalizer [live]="true" [active]="true" />
-              <div class="chat-composer__voice-copy">
-                <span class="chat-composer__voice-title">Escuchando tu voz</span>
-                <span class="chat-composer__voice-hint">Pulsa detener cuando termines</span>
+          <div #scroll class="overflow-y-auto scroll-pretty px-8 pt-7 pb-3 flex flex-col gap-5">
+            @for (m of store.messages(); track m.id; let last = $last) {
+              <agent-chat-message
+                [message]="m"
+                [streaming]="last && m.role === 'assistant' && !store.thinking()"
+                (openCase)="openCase($event)"
+              />
+            }
+            @if (store.thinking()) {
+              <div class="max-w-[720px] flex gap-3.5">
+                <div
+                  class="w-7 h-7 rounded-full grid place-items-center shrink-0"
+                  style="background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z"
+                      stroke="white"
+                      stroke-width="2"
+                      stroke-linejoin="round"
+                    />
+                    <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" />
+                  </svg>
+                </div>
+                <div class="text-[13.5px] px-3.5 py-3.5 rounded-2xl border border-line bg-surface">
+                  <span class="dots"><span></span><span></span><span></span></span>
+                </div>
               </div>
-            </div>
-          } @else if (transcribing()) {
-            <div class="chat-composer__voice chat-composer__voice--transcribing">
-              <agent-voice-equalizer [active]="true" [processing]="true" />
-              <div class="chat-composer__voice-copy">
-                <span class="chat-composer__voice-title">Transcribiendo…</span>
-                <span class="chat-composer__voice-hint">Convirtiendo audio a texto</span>
-              </div>
-            </div>
-          } @else {
-            <textarea
-              #ta
-              rows="1"
-              class="chat-composer__input"
-              placeholder="Pregunta a Centinela…  (Shift+Enter para nueva línea)"
-              [value]="input()"
-              (input)="onInput($any($event.target).value)"
-              (keydown)="onKey($event)"
-            ></textarea>
-          }
+            }
+          </div>
 
-          <div class="chat-composer__actions">
-            @if (voiceSupported()) {
-              <button
-                type="button"
-                class="chat-composer__icon-btn"
-                [class.chat-composer__icon-btn--recording]="voice.recording()"
-                [disabled]="store.thinking() || transcribing()"
-                (click)="toggleVoice()"
-                [attr.aria-label]="voice.recording() ? 'Detener grabación' : 'Grabar mensaje de voz'"
-              >
-                @if (voice.recording()) {
-                  <span class="chat-composer__icon-wrap">
-                    <ui-icon name="stop" [size]="22" [weight]="600" />
-                  </span>
-                } @else {
-                  <span class="chat-composer__icon-wrap">
-                    <ui-icon name="mic" [size]="22" [weight]="500" />
-                  </span>
+          <div class="border-t border-line px-4 py-3.5 bg-surface">
+            <div
+              class="chat-composer"
+              [class.chat-composer--recording]="voice.recording()"
+              [class.chat-composer--transcribing]="transcribing()"
+            >
+              @if (voice.recording()) {
+                <div class="chat-composer__voice">
+                  <span class="chat-composer__pulse" aria-hidden="true"></span>
+                  <agent-voice-equalizer [live]="true" [active]="true" />
+                  <div class="chat-composer__voice-copy">
+                    <span class="chat-composer__voice-title">Escuchando tu voz</span>
+                    <span class="chat-composer__voice-hint">Pulsa detener cuando termines</span>
+                  </div>
+                </div>
+              } @else if (transcribing()) {
+                <div class="chat-composer__voice chat-composer__voice--transcribing">
+                  <agent-voice-equalizer [active]="true" [processing]="true" />
+                  <div class="chat-composer__voice-copy">
+                    <span class="chat-composer__voice-title">Transcribiendo…</span>
+                    <span class="chat-composer__voice-hint">Convirtiendo audio a texto</span>
+                  </div>
+                </div>
+              } @else {
+                <textarea
+                  #ta
+                  rows="1"
+                  class="chat-composer__input"
+                  placeholder="Pregunta a Centinela…  (Shift+Enter para nueva línea)"
+                  [value]="input()"
+                  (input)="onInput($any($event.target).value)"
+                  (keydown)="onKey($event)"
+                ></textarea>
+              }
+
+              <div class="chat-composer__actions">
+                @if (voiceSupported()) {
+                  <button
+                    type="button"
+                    class="chat-composer__icon-btn"
+                    [class.chat-composer__icon-btn--recording]="voice.recording()"
+                    [disabled]="store.thinking() || transcribing()"
+                    (click)="toggleVoice()"
+                    [attr.aria-label]="voice.recording() ? 'Detener grabación' : 'Grabar mensaje de voz'"
+                  >
+                    @if (voice.recording()) {
+                      <span class="chat-composer__icon-wrap">
+                        <ui-icon name="stop" [size]="22" [weight]="600" />
+                      </span>
+                    } @else {
+                      <span class="chat-composer__icon-wrap">
+                        <ui-icon name="mic" [size]="22" [weight]="500" />
+                      </span>
+                    }
+                  </button>
                 }
-              </button>
+
+                <button
+                  type="button"
+                  class="chat-composer__send"
+                  [disabled]="!input().trim() || store.thinking() || transcribing() || voice.recording()"
+                  (click)="send()"
+                  aria-label="Enviar mensaje"
+                >
+                  <span class="chat-composer__icon-wrap chat-composer__icon-wrap--send">
+                    <ui-icon name="send" [size]="22" [weight]="500" [fill]="true" />
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            @if (voiceError()) {
+              <p class="text-[12px] text-danger m-0 mt-2">{{ voiceError() }}</p>
             }
 
-            <button
-              type="button"
-              class="chat-composer__send"
-              [disabled]="!input().trim() || store.thinking() || transcribing() || voice.recording()"
-              (click)="send()"
-              aria-label="Enviar mensaje"
-            >
-              <span class="chat-composer__icon-wrap chat-composer__icon-wrap--send">
-                <ui-icon name="send" [size]="22" [weight]="500" [fill]="true" />
-              </span>
-            </button>
+            <div class="flex gap-2 flex-wrap mt-2.5">
+              @for (s of suggestions; track s) {
+                <button type="button" class="chat-suggestion" (click)="quickSend(s)">
+                  <span class="chat-suggestion__icon">
+                    <ui-icon name="visibility" [size]="15" [weight]="500" />
+                  </span>
+                  <span class="chat-suggestion__label">{{ s }}</span>
+                </button>
+              }
+            </div>
           </div>
-        </div>
-
-        @if (voiceError()) {
-          <p class="text-[12px] text-danger m-0 mt-2">{{ voiceError() }}</p>
-        }
-
-        <div class="flex gap-2 flex-wrap mt-2.5">
-          @for (s of suggestions; track s) {
-            <button type="button" class="chat-suggestion" (click)="quickSend(s)">
-              <span class="chat-suggestion__icon">
-                <ui-icon name="visibility" [size]="15" [weight]="500" />
-              </span>
-              <span class="chat-suggestion__label">{{ s }}</span>
-            </button>
-          }
         </div>
       </div>
     </div>
+
+    <agent-conversation-rename-modal
+      [open]="renameModalOpen()"
+      [currentTitle]="renameTarget()?.title ?? ''"
+      (confirm)="confirmRename($event)"
+      (cancel)="renameModalOpen.set(false)"
+    />
   `,
   styles: [
     `
@@ -457,13 +497,18 @@ const SUGGESTIONS = [
 })
 export class ChatPage implements AfterViewChecked {
   protected readonly store = inject(AgentStore);
+  protected readonly conversations = inject(ConversationsStore);
   protected readonly voice = inject(VoiceRecorderService);
   private readonly agentApi = inject(AgentApi);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly suggestions = SUGGESTIONS;
   protected readonly input = signal<string>('');
+  protected readonly activeConversationId = signal<string | null>(null);
+  protected readonly renameModalOpen = signal<boolean>(false);
+  protected readonly renameTarget = signal<ConversationSummary | null>(null);
   protected readonly transcribing = signal<boolean>(false);
   protected readonly voiceError = signal<string | null>(null);
   protected readonly voiceSupported = signal<boolean>(false);
@@ -476,11 +521,31 @@ export class ChatPage implements AfterViewChecked {
       this.voiceSupported.set(this.voice.isSupported());
     });
 
-    const caseId = this.route.snapshot.queryParamMap.get('case');
-    if (caseId) this.store.primeForCase(caseId);
+    void this.conversations.refresh();
+
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const convId = params.get('conversation');
+      if (convId) {
+        this.activeConversationId.set(convId);
+        void this.store.loadConversation(convId);
+      } else {
+        const list = this.conversations.list();
+        if (list.length > 0) {
+          void this.router.navigate([], {
+            queryParams: { conversation: list[0].id },
+            replaceUrl: true,
+          });
+        } else {
+          const newId = generateUuid();
+          void this.router.navigate([], {
+            queryParams: { conversation: newId },
+            replaceUrl: true,
+          });
+        }
+      }
+    });
 
     effect(() => {
-      // touch signals so we auto-scroll on changes
       this.store.messages();
       this.store.thinking();
       queueMicrotask(() => this.scrollToBottom());
@@ -512,7 +577,8 @@ export class ChatPage implements AfterViewChecked {
     const text = this.input();
     if (!text.trim()) return;
     this.input.set('');
-    void this.store.ask(text);
+    const convId = this.activeConversationId() ?? undefined;
+    void this.store.ask(text, convId);
   }
 
   protected async toggleVoice(): Promise<void> {
@@ -540,7 +606,9 @@ export class ChatPage implements AfterViewChecked {
           textarea.focus();
         }
       } catch {
-        this.voiceError.set('No se pudo transcribir el audio. Verifica permisos del micrófono y el backend.');
+        this.voiceError.set(
+          'No se pudo transcribir el audio. Verifica permisos del micrófono y el backend.',
+        );
       } finally {
         this.transcribing.set(false);
       }
@@ -555,11 +623,57 @@ export class ChatPage implements AfterViewChecked {
   }
 
   protected quickSend(text: string): void {
-    void this.store.ask(text);
+    const convId = this.activeConversationId() ?? undefined;
+    void this.store.ask(text, convId);
   }
 
-  protected reset(): void {
-    this.store.reset();
+  protected newChat(): void {
+    const id = generateUuid();
+    this.activeConversationId.set(id);
+    this.store.startNewConversation(id);
+    void this.router.navigate([], {
+      queryParams: { conversation: id },
+      replaceUrl: false,
+    });
+  }
+
+  protected onSelect(id: string): void {
+    void this.router.navigate([], {
+      queryParams: { conversation: id },
+      replaceUrl: false,
+    });
+  }
+
+  protected onRename(item: ConversationSummary): void {
+    this.renameTarget.set(item);
+    this.renameModalOpen.set(true);
+  }
+
+  protected confirmRename(title: string): void {
+    const target = this.renameTarget();
+    if (!target) return;
+    void this.conversations.rename(target.id, title);
+    this.renameModalOpen.set(false);
+    this.renameTarget.set(null);
+  }
+
+  protected onRemove(id: string): void {
+    const confirmed = window.confirm(
+      '¿Eliminar esta conversación? Esta acción no se puede deshacer.',
+    );
+    if (!confirmed) return;
+    void this.conversations.remove(id);
+    if (this.activeConversationId() === id) {
+      const remaining = this.conversations.list().filter((c) => c.id !== id);
+      if (remaining.length > 0) {
+        void this.router.navigate([], {
+          queryParams: { conversation: remaining[0].id },
+          replaceUrl: false,
+        });
+      } else {
+        this.newChat();
+      }
+    }
   }
 
   protected openCase(id: string): void {

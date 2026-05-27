@@ -4,13 +4,16 @@ import {
   Component,
   ElementRef,
   OnDestroy,
+  effect,
+  inject,
   signal,
   viewChild,
 } from '@angular/core';
 import * as L from 'leaflet';
 
 import { Icon } from '@shared/ui/icon';
-import { ECUADOR_FRAUD_HOTSPOTS } from '../services/ecuador-hotspots.data';
+import { InsightsStore } from '../services/insights.store';
+import type { MapHotspot } from '../models';
 import {
   ECUADOR_MAP_FIT_PADDING,
   ecuadorPanBounds,
@@ -57,7 +60,7 @@ const TOPO_ATTRIBUTION =
           >
             <p class="text-[11px] font-semibold text-ink m-0 leading-tight">Intensidad regional</p>
             <p class="text-[10.5px] text-ink-3 m-0 mt-0.5 leading-snug">
-              Haz clic en Quito o Guayaquil para ver telemetría detallada.
+              {{ store.hotspots().length }} sucursales con actividad. Haz clic para ver detalle.
             </p>
           </div>
         }
@@ -107,6 +110,8 @@ const TOPO_ATTRIBUTION =
   `,
 })
 export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
+  protected readonly store = inject(InsightsStore);
+
   private readonly mapHost = viewChild.required<ElementRef<HTMLElement>>('mapHost');
 
   private map: L.Map | null = null;
@@ -114,6 +119,15 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
   private resizeObserver: ResizeObserver | null = null;
 
   protected readonly hintOpen = signal(false);
+
+  constructor() {
+    // Re-render markers whenever the store's hotspots change. Runs after
+    // initMap() in ngAfterViewInit lays down the Leaflet map.
+    effect(() => {
+      const hotspots = this.store.hotspots();
+      if (this.map) this.renderMarkers(hotspots);
+    });
+  }
 
   ngAfterViewInit(): void {
     this.initMap();
@@ -149,8 +163,6 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
     const host = this.mapHost().nativeElement;
     const panBounds = ecuadorPanBounds();
 
-    // Start at Ecuador's geographic center at a neutral zoom;
-    // fitEcuadorViewport() will immediately correct to the right zoom.
     this.map = L.map(host, {
       center: [-1.65, -78.3],
       zoom: 8,
@@ -169,11 +181,10 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
       bounds: panBounds,
     }).addTo(this.map);
 
-    for (const hotspot of ECUADOR_FRAUD_HOTSPOTS) {
-      this.addHotspotMarker(hotspot);
-    }
+    // Seed markers from whatever the store already has; the effect() in
+    // the constructor keeps them in sync on subsequent loads.
+    this.renderMarkers(this.store.hotspots());
 
-    // Wait for the container to have real dimensions before fitting
     requestAnimationFrame(() => {
       this.map?.invalidateSize({ animate: false });
       this.fitEcuadorViewport();
@@ -187,7 +198,6 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
     this.resizeObserver = new ResizeObserver(() => {
       if (!this.map) return;
       this.map.invalidateSize({ animate: false });
-      // Debounce: only refit after resize settles
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => this.fitEcuadorViewport(), 120);
     });
@@ -211,7 +221,18 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
     this.map.setMinZoom(this.map.getZoom());
   }
 
-  private addHotspotMarker(hotspot: (typeof ECUADOR_FRAUD_HOTSPOTS)[number]): void {
+  private renderMarkers(hotspots: readonly MapHotspot[]): void {
+    if (!this.map) return;
+
+    for (const m of this.markers) m.remove();
+    this.markers.length = 0;
+
+    for (const hotspot of hotspots) {
+      this.addHotspotMarker(hotspot);
+    }
+  }
+
+  private addHotspotMarker(hotspot: MapHotspot): void {
     if (!this.map) return;
 
     const iconSize = hotspot.risk === 'high' ? 52 : 40;
