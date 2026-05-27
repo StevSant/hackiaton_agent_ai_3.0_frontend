@@ -7,8 +7,9 @@ import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { AdvancedFiltersModal } from '../components/advanced-filters-modal';
 import { AuditRow } from '../components/audit-row';
-import { ExportCsvModal } from '../components/export-csv-modal';
+import { ExportCsvModal, type ExportRequest } from '../components/export-csv-modal';
 import { AuditStore } from '../services/audit.store';
+import { exportAuditEvents } from '../utils/export-audit';
 import type { AuditActor } from '../models';
 
 type Filter = 'todos' | AuditActor;
@@ -79,7 +80,12 @@ type Filter = 'todos' | AuditActor;
     </p>
 
     <audit-advanced-filters-modal [open]="filtersOpen()" (close)="filtersOpen.set(false)" />
-    <audit-export-csv-modal [open]="exportOpen()" [eventsToday]="stats().hoy" (close)="exportOpen.set(false)" />
+    <audit-export-csv-modal
+      [open]="exportOpen()"
+      [eventsToday]="stats().hoy"
+      (close)="exportOpen.set(false)"
+      (download)="onExport($event)"
+    />
   `,
 })
 export class AuditPage {
@@ -103,5 +109,15 @@ export class AuditPage {
     } else if (target.startsWith('PRV-')) {
       void this.router.navigate(['/network']);
     }
+  }
+
+  protected async onExport(req: ExportRequest): Promise<void> {
+    await exportAuditEvents({
+      format: req.format,
+      filename: req.filename,
+      columns: req.columns,
+      includeHash: req.includeHash,
+      events: this.filtered(),
+    });
   }
 }

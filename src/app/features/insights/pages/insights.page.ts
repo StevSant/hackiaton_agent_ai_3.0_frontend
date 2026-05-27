@@ -1,12 +1,14 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
+import { ClaimsStore } from '../../claims/services/claims.store';
 import { AiAnomaliesPanel } from '../components/ai-anomalies-panel';
 import { ClaimTypeDonut } from '../components/claim-type-donut';
 import { EcuadorHotspotsMap } from '../components/ecuador-hotspots-map';
 import { FraudTendencyChart } from '../components/fraud-tendency-chart';
 import { QuarterlyOutlookCard } from '../components/quarterly-outlook-card';
+import { exportInsightsCsv } from '../utils/export-insights';
 
 @Component({
   selector: 'page-insights',
@@ -29,7 +31,7 @@ import { QuarterlyOutlookCard } from '../components/quarterly-outlook-card';
           Dinámica de fraude y exposición al riesgo regional en Ecuador.
         </p>
       </div>
-      <ui-button class="shrink-0 text-[11px] px-2.5 py-1 h-auto">
+      <ui-button class="shrink-0 text-[11px] px-2.5 py-1 h-auto" (click)="onExport()">
         <ui-icon name="download" [size]="12" />
         Exportar
       </ui-button>
@@ -51,4 +53,10 @@ import { QuarterlyOutlookCard } from '../components/quarterly-outlook-card';
     </div>
   `,
 })
-export class InsightsPage {}
+export class InsightsPage {
+  private readonly claims = inject(ClaimsStore);
+
+  protected onExport(): void {
+    exportInsightsCsv(this.claims.claims());
+  }
+}

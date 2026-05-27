@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AuthStore } from '@core/auth/auth.store';
@@ -97,7 +97,7 @@ import { ProvidersStore } from '../../network/services/providers.store';
               <ui-icon name="auto_awesome" [size]="14" />
               Preguntar a la IA
             </ui-button>
-            <ui-button>
+            <ui-button (click)="exportPdf()">
               <ui-icon name="download" [size]="14" />
               PDF
             </ui-button>
@@ -193,6 +193,17 @@ export class ClaimDetailPage {
 
   protected readonly claim = computed(() => this.claims.findById(this.id()));
 
+  constructor() {
+    // Load the full detail (alertas, documentos, factores ML, similar) whenever
+    // the route id changes. The summary cached in the list only carries enough
+    // to render the table row.
+    effect(() => {
+      const id = this.id();
+      if (!id) return;
+      void this.claims.loadDetail(id);
+    });
+  }
+
   protected readonly provider = computed(() => {
     const c = this.claim();
     if (!c?.proveedor) return null;
@@ -221,9 +232,7 @@ export class ClaimDetailPage {
     this.ruleOpen.set(true);
   }
 
-  protected onMarkRevisado(): void {
-    // Mockup: light prompt so the user can leave a closure note. Real wiring
-    // replaces with a proper modal + POST /claims/{id}/close.
+  protected async onMarkRevisado(): Promise<void> {
     const note =
       typeof window !== 'undefined'
         ? window.prompt(
@@ -231,72 +240,30 @@ export class ClaimDetailPage {
             '',
           )
         : null;
-    if (note === null) return; // user cancelled
-    const now = new Date().toISOString();
-    this.claims.patchReview(this.id(), {
-      status: 'revisado_sin_escalar',
-      closed_by: this.currentUserId(),
-      closed_by_name: this.currentUserName(),
-      closed_at: now,
-      closed_note: note.trim() || undefined,
-    });
+    if (note === null) return;
+    await this.claims.close(this.id(), note.trim() || undefined);
   }
 
-  protected onEscalate(): void {
-    const id = this.id();
-    const now = new Date().toISOString();
-    // Mockup: synchronously transition. Real wiring calls POST /escalate.
-    this.claims.patchReview(id, {
-      status: 'escalado',
-      escalated_by: this.currentUserId(),
-      escalated_by_name: this.currentUserName(),
-      escalated_at: now,
-      escalation_note: 'Escalado desde la bandeja (mockup).',
-      // Clear bounce visibility after re-escalation
-      bounce_note: undefined,
-    });
+  protected async onEscalate(): Promise<void> {
+    await this.claims.escalate(this.id(), 'Escalado desde la bandeja.');
   }
 
-  protected onTake(): void {
-    const now = new Date().toISOString();
-    this.claims.patchReview(this.id(), {
-      status: 'en_revision',
-      assigned_to: this.currentUserId(),
-      assigned_to_name: this.currentUserName(),
-      taken_at: now,
-    });
+  protected async onTake(): Promise<void> {
+    await this.claims.take(this.id());
   }
 
-  protected onDictamen(payload: { outcome: DictamenOutcome; justificacion: string }): void {
-    const now = new Date().toISOString();
-    const id = this.id();
+  protected async onDictamen(payload: {
+    outcome: DictamenOutcome;
+    justificacion: string;
+  }): Promise<void> {
     this.dictamenOpen.set(false);
+    await this.claims.dictamen(this.id(), payload.outcome, payload.justificacion);
+  }
 
-    if (payload.outcome === 'requiere_mas_info') {
-      // Bounce-back: return to pendiente with the antifraude's note as bounce_note.
-      const current = this.claim();
-      const nextBounce = (current?.review.bounce_count ?? 0) + 1;
-      this.claims.patchReview(id, {
-        status: 'pendiente',
-        bounce_count: nextBounce,
-        bounce_note: payload.justificacion,
-        dictaminado_by: this.currentUserId(),
-        dictaminado_by_name: this.currentUserName(),
-        dictaminado_at: now,
-        // Clear taken_at so the timeline collapses cleanly
-        assigned_to: undefined,
-        taken_at: undefined,
-      });
-      return;
-    }
-
-    this.claims.patchReview(id, {
-      status: 'dictaminado',
-      dictamen_outcome: payload.outcome,
-      dictamen_justificacion: payload.justificacion,
-      dictaminado_by: this.currentUserId(),
-      dictaminado_by_name: this.currentUserName(),
-      dictaminado_at: now,
-    });
+  protected async exportPdf(): Promise<void> {
+    const { exportClaimPdf } = await import('../utils/export-claim-pdf');
+    const c = this.claim();
+    if (!c) return;
+    exportClaimPdf(c);
   }
 }

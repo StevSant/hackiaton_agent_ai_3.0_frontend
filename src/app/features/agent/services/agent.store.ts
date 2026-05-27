@@ -32,7 +32,7 @@ interface ErrorEvent {
 
 interface AgentStepEvent {
   type: 'agent_step';
-  data: { node: string; meta?: unknown };
+  data: { node: string; meta?: { thought?: string; step?: number } | null };
 }
 
 interface ToolCallEvent {
@@ -52,6 +52,15 @@ type AgentStreamEvent =
   | AgentStepEvent
   | ToolCallEvent
   | ToolResultEvent;
+
+const NODE_LABEL: Record<string, string> = {
+  react_step: 'Razonamiento',
+  compose: 'Componiendo respuesta',
+};
+
+function nodeLabel(node: string): string {
+  return NODE_LABEL[node] ?? node;
+}
 
 function summarizeArgs(args: unknown): string | undefined {
   if (args == null) return undefined;
@@ -191,9 +200,15 @@ export class AgentStore {
       .subscribe({
         next: (event) => {
           switch (event.type) {
-            case 'agent_step':
-              appendStep({ kind: 'agent_step', label: event.data.node });
+            case 'agent_step': {
+              const thought = event.data.meta?.thought?.trim();
+              appendStep({
+                kind: 'agent_step',
+                label: nodeLabel(event.data.node),
+                detail: thought || undefined,
+              });
               break;
+            }
             case 'tool_call':
               appendStep({
                 kind: 'tool_call',

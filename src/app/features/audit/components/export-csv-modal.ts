@@ -10,6 +10,14 @@ interface ColumnOpt {
   hint: string;
 }
 
+export interface ExportRequest {
+  format: 'csv' | 'xlsx' | 'json';
+  filename: string;
+  columns: string[];
+  includeHash: boolean;
+  range: string;
+}
+
 @Component({
   selector: 'audit-export-csv-modal',
   standalone: true,
@@ -123,7 +131,7 @@ interface ColumnOpt {
 export class ExportCsvModal {
   readonly open = input.required<boolean>();
   readonly close = output<void>();
-  readonly download = output<void>();
+  readonly download = output<ExportRequest>();
   readonly eventsToday = input<number>(12);
 
   protected readonly formats: { value: 'csv' | 'xlsx' | 'json'; label: string; icon: string; hint: string }[] = [
@@ -173,7 +181,13 @@ export class ExportCsvModal {
   }
 
   protected onDownload(): void {
-    this.download.emit();
+    this.download.emit({
+      format: this.format(),
+      filename: this.filename(),
+      columns: this.columns.filter((c) => this.selected().has(c.key)).map((c) => c.key),
+      includeHash: this.includeHash(),
+      range: this.range(),
+    });
     this.close.emit();
   }
 }
