@@ -1,10 +1,16 @@
-import { Injectable, computed, effect, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
-import { initials } from '../../shared/utils';
+import { AuthApi, type LoginUserPayload } from '../api/clients/auth.api';
+import { environment } from '../config/env';
 import { AppError } from '../errors/app-error';
+import { initials } from '../../shared/utils';
 import type { AuthUser, RoleCode } from './auth-user.model';
 
-const STORAGE_KEY = 'centinela:session';
+// Bumped key invalidates pre-real-auth mock sessions so stale "mock_*" tokens
+// don't end up in Authorization headers after this rollout.
+const STORAGE_KEY = 'centinela:session:v2';
 
 interface StoredSession {
   user: AuthUser;
@@ -21,50 +27,62 @@ function readStored(): StoredSession | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredSession;
-    // Backfill roleCode for sessions stored before the typed role was introduced.
-    if (parsed.user && !parsed.user.roleCode) {
-      parsed.user.roleCode = inferRoleFromEmail(parsed.user.email);
-    }
-    return parsed;
+    return JSON.parse(raw) as StoredSession;
   } catch {
     return null;
   }
 }
 
-function inferRoleFromEmail(email: string): RoleCode {
-  return email.toLowerCase().startsWith('lucia') || email.toLowerCase().includes('antifraude')
-    ? 'antifraude'
-    : 'analista';
-}
-
-function nameToProfile(email: string): AuthUser {
-  const local = email.split('@')[0] ?? 'analista';
-  const pretty =
-    local.replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) || 'Analista Demo';
-  const roleCode = inferRoleFromEmail(email);
+function toAuthUser(payload: LoginUserPayload): AuthUser {
+  const local = payload.email.split('@')[0] ?? 'usuario';
   return {
     id: `usr_${local}`,
-    name: pretty,
-    email,
-    role: ROLE_LABEL[roleCode],
-    roleCode,
+    name: payload.full_name,
+    email: payload.email,
+    role: ROLE_LABEL[payload.role],
+    roleCode: payload.role,
     sucursal: 'Quito Norte',
-    initials: initials(pretty),
+    initials: initials(payload.full_name),
   };
+}
+
+function mapHttpError(e: unknown): AppError {
+  if (e instanceof HttpErrorResponse) {
+    if (e.status === 401) {
+      return new AppError('auth/invalid', 'Credenciales inválidas.', 401);
+    }
+    if (e.status === 0) {
+      return new AppError(
+        'auth/offline',
+        'No se pudo contactar al backend. Verifica que esté corriendo en ' +
+          `${environment.backendUrl}.`,
+        0,
+      );
+    }
+    const detail =
+      typeof e.error === 'object' && e.error !== null && 'message' in e.error
+        ? String((e.error as { message: unknown }).message)
+        : 'Error al iniciar sesión.';
+    return new AppError('auth/error', detail, e.status);
+  }
+  if (e instanceof AppError) return e;
+  return new AppError('auth/unknown', 'Error desconocido al iniciar sesión.');
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthStore {
+  private readonly api = inject(AuthApi);
   private readonly stored = readStored();
 
   private readonly _user = signal<AuthUser | null>(this.stored?.user ?? null);
   private readonly _token = signal<string | null>(this.stored?.token ?? null);
   private readonly _error = signal<AppError | null>(null);
+  private readonly _loading = signal<boolean>(false);
 
   readonly user = this._user.asReadonly();
   readonly accessToken = this._token.asReadonly();
   readonly error = this._error.asReadonly();
+  readonly loading = this._loading.asReadonly();
   readonly isAuthenticated = computed(() => this._token() !== null);
 
   constructor() {
@@ -84,85 +102,41 @@ export class AuthStore {
     });
   }
 
-  loginMock(email: string, password: string): boolean {
-    if (!email.includes('@') || password.length < 4) {
-      this._error.set(
-        new AppError('auth/invalid', 'Ingresa un correo válido y al menos 4 caracteres de clave.'),
-      );
+  async login(email: string, password: string): Promise<boolean> {
+    this._error.set(null);
+    this._loading.set(true);
+    try {
+      const res = await firstValueFrom(this.api.login({ email, password }));
+      this._user.set(toAuthUser(res.user));
+      this._token.set(res.access_token);
+      return true;
+    } catch (e) {
+      this._error.set(mapHttpError(e));
+      this._user.set(null);
+      this._token.set(null);
       return false;
+    } finally {
+      this._loading.set(false);
     }
-    this._user.set(nameToProfile(email));
-    this._token.set(`mock_${Date.now()}`);
-    this._error.set(null);
-    return true;
-  }
-
-  loginDemo(): void {
-    this.loginDemoAs('antifraude');
   }
 
   /**
-   * Mockup helper: drops the chosen demo persona into the session so the
-   * presenter can pick a role from the login screen.
-   * - analista  → Ana Lema  (sees /claims default landing)
-   * - antifraude → Lucía Vélez (sees /antifraude/bandeja default landing)
+   * Demo helper: logs in as the seeded persona for *roleCode*. Credentials
+   * come from environment.demoCredentials (which mirrors AUTH_SEED_USERS in
+   * the backend .env) so the demo button exercises the real auth flow.
    */
-  loginDemoAs(roleCode: RoleCode): void {
-    const user: AuthUser =
-      roleCode === 'antifraude'
-        ? {
-            id: 'usr_lucia',
-            name: 'Lucía Vélez',
-            email: 'lucia.velez@aseguradorasur.ec',
-            role: ROLE_LABEL.antifraude,
-            roleCode: 'antifraude',
-            sucursal: 'Quito Norte',
-            initials: 'LV',
-          }
-        : {
-            id: 'usr_ana',
-            name: 'Ana Lema',
-            email: 'ana.lema@aseguradorasur.ec',
-            role: ROLE_LABEL.analista,
-            roleCode: 'analista',
-            sucursal: 'Quito Norte',
-            initials: 'AL',
-          };
-    this._user.set(user);
-    this._token.set(`mock_demo_${Date.now()}`);
-    this._error.set(null);
+  loginAsDemo(roleCode: RoleCode): Promise<boolean> {
+    const creds = environment.demoCredentials[roleCode];
+    return this.login(creds.email, creds.password);
   }
 
   /**
-   * Mockup-only: flips the current user's role without re-login. Lets the demo
-   * choreography exercise both perspectives quickly. Real auth replaces this
-   * with role-aware login + role.guard.
+   * Sidebar "switch perspective" action: logs out the current session and
+   * re-authenticates as the other demo persona so the JWT actually carries
+   * the displayed role (otherwise role-gated calls would 403).
    */
-  switchRole(roleCode: RoleCode): void {
-    const u = this._user();
-    if (!u) return;
-    if (u.roleCode === roleCode) return;
-    const next: AuthUser =
-      roleCode === 'antifraude'
-        ? {
-            id: 'usr_lucia',
-            name: 'Lucía Vélez',
-            email: 'lucia.velez@aseguradorasur.ec',
-            role: ROLE_LABEL.antifraude,
-            roleCode: 'antifraude',
-            sucursal: 'Quito Norte',
-            initials: 'LV',
-          }
-        : {
-            id: 'usr_ana',
-            name: 'Ana Lema',
-            email: 'ana.lema@aseguradorasur.ec',
-            role: ROLE_LABEL.analista,
-            roleCode: 'analista',
-            sucursal: 'Quito Norte',
-            initials: 'AL',
-          };
-    this._user.set(next);
+  switchRole(roleCode: RoleCode): Promise<boolean> {
+    return this.loginAsDemo(roleCode);
   }
 
   logout(): void {

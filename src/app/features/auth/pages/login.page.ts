@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { environment } from '../../../core/config/env';
 import { Button } from '../../../shared/ui/button';
 import { Icon } from '../../../shared/ui/icon';
 import { AuthStore } from '../../../core/auth/auth.store';
+import type { RoleCode } from '../../../core/auth/auth-user.model';
 
 @Component({
   selector: 'page-login',
@@ -83,9 +85,9 @@ import { AuthStore } from '../../../core/auth/auth.store';
           </div>
         }
 
-        <ui-button variant="primary" type="submit">
+        <ui-button variant="primary" type="submit" [disabled]="auth.loading()">
           <ui-icon name="login" [size]="14" />
-          Iniciar sesión
+          {{ auth.loading() ? 'Verificando…' : 'Iniciar sesión' }}
         </ui-button>
 
         <div class="flex items-center gap-2 my-1.5">
@@ -130,8 +132,9 @@ import { AuthStore } from '../../../core/auth/auth.store';
       </form>
 
       <p class="text-[11.5px] text-ink-3 mt-5 leading-relaxed">
-        Esta es una demo del prototipo Centinela. La autenticación está mockeada: cualquier correo válido y una clave de 4+ caracteres te permite entrar.
-        En producción se integrará con Supabase Auth + SSO corporativo.
+        Esta es la demo del prototipo Centinela. La autenticación corre contra el backend local
+        (JWT propio); las credenciales semilla viven en <code class="font-mono">AUTH_SEED_USERS</code>
+        del archivo <code class="font-mono">.env</code> del backend.
       </p>
     </div>
   `,
@@ -140,21 +143,26 @@ export class LoginPage {
   protected readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
 
-  protected readonly email = signal<string>('lucia.velez@aseguradorasur.ec');
-  protected readonly password = signal<string>('demo1234');
+  protected readonly email = signal<string>(environment.demoCredentials.analista.email);
+  protected readonly password = signal<string>(environment.demoCredentials.analista.password);
   protected readonly showPassword = signal<boolean>(false);
   protected readonly remember = signal<boolean>(true);
 
-  protected onSubmit(e: Event): void {
+  protected async onSubmit(e: Event): Promise<void> {
     e.preventDefault();
-    const ok = this.auth.loginMock(this.email(), this.password());
+    const ok = await this.auth.login(this.email(), this.password());
     if (!ok) return;
     const landing = this.auth.user()?.roleCode === 'antifraude' ? '/antifraude/bandeja' : '/claims';
     void this.router.navigateByUrl(landing);
   }
 
-  protected onDemo(role: 'analista' | 'antifraude'): void {
-    this.auth.loginDemoAs(role);
+  protected async onDemo(role: RoleCode): Promise<void> {
+    const creds = environment.demoCredentials[role];
+    // Autocomplete the form so the user can see which credentials are being sent.
+    this.email.set(creds.email);
+    this.password.set(creds.password);
+    const ok = await this.auth.login(creds.email, creds.password);
+    if (!ok) return;
     const landing = role === 'antifraude' ? '/antifraude/bandeja' : '/claims';
     void this.router.navigateByUrl(landing);
   }

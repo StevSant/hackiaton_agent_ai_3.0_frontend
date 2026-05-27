@@ -174,7 +174,7 @@ export class SidebarNav {
   protected toggleRole(): void {
     const r = this.roleCode();
     if (!r) return;
-    this.auth.switchRole(r === 'antifraude' ? 'analista' : 'antifraude');
+    void this.auth.switchRole(r === 'antifraude' ? 'analista' : 'antifraude');
   }
 
   protected onLogout(): void {
