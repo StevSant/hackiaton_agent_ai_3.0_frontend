@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { ConversationsApi } from '@core/api/clients/conversations.api';
 import { environment } from '@core/config/env';
 import { SseClient } from '@core/realtime/sse.client';
-import type { AgentMessage, AgentStep } from '../models';
+import type { AgentMessage, AgentStep, ChartPayload } from '../models';
 import { ConversationsStore } from './conversations.store';
 
 let nextId = 0;
@@ -40,13 +40,19 @@ interface ToolResultEvent {
   data: { call_id: string; result: unknown };
 }
 
+interface ChartEvent {
+  type: 'chart';
+  data: ChartPayload;
+}
+
 type AgentStreamEvent =
   | TokenEvent
   | DoneEvent
   | ErrorEvent
   | AgentStepEvent
   | ToolCallEvent
-  | ToolResultEvent;
+  | ToolResultEvent
+  | ChartEvent;
 
 const NODE_LABEL: Record<string, string> = {
   react_step: 'Razonamiento',
@@ -146,6 +152,13 @@ export class AgentStore {
     }
   }
 
+  /** User accepted to view the chart offered for a message. */
+  acceptChart(messageId: string): void {
+    this._messages.update((messages) =>
+      messages.map((msg) => (msg.id === messageId ? { ...msg, chartAccepted: true } : msg)),
+    );
+  }
+
   async ask(text: string, conversationId?: string): Promise<void> {
     const trimmed = text.trim();
     if (!trimmed || this._thinking()) return;
@@ -205,6 +218,13 @@ export class AgentStore {
       );
     };
 
+    const attachChart = (chart: ChartPayload): void => {
+      ensureAssistantBubble();
+      this._messages.update((messages) =>
+        messages.map((msg) => (msg.id === assistantId ? { ...msg, chart } : msg)),
+      );
+    };
+
     const url = `${environment.backendUrl}${environment.apiPrefix}/agent/ask`;
 
     this.sse
@@ -239,6 +259,9 @@ export class AgentStore {
               break;
             case 'tool_result':
               attachResult(event.data.call_id, summarizeResult(event.data.result));
+              break;
+            case 'chart':
+              attachChart(event.data);
               break;
             case 'token':
               ensureAssistantBubble();

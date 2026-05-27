@@ -15,11 +15,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { AgentApi } from '@core/api/clients/agent.api';
+import { TextToSpeechService } from '@core/tts/text-to-speech.service';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { ChatMessage } from '../components/chat-message';
 import { ConversationRenameModal } from '../components/conversation-rename-modal';
 import { ConversationsSidebar } from '../components/conversations-sidebar';
+import { TtsPlayer } from '../components/tts-player';
 import { VoiceEqualizer } from '../components/voice-equalizer';
 import type { ConversationSummary } from '../models';
 import { AgentStore } from '../services/agent.store';
@@ -52,6 +54,7 @@ function generateUuid(): string {
     ConversationsSidebar,
     ConversationRenameModal,
     VoiceEqualizer,
+    TtsPlayer,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -102,130 +105,157 @@ function generateUuid(): string {
       <div
         class="mx-4 grid grid-rows-[1fr_auto] bg-surface border border-line rounded-xl shadow-2 overflow-hidden flex-1 min-h-0"
       >
-          <div #scroll class="overflow-y-auto scroll-pretty px-8 pt-7 pb-3 flex flex-col gap-5">
-            @for (m of store.messages(); track m.id; let last = $last) {
-              <agent-chat-message
-                [message]="m"
-                [streaming]="last && m.role === 'assistant' && !store.thinking()"
-                (openCase)="openCase($event)"
-              />
-            }
-            @if (store.thinking()) {
-              <div class="max-w-[720px] flex gap-3.5">
-                <div
-                  class="w-7 h-7 rounded-full grid place-items-center shrink-0"
-                  style="background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);"
+        <div #scroll class="overflow-y-auto scroll-pretty px-8 pt-7 pb-3 flex flex-col gap-5">
+          @for (m of store.messages(); track m.id; let last = $last) {
+            <agent-chat-message
+              [message]="m"
+              [streaming]="last && m.role === 'assistant' && !store.thinking()"
+              [ttsSupported]="tts.supported"
+              [ttsActive]="tts.activeId() === m.id"
+              [ttsState]="tts.state()"
+              (openCase)="openCase($event)"
+              (ttsToggle)="onTtsToggle($event)"
+              (acceptChart)="store.acceptChart($event)"
+            />
+          }
+          @if (store.thinking()) {
+            <div class="max-w-[720px] flex gap-3.5">
+              <div
+                class="w-7 h-7 rounded-full grid place-items-center shrink-0"
+                style="background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
                 >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z"
-                      stroke="white"
-                      stroke-width="2"
-                      stroke-linejoin="round"
-                    />
-                    <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" />
-                  </svg>
-                </div>
-                <div class="text-[13.5px] px-3.5 py-3.5 rounded-2xl border border-line bg-surface">
-                  <span class="dots"><span></span><span></span><span></span></span>
+                  <path
+                    d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z"
+                    stroke="white"
+                    stroke-width="2"
+                    stroke-linejoin="round"
+                  />
+                  <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" />
+                </svg>
+              </div>
+              <div class="text-[13.5px] px-3.5 py-3.5 rounded-2xl border border-line bg-surface">
+                <span class="dots"><span></span><span></span><span></span></span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="border-t border-line px-4 py-3.5 bg-surface">
+          @if (tts.activeId() !== null) {
+            <div class="mb-2.5">
+              <agent-tts-player
+                [state]="tts.state()"
+                [progress]="tts.progress()"
+                [rate]="tts.rate()"
+                [volume]="tts.volume()"
+                [voices]="tts.voices"
+                [voice]="tts.voice()"
+                (toggle)="tts.toggleActive()"
+                (stop)="tts.stop()"
+                (seek)="tts.seekToFraction($event)"
+                (rateChange)="tts.setRate($event)"
+                (volumeChange)="tts.setVolume($event)"
+                (voiceChange)="tts.setVoice($event)"
+              />
+            </div>
+          }
+          <div
+            class="chat-composer"
+            [class.chat-composer--recording]="voice.recording()"
+            [class.chat-composer--transcribing]="transcribing()"
+          >
+            @if (voice.recording()) {
+              <div class="chat-composer__voice">
+                <span class="chat-composer__pulse" aria-hidden="true"></span>
+                <agent-voice-equalizer [live]="true" [active]="true" />
+                <div class="chat-composer__voice-copy">
+                  <span class="chat-composer__voice-title">Escuchando tu voz</span>
+                  <span class="chat-composer__voice-hint">Pulsa detener cuando termines</span>
                 </div>
               </div>
+            } @else if (transcribing()) {
+              <div class="chat-composer__voice chat-composer__voice--transcribing">
+                <agent-voice-equalizer [active]="true" [processing]="true" />
+                <div class="chat-composer__voice-copy">
+                  <span class="chat-composer__voice-title">Transcribiendo…</span>
+                  <span class="chat-composer__voice-hint">Convirtiendo audio a texto</span>
+                </div>
+              </div>
+            } @else {
+              <textarea
+                #ta
+                rows="1"
+                class="chat-composer__input"
+                placeholder="Pregunta a Centinela…  (Shift+Enter para nueva línea)"
+                [value]="input()"
+                (input)="onInput($any($event.target).value)"
+                (keydown)="onKey($event)"
+              ></textarea>
             }
-          </div>
 
-          <div class="border-t border-line px-4 py-3.5 bg-surface">
-            <div
-              class="chat-composer"
-              [class.chat-composer--recording]="voice.recording()"
-              [class.chat-composer--transcribing]="transcribing()"
-            >
-              @if (voice.recording()) {
-                <div class="chat-composer__voice">
-                  <span class="chat-composer__pulse" aria-hidden="true"></span>
-                  <agent-voice-equalizer [live]="true" [active]="true" />
-                  <div class="chat-composer__voice-copy">
-                    <span class="chat-composer__voice-title">Escuchando tu voz</span>
-                    <span class="chat-composer__voice-hint">Pulsa detener cuando termines</span>
-                  </div>
-                </div>
-              } @else if (transcribing()) {
-                <div class="chat-composer__voice chat-composer__voice--transcribing">
-                  <agent-voice-equalizer [active]="true" [processing]="true" />
-                  <div class="chat-composer__voice-copy">
-                    <span class="chat-composer__voice-title">Transcribiendo…</span>
-                    <span class="chat-composer__voice-hint">Convirtiendo audio a texto</span>
-                  </div>
-                </div>
-              } @else {
-                <textarea
-                  #ta
-                  rows="1"
-                  class="chat-composer__input"
-                  placeholder="Pregunta a Centinela…  (Shift+Enter para nueva línea)"
-                  [value]="input()"
-                  (input)="onInput($any($event.target).value)"
-                  (keydown)="onKey($event)"
-                ></textarea>
-              }
-
-              <div class="chat-composer__actions">
-                @if (voiceSupported()) {
-                  <button
-                    type="button"
-                    class="chat-composer__icon-btn"
-                    [class.chat-composer__icon-btn--recording]="voice.recording()"
-                    [disabled]="store.thinking() || transcribing()"
-                    (click)="toggleVoice()"
-                    [attr.aria-label]="voice.recording() ? 'Detener grabación' : 'Grabar mensaje de voz'"
-                  >
-                    @if (voice.recording()) {
-                      <span class="chat-composer__icon-wrap">
-                        <ui-icon name="stop" [size]="22" [weight]="600" />
-                      </span>
-                    } @else {
-                      <span class="chat-composer__icon-wrap">
-                        <ui-icon name="mic" [size]="22" [weight]="500" />
-                      </span>
-                    }
-                  </button>
-                }
-
+            <div class="chat-composer__actions">
+              @if (voiceSupported()) {
                 <button
                   type="button"
-                  class="chat-composer__send"
-                  [disabled]="!input().trim() || store.thinking() || transcribing() || voice.recording()"
-                  (click)="send()"
-                  aria-label="Enviar mensaje"
+                  class="chat-composer__icon-btn"
+                  [class.chat-composer__icon-btn--recording]="voice.recording()"
+                  [disabled]="store.thinking() || transcribing()"
+                  (click)="toggleVoice()"
+                  [attr.aria-label]="
+                    voice.recording() ? 'Detener grabación' : 'Grabar mensaje de voz'
+                  "
                 >
-                  <span class="chat-composer__icon-wrap chat-composer__icon-wrap--send">
-                    <ui-icon name="send" [size]="22" [weight]="500" [fill]="true" />
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            @if (voiceError()) {
-              <p class="text-[12px] text-danger m-0 mt-2">{{ voiceError() }}</p>
-            }
-
-            <div class="flex gap-2 flex-wrap mt-2.5">
-              @for (s of suggestions; track s) {
-                <button type="button" class="chat-suggestion" (click)="quickSend(s)">
-                  <span class="chat-suggestion__icon">
-                    <ui-icon name="visibility" [size]="15" [weight]="500" />
-                  </span>
-                  <span class="chat-suggestion__label">{{ s }}</span>
+                  @if (voice.recording()) {
+                    <span class="chat-composer__icon-wrap">
+                      <ui-icon name="stop" [size]="22" [weight]="600" />
+                    </span>
+                  } @else {
+                    <span class="chat-composer__icon-wrap">
+                      <ui-icon name="mic" [size]="22" [weight]="500" />
+                    </span>
+                  }
                 </button>
               }
+
+              <button
+                type="button"
+                class="chat-composer__send"
+                [disabled]="
+                  !input().trim() || store.thinking() || transcribing() || voice.recording()
+                "
+                (click)="send()"
+                aria-label="Enviar mensaje"
+              >
+                <span class="chat-composer__icon-wrap chat-composer__icon-wrap--send">
+                  <ui-icon name="send" [size]="22" [weight]="500" [fill]="true" />
+                </span>
+              </button>
             </div>
           </div>
+
+          @if (voiceError()) {
+            <p class="text-[12px] text-danger m-0 mt-2">{{ voiceError() }}</p>
+          }
+
+          <div class="flex gap-2 flex-wrap mt-2.5">
+            @for (s of suggestions; track s) {
+              <button type="button" class="chat-suggestion" (click)="quickSend(s)">
+                <span class="chat-suggestion__icon">
+                  <ui-icon name="visibility" [size]="15" [weight]="500" />
+                </span>
+                <span class="chat-suggestion__label">{{ s }}</span>
+              </button>
+            }
+          </div>
+        </div>
       </div>
     </div>
 
@@ -242,7 +272,9 @@ function generateUuid(): string {
         aria-modal="true"
         aria-label="Historial de conversaciones"
       >
-        <header class="flex items-center justify-between gap-3 px-3.5 py-3 border-b border-line shrink-0">
+        <header
+          class="flex items-center justify-between gap-3 px-3.5 py-3 border-b border-line shrink-0"
+        >
           <h2 class="text-[14.5px] font-semibold tracking-tight m-0">Historial</h2>
           <button
             type="button"
@@ -565,6 +597,7 @@ export class ChatPage implements AfterViewChecked {
   protected readonly store = inject(AgentStore);
   protected readonly conversations = inject(ConversationsStore);
   protected readonly voice = inject(VoiceRecorderService);
+  protected readonly tts = inject(TextToSpeechService);
   private readonly agentApi = inject(AgentApi);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -694,7 +727,13 @@ export class ChatPage implements AfterViewChecked {
     void this.store.ask(text, convId);
   }
 
+  protected onTtsToggle(id: string): void {
+    const message = this.store.messages().find((m) => m.id === id);
+    if (message) this.tts.toggle(id, message.content);
+  }
+
   protected newChat(): void {
+    this.tts.stop();
     const id = generateUuid();
     this.activeConversationId.set(id);
     this.store.startNewConversation(id);

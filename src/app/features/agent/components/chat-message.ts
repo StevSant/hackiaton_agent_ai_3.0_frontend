@@ -1,13 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
+import type { TtsState } from '@core/tts/text-to-speech.service';
 import { MarkdownPipe } from '@shared/pipes';
+import { Icon } from '@shared/ui/icon';
+import { AgentChart } from './agent-chart';
 import { AgentSteps } from './agent-steps';
 import type { AgentMessage } from '../models';
 
 @Component({
   selector: 'agent-chat-message',
   standalone: true,
-  imports: [AgentSteps, MarkdownPipe],
+  imports: [AgentSteps, MarkdownPipe, Icon, AgentChart],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
@@ -47,17 +50,51 @@ import type { AgentMessage } from '../models';
           {{ message().content }}
         </div>
       } @else {
-        <div
-          class="text-[13.5px] leading-relaxed px-3.5 py-2.5 rounded-2xl border bg-surface text-ink border-line break-words"
-          (click)="onBubbleClick($event)"
-        >
-          @if (steps().length > 0) {
-            <agent-steps [steps]="steps()" [hasContent]="hasContent()" />
+        <div class="flex flex-col items-start gap-1.5 min-w-0">
+          <div
+            class="text-[13.5px] leading-relaxed px-3.5 py-2.5 rounded-2xl border bg-surface text-ink border-line break-words"
+            (click)="onBubbleClick($event)"
+          >
+            @if (steps().length > 0) {
+              <agent-steps [steps]="steps()" [hasContent]="hasContent()" />
+            }
+            @if (isEmpty()) {
+              <span class="dots"><span></span><span></span><span></span></span>
+            } @else {
+              <div class="markdown-body" [innerHTML]="message().content | markdown"></div>
+            }
+          </div>
+
+          @if (hasContent() && ttsSupported()) {
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 text-[11.5px] text-ink-3 px-1.5 py-0.5 rounded hover:text-brand hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-soft disabled:opacity-60"
+              [disabled]="ttsActive() && ttsState() === 'loading'"
+              [attr.aria-label]="listenLabel()"
+              (click)="ttsToggle.emit(message().id)"
+            >
+              <ui-icon
+                [name]="listenIcon()"
+                [size]="14"
+                [class.animate-spin]="ttsActive() && ttsState() === 'loading'"
+              />
+              {{ listenLabel() }}
+            </button>
           }
-          @if (isEmpty()) {
-            <span class="dots"><span></span><span></span><span></span></span>
-          } @else {
-            <div class="markdown-body" [innerHTML]="message().content | markdown"></div>
+
+          @if (chart(); as chartData) {
+            @if (chartAccepted()) {
+              <agent-chart [payload]="chartData" (openCase)="openCase.emit($event)" />
+            } @else {
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-ink bg-brand-soft border border-line rounded-lg px-2.5 py-1.5 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                (click)="acceptChart.emit(message().id)"
+              >
+                <ui-icon name="bar_chart" [size]="15" />
+                Ver como gráfico
+              </button>
+            }
           }
         </div>
       }
@@ -67,12 +104,32 @@ import type { AgentMessage } from '../models';
 export class ChatMessage {
   readonly message = input.required<AgentMessage>();
   readonly streaming = input<boolean>(false);
+  readonly ttsSupported = input<boolean>(true);
+  /** This message is the one currently being read aloud. */
+  readonly ttsActive = input<boolean>(false);
+  readonly ttsState = input<TtsState>('idle');
+
   readonly openCase = output<string>();
+  readonly ttsToggle = output<string>();
+  readonly acceptChart = output<string>();
 
   protected readonly isUser = computed(() => this.message().role === 'user');
   protected readonly hasContent = computed(() => this.message().content.length > 0);
   protected readonly isEmpty = computed(() => !this.isUser() && !this.hasContent());
   protected readonly steps = computed(() => (this.isUser() ? [] : (this.message().steps ?? [])));
+  protected readonly chart = computed(() => this.message().chart ?? null);
+  protected readonly chartAccepted = computed(() => this.message().chartAccepted === true);
+
+  protected readonly listenIcon = computed(() => {
+    if (this.ttsActive() && this.ttsState() === 'loading') return 'progress_activity';
+    if (!this.ttsActive()) return 'volume_up';
+    return this.ttsState() === 'playing' ? 'pause' : 'play_arrow';
+  });
+  protected readonly listenLabel = computed(() => {
+    if (this.ttsActive() && this.ttsState() === 'loading') return 'Generando…';
+    if (!this.ttsActive()) return 'Escuchar';
+    return this.ttsState() === 'playing' ? 'Pausar' : 'Reanudar';
+  });
 
   protected readonly avatarBg = computed(() =>
     this.isUser()
