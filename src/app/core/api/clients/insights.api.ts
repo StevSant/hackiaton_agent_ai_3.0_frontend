@@ -50,7 +50,9 @@ export interface InsightsBundleDto {
   regional_fraud: RegionalFraudPointDto[];
   claim_type_slices: ClaimTypeSliceDto[];
   total_claims_label: string;
-  quarterly_outlook: QuarterlyOutlookDto;
+  // Optional: backend returns null until a real forecast pipeline lands.
+  // Consumers must render an empty / hidden state when this is missing.
+  quarterly_outlook: QuarterlyOutlookDto | null;
   hotspots: HotspotDto[];
   incidents: IncidentDto[];
 }

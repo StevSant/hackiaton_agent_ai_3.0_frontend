@@ -52,6 +52,7 @@ export class AuditRow {
     consulta_ia: { icon: 'forum', label: 'Consulta IA', chip: 'bg-brand-soft text-brand-ink' },
     cambio_regla: { icon: 'tune', label: 'Cambio de regla', chip: 'bg-tier-yellow-soft text-tier-yellow-ink' },
     cierre: { icon: 'check', label: 'Cierre', chip: 'bg-tier-green-soft text-tier-green-ink' },
+    dictamen: { icon: 'gavel', label: 'Dictamen', chip: 'bg-brand-soft text-brand-ink' },
     export: { icon: 'download', label: 'Exportación', chip: 'bg-soft text-ink-2' },
   };
 

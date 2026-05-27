@@ -5,6 +5,7 @@ export type AuditAction =
   | 'consulta_ia'
   | 'cambio_regla'
   | 'cierre'
+  | 'dictamen'
   | 'export';
 
 export interface AuditEvent {

@@ -133,11 +133,12 @@ export class InsightsStore {
       .filter((p): p is IncidentPoint => p !== null);
   });
 
-  readonly quarterlyOutlook = computed<QuarterlyOutlookView>(() => {
+  readonly quarterlyOutlook = computed<QuarterlyOutlookView | null>(() => {
     const o = this._bundle()?.quarterly_outlook;
+    if (!o) return null;
     return {
-      body: o?.body ?? '',
-      systematicFraudDelta: o?.systematic_fraud_delta ?? '',
+      body: o.body,
+      systematicFraudDelta: o.systematic_fraud_delta,
     };
   });
 

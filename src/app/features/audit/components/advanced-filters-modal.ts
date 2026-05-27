@@ -164,6 +164,7 @@ export class AdvancedFiltersModal {
     { value: 'consulta_ia', label: 'Consulta a la IA' },
     { value: 'cambio_regla', label: 'Cambio de regla' },
     { value: 'cierre', label: 'Cierre de caso' },
+    { value: 'dictamen', label: 'Dictamen' },
     { value: 'export', label: 'Exportación' },
   ];
 
