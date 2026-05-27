@@ -16,7 +16,7 @@ const SIN_PATTERN = /SIN-\d{4}-\d{4,6}/g;
 @Component({
   selector: 'agent-chat-message',
   standalone: true,
-  imports: [Icon, AgentSteps],
+  imports: [AgentSteps],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div

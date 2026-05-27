@@ -10,20 +10,22 @@ export function ecuadorPanBounds(): L.LatLngBounds {
   );
 }
 
-/** Encuadre inicial — Ecuador continental completo, centrado con margen mínimo. */
+/**
+ * Encuadre inicial ajustado a la masa terrestre de Ecuador.
+ * - Oeste: -80.1° (costa, excluye océano abierto)
+ * - Este: -75.5° (frontera oriental)
+ * - Sur: -4.8° (Macará / Zamora)
+ * - Norte: 1.3° (San Lorenzo)
+ */
 export function ecuadorViewportBounds(): L.LatLngBounds {
-  const { southWest, northEast } = ECUADOR_MAINLAND_BOUNDS;
-  const latitudeMargin = 0.06;
-  const longitudeMargin = 0.06;
-
   return L.latLngBounds(
-    [southWest.latitude - latitudeMargin, southWest.longitude - longitudeMargin],
-    [northEast.latitude + latitudeMargin, northEast.longitude + longitudeMargin],
+    [-4.8, -80.1],
+    [1.3, -75.5],
   );
 }
 
-/** Padding mínimo para overlays (chip, leyenda, controles). */
+/** Padding simétrico pequeño — solo espacio para los overlays. */
 export const ECUADOR_MAP_FIT_PADDING = {
-  topLeft: L.point(8, 28),
-  bottomRight: L.point(8, 32),
+  topLeft: L.point(12, 36),
+  bottomRight: L.point(12, 40),
 } as const;

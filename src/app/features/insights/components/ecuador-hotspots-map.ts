@@ -149,12 +149,15 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
     const host = this.mapHost().nativeElement;
     const panBounds = ecuadorPanBounds();
 
+    // Start at Ecuador's geographic center at a neutral zoom;
+    // fitEcuadorViewport() will immediately correct to the right zoom.
     this.map = L.map(host, {
-      center: ecuadorViewportBounds().getCenter(),
+      center: [-1.65, -78.3],
       zoom: 8,
+      minZoom: 7,
       maxZoom: 11,
       maxBounds: panBounds,
-      maxBoundsViscosity: 1,
+      maxBoundsViscosity: 0.8,
       zoomControl: false,
       attributionControl: true,
       worldCopyJump: false,
@@ -170,17 +173,23 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
       this.addHotspotMarker(hotspot);
     }
 
-    this.fitEcuadorViewport();
-    requestAnimationFrame(() => this.map?.invalidateSize());
+    // Wait for the container to have real dimensions before fitting
+    requestAnimationFrame(() => {
+      this.map?.invalidateSize({ animate: false });
+      this.fitEcuadorViewport();
+    });
   }
 
   private observeMapResize(): void {
     const host = this.mapHost().nativeElement;
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 
     this.resizeObserver = new ResizeObserver(() => {
       if (!this.map) return;
       this.map.invalidateSize({ animate: false });
-      this.fitEcuadorViewport();
+      // Debounce: only refit after resize settles
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => this.fitEcuadorViewport(), 120);
     });
 
     this.resizeObserver.observe(host);
@@ -191,33 +200,15 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
 
     const viewBounds = ecuadorViewportBounds();
     const { topLeft, bottomRight } = ECUADOR_MAP_FIT_PADDING;
-    const maxZoom = 10;
-    const mapSize = this.map.getSize();
-    const innerWidth = mapSize.x - topLeft.x - bottomRight.x;
-    const innerHeight = mapSize.y - topLeft.y - bottomRight.y;
 
     this.map.fitBounds(viewBounds, {
       paddingTopLeft: topLeft,
       paddingBottomRight: bottomRight,
-      maxZoom,
+      maxZoom: 9,
       animate: false,
     });
 
-    const fullCountryZoom = this.map.getZoom();
-    let zoom = fullCountryZoom;
-
-    while (zoom < maxZoom) {
-      const northEastPoint = this.map.project(viewBounds.getNorthEast(), zoom + 1);
-      const southWestPoint = this.map.project(viewBounds.getSouthWest(), zoom + 1);
-      const boundsWidth = northEastPoint.x - southWestPoint.x;
-      const boundsHeight = southWestPoint.y - northEastPoint.y;
-
-      if (boundsWidth > innerWidth || boundsHeight > innerHeight) break;
-      zoom++;
-    }
-
-    this.map.setView(viewBounds.getCenter(), zoom, { animate: false });
-    this.map.setMinZoom(fullCountryZoom);
+    this.map.setMinZoom(this.map.getZoom());
   }
 
   private addHotspotMarker(hotspot: (typeof ECUADOR_FRAUD_HOTSPOTS)[number]): void {
