@@ -55,24 +55,18 @@ function generateUuid(): string {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="grid grid-cols-1 md:grid-cols-[260px_1fr] h-[calc(100vh-64px)]">
-      <!-- Sidebar -->
-      <agent-conversations-sidebar
-        class="hidden md:flex flex-col"
-        [items]="conversations.list()"
-        [activeId]="activeConversationId()"
-        [query]="conversations.query()"
-        [loading]="conversations.loading()"
-        (select)="onSelect($event)"
-        (rename)="onRename($event)"
-        (remove)="onRemove($event)"
-        (newChat)="newChat()"
-        (queryChange)="conversations.setQuery($event)"
-      />
-
-      <!-- Chat column -->
-      <div class="flex flex-col overflow-hidden">
-        <div class="flex items-end justify-between gap-6 py-2 pb-6 px-4">
+    <div class="flex flex-col h-[calc(100vh-7rem)] min-h-0">
+      <div class="flex items-end justify-between gap-6 py-2 pb-6 px-4">
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            class="chat-history-toggle"
+            (click)="historyOpen.set(true)"
+            aria-label="Abrir historial de conversaciones"
+            title="Historial de conversaciones"
+          >
+            <ui-icon name="history" [size]="18" />
+          </button>
           <div>
             <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1 flex items-center gap-2.5">
               <span
@@ -103,10 +97,11 @@ function generateUuid(): string {
             </p>
           </div>
         </div>
+      </div>
 
-        <div
-          class="mx-4 grid grid-rows-[1fr_auto] bg-surface border border-line rounded-xl shadow-2 overflow-hidden flex-1 min-h-0"
-        >
+      <div
+        class="mx-4 grid grid-rows-[1fr_auto] bg-surface border border-line rounded-xl shadow-2 overflow-hidden flex-1 min-h-0"
+      >
           <div #scroll class="overflow-y-auto scroll-pretty px-8 pt-7 pb-3 flex flex-col gap-5">
             @for (m of store.messages(); track m.id; let last = $last) {
               <agent-chat-message
@@ -231,9 +226,49 @@ function generateUuid(): string {
               }
             </div>
           </div>
-        </div>
       </div>
     </div>
+
+    <!-- History drawer (slide-over from the left) -->
+    @if (historyOpen()) {
+      <div
+        class="fixed inset-0 z-40 bg-ink/35 backdrop-blur-[1.5px]"
+        (click)="historyOpen.set(false)"
+        aria-hidden="true"
+      ></div>
+      <aside
+        class="fixed left-0 top-0 bottom-0 z-50 w-[320px] max-w-[88vw] bg-surface border-r border-line shadow-pop flex flex-col"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Historial de conversaciones"
+      >
+        <header class="flex items-center justify-between gap-3 px-3.5 py-3 border-b border-line shrink-0">
+          <h2 class="text-[14.5px] font-semibold tracking-tight m-0">Historial</h2>
+          <button
+            type="button"
+            class="rounded-sm w-8 h-8 grid place-items-center text-ink-3 hover:bg-hover hover:text-ink"
+            (click)="historyOpen.set(false)"
+            aria-label="Cerrar"
+          >
+            <ui-icon name="close" [size]="18" />
+          </button>
+        </header>
+        <div class="flex-1 min-h-0 flex flex-col">
+          <agent-conversations-sidebar
+            class="flex-1 min-h-0 flex flex-col"
+            [items]="conversations.list()"
+            [activeId]="activeConversationId()"
+            [query]="conversations.query()"
+            [loading]="conversations.loading()"
+            (select)="onDrawerSelect($event)"
+            (rename)="onRename($event)"
+            (remove)="onRemove($event)"
+            (newChat)="onDrawerNewChat()"
+            (queryChange)="conversations.setQuery($event)"
+          />
+        </div>
+      </aside>
+    }
 
     <agent-conversation-rename-modal
       [open]="renameModalOpen()"
@@ -481,6 +516,37 @@ function generateUuid(): string {
         transform: translateY(-1px);
       }
 
+      .chat-history-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--bg-elev);
+        color: var(--ink-2);
+        cursor: pointer;
+        box-shadow: var(--shadow-1);
+        transition:
+          background 120ms ease,
+          border-color 120ms ease,
+          color 120ms ease,
+          transform 120ms ease;
+      }
+
+      .chat-history-toggle:hover {
+        background: var(--brand-soft);
+        border-color: color-mix(in oklch, var(--brand) 25%, var(--border));
+        color: var(--brand-ink);
+        transform: translateY(-1px);
+      }
+
+      .chat-history-toggle ::ng-deep .material-symbols-outlined {
+        display: block;
+        line-height: 1;
+      }
+
       @keyframes chat-voice-pulse {
         0% {
           box-shadow: 0 0 0 0 color-mix(in oklch, var(--brand) 45%, transparent);
@@ -509,6 +575,7 @@ export class ChatPage implements AfterViewChecked {
   protected readonly activeConversationId = signal<string | null>(null);
   protected readonly renameModalOpen = signal<boolean>(false);
   protected readonly renameTarget = signal<ConversationSummary | null>(null);
+  protected readonly historyOpen = signal<boolean>(false);
   protected readonly transcribing = signal<boolean>(false);
   protected readonly voiceError = signal<string | null>(null);
   protected readonly voiceSupported = signal<boolean>(false);
@@ -642,6 +709,16 @@ export class ChatPage implements AfterViewChecked {
       queryParams: { conversation: id },
       replaceUrl: false,
     });
+  }
+
+  protected onDrawerSelect(id: string): void {
+    this.historyOpen.set(false);
+    this.onSelect(id);
+  }
+
+  protected onDrawerNewChat(): void {
+    this.historyOpen.set(false);
+    this.newChat();
   }
 
   protected onRename(item: ConversationSummary): void {
