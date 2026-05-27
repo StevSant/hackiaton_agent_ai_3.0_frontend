@@ -5,4 +5,6 @@ export type { ClaimDocument } from './claim-document.model';
 export type { ClaimVehicle } from './claim-vehicle.model';
 export type { TrendPoint } from './trend-point.model';
 export type { ClaimReview, ReviewStatus, DictamenOutcome } from './claim-review.model';
+export type { FactorContribution } from './factor-contribution.model';
+export type { SimilarClaim } from './similar-claim.model';
 export { ALERT_CATALOG, type AlertCatalogEntry } from './alert-catalog';

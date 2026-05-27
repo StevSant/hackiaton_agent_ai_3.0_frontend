@@ -8,11 +8,13 @@ import { RiskBadge } from '../../../shared/ui/risk-badge';
 import { ramoIcon, ramoLabel } from '../../../shared/utils';
 import { AiExplanationCard } from '../components/ai-explanation-card';
 import { AlertsList } from '../components/alerts-list';
+import { AnomalyIndicatorCard } from '../components/anomaly-indicator-card';
 import { CaseMetaCard } from '../components/case-meta-card';
 import { DictamenCard } from '../components/dictamen-card';
 import { DictamenFormModal } from '../components/dictamen-form-modal';
 import { DocumentsCard } from '../components/documents-card';
 import { EscalationStickyBanner } from '../components/escalation-sticky-banner';
+import { MlFactorsCard } from '../components/ml-factors-card';
 import { ProviderSummaryCard } from '../components/provider-summary-card';
 import { RecommendationCard } from '../components/recommendation-card';
 import { RevisadoCard } from '../components/revisado-card';
@@ -20,6 +22,7 @@ import { ReviewActionBar } from '../components/review-action-bar';
 import { ReviewTimeline } from '../components/review-timeline';
 import { RuleDetailDialog } from '../components/rule-detail-dialog';
 import { ScorePanel } from '../components/score-panel';
+import { SimilarNarrativesCard } from '../components/similar-narratives-card';
 import { TimelineCard } from '../components/timeline-card';
 import { VehicleCard } from '../components/vehicle-card';
 import type { ClaimAlert, DictamenOutcome } from '../models';
@@ -35,11 +38,13 @@ import { ProvidersStore } from '../../network/services/providers.store';
     RiskBadge,
     AiExplanationCard,
     AlertsList,
+    AnomalyIndicatorCard,
     CaseMetaCard,
     DictamenCard,
     DictamenFormModal,
     DocumentsCard,
     EscalationStickyBanner,
+    MlFactorsCard,
     ProviderSummaryCard,
     RecommendationCard,
     RevisadoCard,
@@ -47,6 +52,7 @@ import { ProvidersStore } from '../../network/services/providers.store';
     ReviewTimeline,
     RuleDetailDialog,
     ScorePanel,
+    SimilarNarrativesCard,
     TimelineCard,
     VehicleCard,
   ],
@@ -55,7 +61,10 @@ import { ProvidersStore } from '../../network/services/providers.store';
     @let c = claim();
     @if (c) {
       <div class="flex items-center gap-2 mb-3.5">
-        <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[13px] text-ink-2 hover:bg-hover hover:text-ink" (click)="back()">
+        <button
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[13px] text-ink-2 hover:bg-hover hover:text-ink"
+          (click)="back()"
+        >
           <ui-icon name="arrow_back" [size]="14" /> {{ backLabel() }}
         </button>
         <span class="text-ink-3 text-[12.5px]">/</span>
@@ -66,13 +75,20 @@ import { ProvidersStore } from '../../network/services/providers.store';
         <div class="flex-1">
           <div class="flex items-center gap-2.5 mb-1.5">
             <ui-icon [name]="ramoIcon(c.ramo)" [size]="18" />
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line">{{ ramoLabel(c.ramo) }}</span>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line">{{ c.estado }}</span>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line"
+              >{{ ramoLabel(c.ramo) }}</span
+            >
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line"
+              >{{ c.estado }}</span
+            >
             <ui-risk-badge [nivel]="c.nivel" />
           </div>
           <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1.5">{{ c.cobertura }}</h1>
           <p class="text-ink-3 text-[13.5px] m-0">
-            {{ c.asegurado }} · {{ c.ciudad }} · ocurrió el {{ c.fecha_ocurrencia }} · reportado {{ c.fecha_reporte }}
+            {{ c.asegurado }} · {{ c.ciudad }} · ocurrió el {{ c.fecha_ocurrencia }} · reportado
+            {{ c.fecha_reporte }}
           </p>
         </div>
         <div class="flex flex-col items-end gap-2">
@@ -115,6 +131,9 @@ import { ProvidersStore } from '../../network/services/providers.store';
           }
           <claim-ai-explanation-card [claim]="c" />
           <claim-alerts-list [alerts]="c.alertas" />
+          <claim-ml-factors-card [claim]="c" />
+          <claim-anomaly-indicator-card [claim]="c" />
+          <claim-similar-narratives-card [claim]="c" />
           <claim-timeline-card [events]="c.timeline" />
           <claim-documents-card [docs]="c.documentos" />
         </div>
@@ -140,11 +159,7 @@ import { ProvidersStore } from '../../network/services/providers.store';
 
       <!-- Modals -->
       @if (activeAlert(); as a) {
-        <claim-rule-detail-dialog
-          [open]="ruleOpen()"
-          [alert]="a"
-          (close)="ruleOpen.set(false)"
-        />
+        <claim-rule-detail-dialog [open]="ruleOpen()" [alert]="a" (close)="ruleOpen.set(false)" />
       }
       <claim-dictamen-form-modal
         [open]="dictamenOpen()"
@@ -154,7 +169,9 @@ import { ProvidersStore } from '../../network/services/providers.store';
     } @else {
       <div class="py-20 text-center text-ink-3">
         Caso no encontrado.
-        <div class="mt-2"><button class="underline" (click)="back()">Volver a la bandeja</button></div>
+        <div class="mt-2">
+          <button class="underline" (click)="back()">Volver a la bandeja</button>
+        </div>
       </div>
     }
   `,
@@ -207,12 +224,13 @@ export class ClaimDetailPage {
   protected onMarkRevisado(): void {
     // Mockup: light prompt so the user can leave a closure note. Real wiring
     // replaces with a proper modal + POST /claims/{id}/close.
-    const note = typeof window !== 'undefined'
-      ? window.prompt(
-          'Marcar este caso como revisado sin escalación. Opcionalmente, deja una nota:',
-          '',
-        )
-      : null;
+    const note =
+      typeof window !== 'undefined'
+        ? window.prompt(
+            'Marcar este caso como revisado sin escalación. Opcionalmente, deja una nota:',
+            '',
+          )
+        : null;
     if (note === null) return; // user cancelled
     const now = new Date().toISOString();
     this.claims.patchReview(this.id(), {

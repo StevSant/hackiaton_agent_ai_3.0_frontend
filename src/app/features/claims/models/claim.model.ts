@@ -4,6 +4,8 @@ import type { ClaimDocument } from './claim-document.model';
 import type { ClaimReview } from './claim-review.model';
 import type { ClaimTimelineEvent } from './claim-timeline-event.model';
 import type { ClaimVehicle } from './claim-vehicle.model';
+import type { FactorContribution } from './factor-contribution.model';
+import type { SimilarClaim } from './similar-claim.model';
 
 export interface Claim {
   id: string;
@@ -28,4 +30,12 @@ export interface Claim {
   timeline: ClaimTimelineEvent[];
   documentos: ClaimDocument[];
   review: ClaimReview;
+  // Explainability extras (V4/V5) — backend populates them when the lifespan
+  // has loaded fraud_lgbm.txt / anomaly_iforest.joblib. Absent when the
+  // adapters aren't wired; UI hides the corresponding widgets gracefully.
+  ml_probability?: number | null;
+  ml_factors?: FactorContribution[];
+  anomaly_score?: number | null;
+  nearest_normal_claim_id?: string | null;
+  similar?: SimilarClaim[];
 }
