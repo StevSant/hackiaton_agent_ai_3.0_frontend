@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { Button } from '../../../shared/ui/button';
-import { Icon } from '../../../shared/ui/icon';
-import { Pagination } from '../../../shared/ui/pagination';
-import { RAMOS, reviewStatusLabel, type RamoKey, type RiskTier } from '../../../shared/utils';
+import { Button } from '@shared/ui/button';
+import { Icon } from '@shared/ui/icon';
+import { Pagination } from '@shared/ui/pagination';
+import { RAMOS, reviewStatusLabel, type RamoKey, type RiskTier } from '@shared/utils';
 import { InvestigacionTable } from '../components/investigacion-table';
 import type { Claim } from '../../claims/models';
 import { ClaimsStore } from '../../claims/services/claims.store';

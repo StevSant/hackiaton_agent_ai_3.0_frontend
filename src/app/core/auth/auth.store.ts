@@ -5,7 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { AuthApi, type LoginUserPayload } from '../api/clients/auth.api';
 import { environment } from '../config/env';
 import { AppError } from '../errors/app-error';
-import { initials } from '../../shared/utils';
+import { initials } from '@shared/utils';
 import type { AuthUser, RoleCode } from './auth-user.model';
 
 // Bumped key invalidates pre-real-auth mock sessions so stale "mock_*" tokens

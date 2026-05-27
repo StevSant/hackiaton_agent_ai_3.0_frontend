@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
-import { formatMoney } from '../../../shared/utils';
+import { formatMoney } from '@shared/utils';
 import type { Claim } from '../models';
 
 @Component({

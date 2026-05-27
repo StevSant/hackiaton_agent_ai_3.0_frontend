@@ -1,4 +1,4 @@
-import type { ReviewStatus } from '../../features/claims/models';
+import type { ReviewStatus } from '@features/claims/models';
 
 const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
   pendiente: 'Pendiente',

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { RiskBar } from '../../../shared/ui/risk-bar';
-import { formatMoney, initials } from '../../../shared/utils';
+import { RiskBar } from '@shared/ui/risk-bar';
+import { formatMoney, initials } from '@shared/utils';
 import type { Provider } from '../models';
 
 @Component({

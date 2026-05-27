@@ -1,6 +1,6 @@
 import type { Routes } from '@angular/router';
 
-import { guestGuard } from '../../core/auth/auth.guard';
+import { guestGuard } from '@core/auth/auth.guard';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },

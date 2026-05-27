@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import type { TrendPoint } from '../../features/claims/models';
+import type { TrendPoint } from '@features/claims/models';
 
 interface Stack {
   verde: number;

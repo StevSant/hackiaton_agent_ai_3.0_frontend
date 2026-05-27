@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
-import { BrandLogo } from '../shared/ui/brand-logo';
-import { Icon } from '../shared/ui/icon';
-import { RoleBadge } from '../shared/ui/role-badge';
-import { ThemeStore } from '../core/theme/theme.store';
-import { AuthStore } from '../core/auth/auth.store';
-import { ClaimsStore } from '../features/claims/services/claims.store';
-import { ProvidersStore } from '../features/network/services/providers.store';
+import { BrandLogo } from '@shared/ui/brand-logo';
+import { Icon } from '@shared/ui/icon';
+import { RoleBadge } from '@shared/ui/role-badge';
+import { ThemeStore } from '@core/theme/theme.store';
+import { AuthStore } from '@core/auth/auth.store';
+import { ClaimsStore } from '@features/claims/services/claims.store';
+import { ProvidersStore } from '@features/network/services/providers.store';
 
 interface NavItem {
   link: string;

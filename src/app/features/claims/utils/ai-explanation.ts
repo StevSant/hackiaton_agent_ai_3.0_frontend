@@ -1,4 +1,4 @@
-import { ramoLabel } from '../../../shared/utils';
+import { ramoLabel } from '@shared/utils';
 import { ALERT_CATALOG } from '../models/alert-catalog';
 import type { Claim } from '../models/claim.model';
 

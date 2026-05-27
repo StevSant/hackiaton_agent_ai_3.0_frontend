@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
-import type { RoleCode } from '../../../core/auth/auth-user.model';
-import { Button } from '../../../shared/ui/button';
-import { Icon } from '../../../shared/ui/icon';
+import type { RoleCode } from '@core/auth/auth-user.model';
+import { Button } from '@shared/ui/button';
+import { Icon } from '@shared/ui/icon';
 import type { ClaimReview } from '../models/claim-review.model';
 
 /**

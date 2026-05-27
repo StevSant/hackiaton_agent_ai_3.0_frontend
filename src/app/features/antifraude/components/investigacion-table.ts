@@ -1,14 +1,14 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
-import { Avatar } from '../../../shared/ui/avatar';
-import { Icon } from '../../../shared/ui/icon';
+import { Avatar } from '@shared/ui/avatar';
+import { Icon } from '@shared/ui/icon';
 import {
   formatMoney,
   ramoLabel,
   reviewStatusBadgeClass,
   reviewStatusLabel,
   type RiskTier,
-} from '../../../shared/utils';
+} from '@shared/utils';
 import type { Claim } from '../../claims/models';
 
 @Component({

@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { AuthStore } from '../../../core/auth/auth.store';
-import { Icon } from '../../../shared/ui/icon';
-import { KpiSmall } from '../../../shared/ui/kpi-small';
-import { Pagination } from '../../../shared/ui/pagination';
-import { SegmentedTabs, type SegmentedTab } from '../../../shared/ui/segmented-tabs';
+import { AuthStore } from '@core/auth/auth.store';
+import { Icon } from '@shared/ui/icon';
+import { KpiSmall } from '@shared/ui/kpi-small';
+import { Pagination } from '@shared/ui/pagination';
+import { SegmentedTabs, type SegmentedTab } from '@shared/ui/segmented-tabs';
 import type { Claim } from '../../claims/models';
 import { ClaimsStore } from '../../claims/services/claims.store';
 import { InboxTable } from '../components/inbox-table';

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { initials } from '../../../shared/utils';
+import { initials } from '@shared/utils';
 import type { Provider } from '../../network/models';
 
 @Component({

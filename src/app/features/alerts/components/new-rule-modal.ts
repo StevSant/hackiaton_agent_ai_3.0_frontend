@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 
-import { Button } from '../../../shared/ui/button';
-import { Icon } from '../../../shared/ui/icon';
-import { Modal } from '../../../shared/ui/modal';
-import type { RiskTier } from '../../../shared/utils';
+import { Button } from '@shared/ui/button';
+import { Icon } from '@shared/ui/icon';
+import { Modal } from '@shared/ui/modal';
+import type { RiskTier } from '@shared/utils';
 
 @Component({
   selector: 'alerts-new-rule-modal',

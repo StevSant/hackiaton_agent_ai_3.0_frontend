@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
-import { Icon } from '../../../shared/ui/icon';
+import { Icon } from '@shared/ui/icon';
 import type { FraudRule } from '../models';
 
 @Component({

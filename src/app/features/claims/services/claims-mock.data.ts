@@ -1,4 +1,4 @@
-import { riskTier } from '../../../shared/utils';
+import { riskTier } from '@shared/utils';
 import type { Claim } from '../models';
 
 const RAW: Omit<Claim, 'nivel' | 'review'>[] = [

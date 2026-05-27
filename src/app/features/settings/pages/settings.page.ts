@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { Icon } from '../../../shared/ui/icon';
-import { AuthStore } from '../../../core/auth/auth.store';
-import { ThemeStore } from '../../../core/theme/theme.store';
+import { Icon } from '@shared/ui/icon';
+import { AuthStore } from '@core/auth/auth.store';
+import { ThemeStore } from '@core/theme/theme.store';
 
 @Component({
   selector: 'page-settings',

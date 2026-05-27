@@ -1,4 +1,4 @@
-import type { RiskTier } from '../../../shared/utils';
+import type { RiskTier } from '@shared/utils';
 
 export interface AlertCatalogEntry {
   code: string;

@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { EmptyState } from '../../../shared/ui/empty-state';
-import { Icon } from '../../../shared/ui/icon';
+import { EmptyState } from '@shared/ui/empty-state';
+import { Icon } from '@shared/ui/icon';
 import type { Claim, SimilarClaim } from '../models';
 
 /**

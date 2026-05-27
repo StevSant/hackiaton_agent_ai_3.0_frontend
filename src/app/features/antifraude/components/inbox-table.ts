@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
-import { Icon } from '../../../shared/ui/icon';
-import { RiskRing } from '../../../shared/ui/risk-ring';
-import { formatDateTime, ramoIcon, ramoLabel } from '../../../shared/utils';
+import { Icon } from '@shared/ui/icon';
+import { RiskRing } from '@shared/ui/risk-ring';
+import { formatDateTime, ramoIcon, ramoLabel } from '@shared/utils';
 import type { Claim } from '../../claims/models';
 
 interface InboxRow {

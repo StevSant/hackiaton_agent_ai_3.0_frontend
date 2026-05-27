@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 
-import { environment } from '../../../core/config/env';
-import { SseClient } from '../../../core/realtime/sse.client';
+import { environment } from '@core/config/env';
+import { SseClient } from '@core/realtime/sse.client';
 import { ClaimsStore } from '../../claims/services/claims.store';
 import type { AgentMessage } from '../models';
 

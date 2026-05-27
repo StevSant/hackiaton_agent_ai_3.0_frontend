@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import type { RoleCode } from '../../core/auth/auth-user.model';
+import type { RoleCode } from '@core/auth/auth-user.model';
 import { Icon } from './icon';
 
 @Component({

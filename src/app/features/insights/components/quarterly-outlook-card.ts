@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
-import { Icon } from '../../../shared/ui/icon';
+import { Icon } from '@shared/ui/icon';
 import { MOCK_QUARTERLY_OUTLOOK } from '../services/insights-mock.data';
 
 @Component({

@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { AuthStore } from '../../../core/auth/auth.store';
-import { Button } from '../../../shared/ui/button';
-import { Icon } from '../../../shared/ui/icon';
-import { RiskBadge } from '../../../shared/ui/risk-badge';
-import { ramoIcon, ramoLabel } from '../../../shared/utils';
+import { AuthStore } from '@core/auth/auth.store';
+import { Button } from '@shared/ui/button';
+import { Icon } from '@shared/ui/icon';
+import { RiskBadge } from '@shared/ui/risk-badge';
+import { ramoIcon, ramoLabel } from '@shared/utils';
 import { AiExplanationCard } from '../components/ai-explanation-card';
 import { AlertsList } from '../components/alerts-list';
 import { AnomalyIndicatorCard } from '../components/anomaly-indicator-card';
