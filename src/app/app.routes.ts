@@ -30,6 +30,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/claims/claims.routes').then((m) => m.routes),
       },
       {
+        path: 'insights',
+        loadChildren: () => import('./features/insights/insights.routes').then((m) => m.routes),
+      },
+      {
         path: 'antifraude',
         canActivate: [roleGuard('antifraude')],
         loadChildren: () =>

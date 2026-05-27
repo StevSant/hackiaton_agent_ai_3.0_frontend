@@ -7,7 +7,7 @@ import { riskTier } from '../utils';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="ring relative inline-grid place-items-center" [style.width.px]="size()" [style.height.px]="size()">
+    <div class="risk-ring relative inline-grid place-items-center" [style.width.px]="size()" [style.height.px]="size()">
       <svg [attr.width]="size()" [attr.height]="size()">
         <circle
           class="ring-track"

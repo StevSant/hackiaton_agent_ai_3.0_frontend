@@ -139,6 +139,7 @@ export class SidebarNav {
       return [
         { link: '/antifraude/bandeja', label: 'Bandeja Antifraude', icon: 'shield_person', count: inbox },
         { link: '/antifraude/investigacion', label: 'Investigación', icon: 'travel_explore', count: this.claims.claims().length },
+        { link: '/insights', label: 'Insights IA', icon: 'insights' },
         { link: '/network', label: 'Proveedores', icon: 'hub', count: this.providers.providers().length },
         { link: '/agent', label: 'Centinela IA', icon: 'auto_awesome', badge: 'Nuevo' },
       ];
@@ -150,6 +151,7 @@ export class SidebarNav {
       .length;
     return [
       { link: '/claims', label: 'Bandeja', icon: 'dashboard', count: myActive },
+      { link: '/insights', label: 'Insights IA', icon: 'insights' },
       { link: '/agent', label: 'Centinela IA', icon: 'auto_awesome', badge: 'Nuevo' },
     ];
   });
