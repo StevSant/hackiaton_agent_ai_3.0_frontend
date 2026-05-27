@@ -8,4 +8,5 @@ export interface Provider {
   monto: number;
   listaRestrictiva: boolean;
   color: string;
+  ramos: string[];
 }

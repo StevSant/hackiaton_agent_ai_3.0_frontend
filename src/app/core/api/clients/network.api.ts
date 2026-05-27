@@ -13,6 +13,7 @@ export interface ProviderDto {
   alertas: number;
   monto: number;
   lista_restrictiva: boolean;
+  ramos?: string[];
 }
 
 @Injectable({ providedIn: 'root' })

@@ -1,13 +1,23 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
+import {
+  RAMOS,
+  RAMO_KEYS,
+  formatMoneyShort,
+  normalizeRamoKey,
+  ramoLabel,
+  type RamoKey,
+} from '@shared/utils';
 import { NetworkGraph } from '../components/network-graph';
 import { ProviderRanking } from '../components/provider-ranking';
 import { RamoDistributionCard } from '../components/ramo-distribution-card';
+import type { Provider } from '../models';
 import { ProvidersStore } from '../services/providers.store';
-import { formatMoneyShort } from '@shared/utils';
+
+type RamoFilter = 'todos' | RamoKey;
 
 @Component({
   selector: 'page-network',
@@ -28,10 +38,35 @@ import { formatMoneyShort } from '@shared/utils';
       </ui-button>
     </div>
 
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+      <span class="text-[11.5px] uppercase tracking-wide text-ink-3 mr-1">Ramo</span>
+      <button
+        type="button"
+        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] border transition-colors"
+        [class]="chipClasses('todos')"
+        (click)="setFilter('todos')"
+      >
+        Todos
+        <span class="text-[11px] text-ink-3 tabular-nums">{{ stats().total }}</span>
+      </button>
+      @for (key of ramoOptions; track key) {
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] border transition-colors"
+          [class]="chipClasses(key)"
+          (click)="setFilter(key)"
+        >
+          <ui-icon [name]="ramoIconFor(key)" [size]="13" />
+          {{ ramoLabel(key) }}
+          <span class="text-[11px] text-ink-3 tabular-nums">{{ counts()[key] }}</span>
+        </button>
+      }
+    </div>
+
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-      <ui-kpi-small label="Proveedores activos" [value]="stats().total" icon="work" />
-      <ui-kpi-small label="En lista restrictiva" [value]="stats().restrictiva" icon="warning" tone="red" />
-      <ui-kpi-small label="Alertas concentradas" [value]="stats().alertas" icon="flag" tone="yellow" />
+      <ui-kpi-small label="Proveedores activos" [value]="filteredStats().total" icon="work" />
+      <ui-kpi-small label="En lista restrictiva" [value]="filteredStats().restrictiva" icon="warning" tone="red" />
+      <ui-kpi-small label="Alertas concentradas" [value]="filteredStats().alertas" icon="flag" tone="yellow" />
       <ui-kpi-small label="Monto observado" [value]="totalMonto()" icon="trending_up" tone="brand" />
     </div>
 
@@ -41,13 +76,19 @@ import { formatMoneyShort } from '@shared/utils';
           <h3 class="text-[13px] font-semibold m-0">Mapa de relaciones</h3>
           <div class="text-[12px] text-ink-3 mt-0.5">Tamaño por volumen · color por riesgo</div>
         </div>
-        <network-graph class="flex-1" [providers]="providers()" />
+        <network-graph class="flex-1" [providers]="filteredProviders()" />
       </div>
 
       <network-ramo-distribution-card />
     </div>
 
-    <network-provider-ranking [providers]="providers()" />
+    @if (filteredProviders().length === 0) {
+      <div class="bg-surface border border-line rounded-lg shadow-1 px-5 py-10 text-center text-ink-3 text-[13px]">
+        Sin proveedores en este ramo.
+      </div>
+    } @else {
+      <network-provider-ranking [providers]="filteredProviders()" />
+    }
   `,
 })
 export class NetworkPage {
@@ -55,6 +96,65 @@ export class NetworkPage {
 
   protected readonly providers = this.store.providers;
   protected readonly stats = this.store.stats;
+  protected readonly filter = signal<RamoFilter>('todos');
+  protected readonly ramoOptions: readonly RamoKey[] = RAMO_KEYS;
 
-  protected readonly totalMonto = computed(() => formatMoneyShort(this.stats().monto));
+  protected readonly counts = computed<Record<RamoKey, number>>(() => {
+    const acc: Record<RamoKey, number> = {
+      vehiculos: 0,
+      salud: 0,
+      vida: 0,
+      generales: 0,
+      hogar: 0,
+      otros: 0,
+    };
+    for (const p of this.providers()) {
+      const keys = providerRamoKeys(p);
+      for (const k of keys) acc[k] += 1;
+    }
+    return acc;
+  });
+
+  protected readonly filteredProviders = computed<Provider[]>(() => {
+    const f = this.filter();
+    const list = this.providers();
+    if (f === 'todos') return list;
+    return list.filter((p) => providerRamoKeys(p).includes(f));
+  });
+
+  protected readonly filteredStats = computed(() => {
+    const list = this.filteredProviders();
+    return {
+      total: list.length,
+      restrictiva: list.filter((p) => p.listaRestrictiva).length,
+      alertas: list.reduce((s, p) => s + p.alertas, 0),
+      monto: list.reduce((s, p) => s + p.monto, 0),
+    };
+  });
+
+  protected readonly totalMonto = computed(() => formatMoneyShort(this.filteredStats().monto));
+
+  protected setFilter(value: RamoFilter): void {
+    this.filter.set(value);
+  }
+
+  protected ramoLabel(key: RamoKey): string {
+    return RAMOS[key].label;
+  }
+
+  protected ramoIconFor(key: RamoKey): string {
+    return RAMOS[key].icon;
+  }
+
+  protected chipClasses(value: RamoFilter): string {
+    return value === this.filter()
+      ? 'bg-brand-soft border-brand text-brand-ink'
+      : 'bg-surface border-line text-ink-2 hover:bg-soft';
+  }
+}
+
+function providerRamoKeys(provider: Provider): RamoKey[] {
+  const raw = provider.ramos ?? [];
+  if (raw.length === 0) return ['otros'];
+  return Array.from(new Set(raw.map(normalizeRamoKey)));
 }

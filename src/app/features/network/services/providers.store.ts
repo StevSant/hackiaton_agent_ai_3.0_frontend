@@ -24,6 +24,7 @@ function dtoToProvider(dto: ProviderDto): Provider {
     monto: dto.monto,
     listaRestrictiva: dto.lista_restrictiva,
     color: alertasToColor(dto.alertas),
+    ramos: dto.ramos ?? [],
   };
 }
 

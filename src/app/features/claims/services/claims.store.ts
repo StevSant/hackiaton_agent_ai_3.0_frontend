@@ -66,33 +66,46 @@ export class ClaimsStore {
     });
   }
 
-  /** Pull the full claims list from the backend, page by page. */
+  /** Pull the full claims list from the backend, page by page.
+   *
+   * Retries once after a short delay so Supabase pooler cold-starts (first
+   * connection after idle frequently 500s) don't strand the UI in an empty
+   * state for the rest of the session.
+   */
   async loadList(): Promise<void> {
     if (this._loading()) return;
     this._loading.set(true);
     this._error.set(null);
-    try {
-      const items: ClaimSummaryDto[] = [];
-      let page = 0;
-      while (true) {
-        const result = await firstValueFrom(
-          this.api.list({ page, page_size: PAGE_SIZE }),
-        );
-        items.push(...result.items);
-        if (items.length >= result.total || result.items.length === 0) break;
-        page += 1;
+    let attempt = 0;
+    while (true) {
+      try {
+        const items: ClaimSummaryDto[] = [];
+        let page = 0;
+        while (true) {
+          const result = await firstValueFrom(
+            this.api.list({ page, page_size: PAGE_SIZE }),
+          );
+          items.push(...result.items);
+          if (items.length >= result.total || result.items.length === 0) break;
+          page += 1;
+        }
+        const summaries = items.map((row) => summaryToClaim(row));
+        const detailById = new Map(this._claims().filter((c) => c.alertas?.length).map((c) => [c.id, c]));
+        const merged = summaries.map((s) => detailById.get(s.id) ?? s);
+        this._claims.set(merged);
+        this.initialized = true;
+        break;
+      } catch (error) {
+        if (attempt === 0) {
+          attempt += 1;
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          continue;
+        }
+        this._error.set(error instanceof AppError ? error : toAppError(error));
+        break;
       }
-      const summaries = items.map((row) => summaryToClaim(row));
-      // Merge with any details we already loaded so accordion data survives a refresh.
-      const detailById = new Map(this._claims().filter((c) => c.alertas?.length).map((c) => [c.id, c]));
-      const merged = summaries.map((s) => detailById.get(s.id) ?? s);
-      this._claims.set(merged);
-      this.initialized = true;
-    } catch (error) {
-      this._error.set(error instanceof AppError ? error : toAppError(error));
-    } finally {
-      this._loading.set(false);
     }
+    this._loading.set(false);
   }
 
   /**

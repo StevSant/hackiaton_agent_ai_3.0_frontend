@@ -181,10 +181,32 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
       </div>
     </div>
 
+    @if (store.error(); as err) {
+      <div class="bg-tier-red-soft border border-line rounded-lg shadow-1 p-4 mb-4 flex items-center justify-between gap-4">
+        <div class="flex items-start gap-2 text-tier-red-ink">
+          <ui-icon name="error_outline" [size]="18" class="mt-0.5 shrink-0" />
+          <div class="text-[13px]">
+            <div class="font-medium">No pudimos cargar los siniestros.</div>
+            <div class="text-[12px] opacity-80">{{ err.message }}</div>
+          </div>
+        </div>
+        <ui-button variant="secondary" (click)="reload()">
+          <ui-icon name="refresh" [size]="14" />
+          Reintentar
+        </ui-button>
+      </div>
+    }
+
     <div class="bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
-      @if (filtered().length === 0) {
+      @if (store.loading()) {
+        <div class="px-5 py-16 text-center text-ink-3 text-[13px]">Cargando siniestros…</div>
+      } @else if (filtered().length === 0) {
         <div class="px-5 py-16 text-center text-ink-3 text-[13px]">
-          Sin siniestros con los filtros seleccionados.
+          @if (store.claims().length === 0 && !store.error()) {
+            No hay siniestros cargados todavía.
+          } @else {
+            Sin siniestros con los filtros seleccionados.
+          }
         </div>
       } @else {
         <investigacion-table [claims]="paged()" (open)="openCase($event)" />
@@ -202,8 +224,12 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
   `,
 })
 export class InvestigacionPage {
-  private readonly store = inject(ClaimsStore);
+  protected readonly store = inject(ClaimsStore);
   private readonly router = inject(Router);
+
+  protected reload(): void {
+    void this.store.loadList();
+  }
 
   protected readonly filters = signal<InvestigationFilters>({ ...EMPTY_FILTERS });
   protected readonly page = signal<number>(0);
