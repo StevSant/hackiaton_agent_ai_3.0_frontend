@@ -155,7 +155,8 @@ export class SidebarNav {
         { link: '/antifraude/bandeja', label: 'Bandeja Antifraude', icon: 'shield_person', count: inbox },
         { link: '/antifraude/investigacion', label: 'Investigación', icon: 'travel_explore', count: this.claims.claims().length },
         { link: '/insights', label: 'Insights IA', icon: 'insights' },
-        { link: '/network', label: 'Proveedores', icon: 'hub', count: this.providers.providers().length },
+        { link: '/providers', label: 'Proveedores', icon: 'storefront', count: this.providers.providers().length },
+        { link: '/network', label: 'Red de relaciones', icon: 'hub' },
         { link: '/agent', label: 'Centinela IA', icon: 'visibility', badge: 'Nuevo' },
         { link: '/uploads', label: 'Importar casos', icon: 'cloud_upload' },
       ];
@@ -168,6 +169,7 @@ export class SidebarNav {
     return [
       { link: '/claims', label: 'Bandeja', icon: 'dashboard', count: myActive },
       { link: '/insights', label: 'Insights IA', icon: 'insights' },
+      { link: '/providers', label: 'Proveedores', icon: 'storefront', count: this.providers.providers().length },
       { link: '/agent', label: 'Centinela IA', icon: 'visibility', badge: 'Nuevo' },
       { link: '/uploads', label: 'Importar casos', icon: 'cloud_upload' },
     ];
