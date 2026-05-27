@@ -1,26 +1,20 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { initials } from '../../shared/utils';
-import { AppError } from '../errors/app-error';
+import { AuthApi, type LoginUserPayload } from '../api/clients/auth.api';
 import { environment } from '../config/env';
+import { AppError } from '../errors/app-error';
+import { initials } from '../../shared/utils';
 import type { AuthUser, RoleCode } from './auth-user.model';
 
-const STORAGE_KEY = 'centinela:session';
+// Bumped key invalidates pre-real-auth mock sessions so stale "mock_*" tokens
+// don't end up in Authorization headers after this rollout.
+const STORAGE_KEY = 'centinela:session:v2';
 
 interface StoredSession {
   user: AuthUser;
   token: string;
-}
-
-interface LoginApiResponse {
-  access_token: string;
-  token_type: string;
-  user_id: string;
-  email: string;
-  full_name: string;
-  role: string;
 }
 
 const ROLE_LABEL: Record<RoleCode, string> = {
@@ -33,37 +27,51 @@ function readStored(): StoredSession | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredSession;
-    if (parsed.user && !parsed.user.roleCode) {
-      parsed.user.roleCode = inferRoleCode(parsed.user.role);
-    }
-    return parsed;
+    return JSON.parse(raw) as StoredSession;
   } catch {
     return null;
   }
 }
 
-function inferRoleCode(roleOrEmail: string): RoleCode {
-  const lower = roleOrEmail.toLowerCase();
-  return lower === 'antifraude' || lower.includes('antifraude') ? 'antifraude' : 'analista';
+function toAuthUser(payload: LoginUserPayload): AuthUser {
+  const local = payload.email.split('@')[0] ?? 'usuario';
+  return {
+    id: `usr_${local}`,
+    name: payload.full_name,
+    email: payload.email,
+    role: ROLE_LABEL[payload.role],
+    roleCode: payload.role,
+    sucursal: 'Quito Norte',
+    initials: initials(payload.full_name),
+  };
 }
 
-function apiResponseToUser(res: LoginApiResponse): AuthUser {
-  const roleCode = inferRoleCode(res.role);
-  return {
-    id: res.user_id,
-    name: res.full_name,
-    email: res.email,
-    role: ROLE_LABEL[roleCode],
-    roleCode,
-    sucursal: 'Quito Norte',
-    initials: initials(res.full_name),
-  };
+function mapHttpError(e: unknown): AppError {
+  if (e instanceof HttpErrorResponse) {
+    if (e.status === 401) {
+      return new AppError('auth/invalid', 'Credenciales inválidas.', 401);
+    }
+    if (e.status === 0) {
+      return new AppError(
+        'auth/offline',
+        'No se pudo contactar al backend. Verifica que esté corriendo en ' +
+          `${environment.backendUrl}.`,
+        0,
+      );
+    }
+    const detail =
+      typeof e.error === 'object' && e.error !== null && 'message' in e.error
+        ? String((e.error as { message: unknown }).message)
+        : 'Error al iniciar sesión.';
+    return new AppError('auth/error', detail, e.status);
+  }
+  if (e instanceof AppError) return e;
+  return new AppError('auth/unknown', 'Error desconocido al iniciar sesión.');
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthStore {
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(AuthApi);
   private readonly stored = readStored();
 
   private readonly _user = signal<AuthUser | null>(this.stored?.user ?? null);
@@ -95,55 +103,40 @@ export class AuthStore {
   }
 
   async login(email: string, password: string): Promise<boolean> {
-    if (!email.includes('@') || password.length < 4) {
-      this._error.set(
-        new AppError('auth/invalid', 'Ingresa un correo válido y al menos 4 caracteres de clave.'),
-      );
-      return false;
-    }
-
-    this._loading.set(true);
     this._error.set(null);
-
+    this._loading.set(true);
     try {
-      const res = await firstValueFrom(
-        this.http.post<LoginApiResponse>(
-          `${environment.backendUrl}${environment.apiPrefix}/auth/login`,
-          { email, password },
-        ),
-      );
-      this._user.set(apiResponseToUser(res));
+      const res = await firstValueFrom(this.api.login({ email, password }));
+      this._user.set(toAuthUser(res.user));
       this._token.set(res.access_token);
       return true;
-    } catch (err: unknown) {
-      const message =
-        (err as { error?: { detail?: string } })?.error?.detail ??
-        'Error al iniciar sesión. Intenta de nuevo.';
-      this._error.set(new AppError('auth/failed', message));
+    } catch (e) {
+      this._error.set(mapHttpError(e));
+      this._user.set(null);
+      this._token.set(null);
       return false;
     } finally {
       this._loading.set(false);
     }
   }
 
-  /** Kept for demo quick-access buttons — uses real backend credentials */
-  loginDemoAs(roleCode: RoleCode): void {
-    const credentials: Record<RoleCode, { email: string; password: string; name: string }> = {
-      analista: { email: 'analista@demo.com', password: 'Demo.Analista2026', name: 'Ana Lema' },
-      antifraude: { email: 'antifraude@demo.com', password: 'Demo.Antifraude2026', name: 'Lucia Velez' },
-    };
-    const cred = credentials[roleCode];
-    void this.login(cred.email, cred.password);
+  /**
+   * Demo helper: logs in as the seeded persona for *roleCode*. Credentials
+   * come from environment.demoCredentials (which mirrors AUTH_SEED_USERS in
+   * the backend .env) so the demo button exercises the real auth flow.
+   */
+  loginAsDemo(roleCode: RoleCode): Promise<boolean> {
+    const creds = environment.demoCredentials[roleCode];
+    return this.login(creds.email, creds.password);
   }
 
-  loginDemo(): void {
-    this.loginDemoAs('antifraude');
-  }
-
-  switchRole(roleCode: RoleCode): void {
-    const u = this._user();
-    if (!u || u.roleCode === roleCode) return;
-    this.loginDemoAs(roleCode);
+  /**
+   * Sidebar "switch perspective" action: logs out the current session and
+   * re-authenticates as the other demo persona so the JWT actually carries
+   * the displayed role (otherwise role-gated calls would 403).
+   */
+  switchRole(roleCode: RoleCode): Promise<boolean> {
+    return this.loginAsDemo(roleCode);
   }
 
   logout(): void {

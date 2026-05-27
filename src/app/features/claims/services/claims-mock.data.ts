@@ -16,24 +16,70 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     suma_asegurada: 42000,
     estado: 'Reserva',
     sucursal: 'Quito Norte',
-    vehiculo: { marca: 'Toyota', modelo: 'Fortuner', anio: 2023, placa: 'PCH-4821', chasis: 'MR0HZ8CD4...' },
+    vehiculo: {
+      marca: 'Toyota',
+      modelo: 'Fortuner',
+      anio: 2023,
+      placa: 'PCH-4821',
+      chasis: 'MR0HZ8CD4...',
+    },
     proveedor: 'PRV-0142',
     descripcion:
       'Vehículo reportado robado en sector La Carolina. Asegurado indica que el vehículo fue sustraído mientras se encontraba estacionado frente a su domicilio durante la noche. No se cuenta con denuncia inmediata; la denuncia fiscal fue presentada 12 días después del evento.',
     score: 91,
     alertas: [
-      { code: 'RF01', puntos: 14, severidad: 'high', detalle: 'Cobertura pérdida total por robo activa regla crítica RF01.' },
-      { code: 'RF06', puntos: 8, severidad: 'high', detalle: '12 días entre ocurrencia y denuncia formal (> 4 días).' },
-      { code: 'RF03', puntos: 10, severidad: 'high', detalle: 'Taller asignado (PRV-0142) coincide con lista restrictiva interna.' },
-      { code: 'RF05', puntos: 4, severidad: 'med', detalle: 'Siniestro a 21 días del inicio de vigencia.' },
-      { code: 'AF02', puntos: 4, severidad: 'med', detalle: 'Falta acta policial original y certificado de propiedad endosado.' },
+      {
+        code: 'RF01',
+        puntos: 14,
+        severidad: 'high',
+        detalle: 'Cobertura pérdida total por robo activa regla crítica RF01.',
+      },
+      {
+        code: 'RF06',
+        puntos: 8,
+        severidad: 'high',
+        detalle: '12 días entre ocurrencia y denuncia formal (> 4 días).',
+      },
+      {
+        code: 'RF03',
+        puntos: 10,
+        severidad: 'high',
+        detalle: 'Taller asignado (PRV-0142) coincide con lista restrictiva interna.',
+      },
+      {
+        code: 'RF05',
+        puntos: 4,
+        severidad: 'med',
+        detalle: 'Siniestro a 21 días del inicio de vigencia.',
+      },
+      {
+        code: 'AF02',
+        puntos: 4,
+        severidad: 'med',
+        detalle: 'Falta acta policial original y certificado de propiedad endosado.',
+      },
     ],
     timeline: [
       { date: '2026-03-28', title: 'Inicio de vigencia de póliza', tone: 'ok' },
-      { date: '2026-04-18', title: 'Ocurrencia reportada por asegurado', tone: 'warn', desc: 'Robo nocturno sin testigos ni cámaras.' },
-      { date: '2026-04-30', title: 'Denuncia fiscal presentada', tone: 'danger', desc: '12 días después del evento reportado.' },
+      {
+        date: '2026-04-18',
+        title: 'Ocurrencia reportada por asegurado',
+        tone: 'warn',
+        desc: 'Robo nocturno sin testigos ni cámaras.',
+      },
+      {
+        date: '2026-04-30',
+        title: 'Denuncia fiscal presentada',
+        tone: 'danger',
+        desc: '12 días después del evento reportado.',
+      },
       { date: '2026-05-03', title: 'Reporte de siniestro a aseguradora', tone: 'warn' },
-      { date: '2026-05-08', title: 'Asignación a taller PRV-0142', tone: 'danger', desc: 'Proveedor en lista restrictiva.' },
+      {
+        date: '2026-05-08',
+        title: 'Asignación a taller PRV-0142',
+        tone: 'danger',
+        desc: 'Proveedor en lista restrictiva.',
+      },
     ],
     documentos: [
       { tipo: 'Solicitud de siniestro', estado: 'Completo' },
@@ -41,6 +87,28 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
       { tipo: 'Acta policial', estado: 'Faltante', falta: true },
       { tipo: 'Matrícula del vehículo', estado: 'Completo' },
       { tipo: 'Certificado de endoso', estado: 'Faltante', falta: true },
+    ],
+    ml_probability: 0.83,
+    ml_factors: [
+      { feature: 'demora_denuncia_horas', shap_value: 0.642, direction: 'up' },
+      { feature: 'dias_desde_inicio_poliza', shap_value: 0.418, direction: 'up' },
+      { feature: 'proveedor_en_lista_restrictiva', shap_value: 0.295, direction: 'up' },
+    ],
+    anomaly_score: -0.682,
+    nearest_normal_claim_id: 'SIN-2026-08376',
+    similar: [
+      {
+        claim_id: 'SIN-2025-07344',
+        similarity: 0.91,
+        snippet:
+          'Vehículo reportado robado en sector residencial. Denuncia presentada después de varios días sin testigos.',
+      },
+      {
+        claim_id: 'SIN-2025-06911',
+        similarity: 0.83,
+        snippet:
+          'Robo nocturno del vehículo estacionado, sin cámaras de seguridad y denuncia tardía.',
+      },
     ],
   },
   {
@@ -57,20 +125,51 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     suma_asegurada: 28000,
     estado: 'Pago Parcial',
     sucursal: 'Guayaquil Centro',
-    vehiculo: { marca: 'Chevrolet', modelo: 'Sail', anio: 2021, placa: 'GAB-1947', chasis: '9BGSC19...' },
+    vehiculo: {
+      marca: 'Chevrolet',
+      modelo: 'Sail',
+      anio: 2021,
+      placa: 'GAB-1947',
+      chasis: '9BGSC19...',
+    },
     proveedor: 'PRV-0317',
     descripcion:
       'Asegurado reporta colisión frontal contra muro de contención en vía perimetral. El relato describe pérdida de control por neblina densa. Sin tercero involucrado, sin testigos. Tercer evento del asegurado en 14 meses con narrativa similar.',
     score: 87,
     alertas: [
-      { code: 'RF07', puntos: 8, severidad: 'high', detalle: '92% de similitud textual con SIN-2025-07112.' },
-      { code: 'AF01', puntos: 8, severidad: 'high', detalle: 'Asegurado con 3 siniestros en 14 meses.' },
-      { code: 'RF04', puntos: 6, severidad: 'med', detalle: 'Daño localizado inconsistente con dinámica descrita.' },
-      { code: 'AF05', puntos: 5, severidad: 'med', detalle: 'Daño severo sin tercero, sin cámaras y sin partes oficiales.' },
+      {
+        code: 'RF07',
+        puntos: 8,
+        severidad: 'high',
+        detalle: '92% de similitud textual con SIN-2025-07112.',
+      },
+      {
+        code: 'AF01',
+        puntos: 8,
+        severidad: 'high',
+        detalle: 'Asegurado con 3 siniestros en 14 meses.',
+      },
+      {
+        code: 'RF04',
+        puntos: 6,
+        severidad: 'med',
+        detalle: 'Daño localizado inconsistente con dinámica descrita.',
+      },
+      {
+        code: 'AF05',
+        puntos: 5,
+        severidad: 'med',
+        detalle: 'Daño severo sin tercero, sin cámaras y sin partes oficiales.',
+      },
     ],
     timeline: [
       { date: '2025-01-15', title: 'Inicio de vigencia de póliza', tone: 'ok' },
-      { date: '2025-02-22', title: 'Primer siniestro (SIN-2025-07112)', tone: 'warn', desc: 'Narrativa similar - choque sin tercero.' },
+      {
+        date: '2025-02-22',
+        title: 'Primer siniestro (SIN-2025-07112)',
+        tone: 'warn',
+        desc: 'Narrativa similar - choque sin tercero.',
+      },
       { date: '2025-11-09', title: 'Segundo siniestro (SIN-2025-07955)', tone: 'warn' },
       { date: '2026-04-26', title: 'Tercer evento - el actual', tone: 'danger' },
       { date: '2026-04-27', title: 'Reporte de siniestro', tone: 'ok' },
@@ -80,6 +179,27 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
       { tipo: 'Parte policial', estado: 'Faltante', falta: true },
       { tipo: 'Fotografías del daño', estado: 'Completo' },
       { tipo: 'Proforma del taller', estado: 'Completo' },
+    ],
+    ml_probability: 0.76,
+    ml_factors: [
+      { feature: 'narrativa_similar_score', shap_value: 0.541, direction: 'up' },
+      { feature: 'historial_siniestros_asegurado', shap_value: 0.387, direction: 'up' },
+      { feature: 'sin_rastro_tercero', shap_value: 0.213, direction: 'up' },
+    ],
+    anomaly_score: -0.412,
+    nearest_normal_claim_id: 'SIN-2026-08321',
+    similar: [
+      {
+        claim_id: 'SIN-2025-07112',
+        similarity: 0.92,
+        snippet:
+          'Colisión frontal contra muro en vía perimetral, pérdida de control sin tercero ni testigos.',
+      },
+      {
+        claim_id: 'SIN-2025-07955',
+        similarity: 0.78,
+        snippet: 'Daño material sin tercero involucrado, narrativa de neblina densa en vía rápida.',
+      },
     ],
   },
   {
@@ -113,6 +233,15 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
       { tipo: 'Historia clínica', estado: 'Completo' },
       { tipo: 'Autorización previa', estado: 'Completo' },
     ],
+    ml_probability: 0.08,
+    ml_factors: [
+      { feature: 'monto_reclamado', shap_value: -0.184, direction: 'down' },
+      { feature: 'dias_entre_ocurrencia_reporte', shap_value: -0.142, direction: 'down' },
+      { feature: 'documentos_incompletos', shap_value: -0.091, direction: 'down' },
+    ],
+    anomaly_score: -0.118,
+    nearest_normal_claim_id: 'SIN-2026-08321',
+    similar: [],
   },
   {
     id: 'SIN-2026-08365',
@@ -128,16 +257,42 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     suma_asegurada: 22000,
     estado: 'Reserva',
     sucursal: 'Ambato',
-    vehiculo: { marca: 'Hyundai', modelo: 'Tucson', anio: 2020, placa: 'TBA-0319', chasis: 'KMHJ381...' },
+    vehiculo: {
+      marca: 'Hyundai',
+      modelo: 'Tucson',
+      anio: 2020,
+      placa: 'TBA-0319',
+      chasis: 'KMHJ381...',
+    },
     proveedor: 'PRV-0623',
     descripcion:
       'Volcadura en carretera Ambato-Baños durante la madrugada. La descripción y croquis del relato presentan inconsistencias menores con la dinámica reportada en parte policial.',
     score: 64,
     alertas: [
-      { code: 'RF04', puntos: 6, severidad: 'med', detalle: 'Accidente múltiple de madrugada (3 a.m.).' },
-      { code: 'AF03', puntos: 3, severidad: 'med', detalle: 'Reporte 4 días después de la ocurrencia.' },
-      { code: 'AF02', puntos: 4, severidad: 'low', detalle: 'Falta certificado médico del conductor.' },
-      { code: 'RF07', puntos: 4, severidad: 'med', detalle: '71% de similitud textual con SIN-2025-06882.' },
+      {
+        code: 'RF04',
+        puntos: 6,
+        severidad: 'med',
+        detalle: 'Accidente múltiple de madrugada (3 a.m.).',
+      },
+      {
+        code: 'AF03',
+        puntos: 3,
+        severidad: 'med',
+        detalle: 'Reporte 4 días después de la ocurrencia.',
+      },
+      {
+        code: 'AF02',
+        puntos: 4,
+        severidad: 'low',
+        detalle: 'Falta certificado médico del conductor.',
+      },
+      {
+        code: 'RF07',
+        puntos: 4,
+        severidad: 'med',
+        detalle: '71% de similitud textual con SIN-2025-06882.',
+      },
     ],
     timeline: [
       { date: '2025-11-20', title: 'Inicio de vigencia', tone: 'ok' },
@@ -165,19 +320,40 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     suma_asegurada: 28000,
     estado: 'Reserva',
     sucursal: 'Guayaquil Norte',
-    vehiculo: { marca: 'Kia', modelo: 'Sportage', anio: 2022, placa: 'GSA-7720', chasis: 'KNAPC81...' },
+    vehiculo: {
+      marca: 'Kia',
+      modelo: 'Sportage',
+      anio: 2022,
+      placa: 'GSA-7720',
+      chasis: 'KNAPC81...',
+    },
     proveedor: 'PRV-0089',
     descripcion:
       'Robo de vehículo a 9 días del inicio de vigencia. Asegurado contrató cobertura amplia 9 días antes del evento. Pago de prima al contado.',
     score: 78,
     alertas: [
       { code: 'RF01', puntos: 14, severidad: 'high', detalle: 'Cobertura pérdida total por robo.' },
-      { code: 'RF05', puntos: 8, severidad: 'high', detalle: 'Siniestro a 9 días del inicio de vigencia (≤ 10 días).' },
-      { code: 'AF04', puntos: 5, severidad: 'med', detalle: 'Reclamo representa el 96% de la suma asegurada.' },
+      {
+        code: 'RF05',
+        puntos: 8,
+        severidad: 'high',
+        detalle: 'Siniestro a 9 días del inicio de vigencia (≤ 10 días).',
+      },
+      {
+        code: 'AF04',
+        puntos: 5,
+        severidad: 'med',
+        detalle: 'Reclamo representa el 96% de la suma asegurada.',
+      },
     ],
     timeline: [
       { date: '2026-03-30', title: 'Contratación de póliza con cobertura amplia', tone: 'warn' },
-      { date: '2026-04-08', title: 'Robo reportado', tone: 'danger', desc: '9 días después de contratada.' },
+      {
+        date: '2026-04-08',
+        title: 'Robo reportado',
+        tone: 'danger',
+        desc: '9 días después de contratada.',
+      },
       { date: '2026-04-09', title: 'Denuncia y reporte', tone: 'ok' },
     ],
     documentos: [
@@ -202,10 +378,16 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     estado: 'Liquidado',
     sucursal: 'Cuenca',
     proveedor: null,
-    descripcion: 'Daño por filtración de agua desde apartamento superior. Documentación completa, evaluación pericial concuerda con monto.',
+    descripcion:
+      'Daño por filtración de agua desde apartamento superior. Documentación completa, evaluación pericial concuerda con monto.',
     score: 18,
     alertas: [
-      { code: 'AF02', puntos: 2, severidad: 'low', detalle: 'Falta certificación del administrador del edificio.' },
+      {
+        code: 'AF02',
+        puntos: 2,
+        severidad: 'low',
+        detalle: 'Falta certificación del administrador del edificio.',
+      },
     ],
     timeline: [
       { date: '2025-06-01', title: 'Inicio de vigencia', tone: 'ok' },
@@ -236,17 +418,28 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     sucursal: 'Quito Sur',
     vehiculo: { marca: 'Mazda', modelo: 'CX-5', anio: 2019, placa: 'PDD-8821' },
     proveedor: 'PRV-0317',
-    descripcion: 'Colisión frontal en intersección. Documentación incompleta y reporte 7 días después del evento.',
+    descripcion:
+      'Colisión frontal en intersección. Documentación incompleta y reporte 7 días después del evento.',
     score: 58,
     alertas: [
       { code: 'AF03', puntos: 5, severidad: 'med', detalle: 'Reporte tardío - 7 días después.' },
       { code: 'AF02', puntos: 4, severidad: 'med', detalle: 'Faltan dos documentos legales.' },
-      { code: 'RF04', puntos: 6, severidad: 'med', detalle: 'Posicionamiento de daños no concuerda con croquis.' },
+      {
+        code: 'RF04',
+        puntos: 6,
+        severidad: 'med',
+        detalle: 'Posicionamiento de daños no concuerda con croquis.',
+      },
     ],
     timeline: [
       { date: '2025-08-15', title: 'Inicio de vigencia', tone: 'ok' },
       { date: '2026-04-02', title: 'Ocurrencia', tone: 'ok' },
-      { date: '2026-04-09', title: 'Reporte tardío', tone: 'warn', desc: '7 días después del evento.' },
+      {
+        date: '2026-04-09',
+        title: 'Reporte tardío',
+        tone: 'warn',
+        desc: '7 días después del evento.',
+      },
     ],
     documentos: [
       { tipo: 'Solicitud de siniestro', estado: 'Completo' },
@@ -270,11 +463,22 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     estado: 'Liquidado',
     sucursal: 'Guayaquil Centro',
     proveedor: 'PRV-0089',
-    descripcion: 'Cirugía ambulatoria de rodilla. Cuarto reclamo en 11 meses con el mismo proveedor.',
+    descripcion:
+      'Cirugía ambulatoria de rodilla. Cuarto reclamo en 11 meses con el mismo proveedor.',
     score: 53,
     alertas: [
-      { code: 'AF01', puntos: 8, severidad: 'med', detalle: '4 reclamos en 11 meses con mismo proveedor.' },
-      { code: 'AF04', puntos: 3, severidad: 'low', detalle: 'Monto 16% superior al promedio de la cobertura.' },
+      {
+        code: 'AF01',
+        puntos: 8,
+        severidad: 'med',
+        detalle: '4 reclamos en 11 meses con mismo proveedor.',
+      },
+      {
+        code: 'AF04',
+        puntos: 3,
+        severidad: 'low',
+        detalle: 'Monto 16% superior al promedio de la cobertura.',
+      },
     ],
     timeline: [
       { date: '2025-06-01', title: 'Inicio de vigencia', tone: 'ok' },
@@ -308,7 +512,12 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     descripcion: 'Daños a tercero en estacionamiento. Tercer evento solo RC en 16 meses.',
     score: 47,
     alertas: [
-      { code: 'AF01', puntos: 6, severidad: 'med', detalle: '3 eventos previos de solo RC en 16 meses.' },
+      {
+        code: 'AF01',
+        puntos: 6,
+        severidad: 'med',
+        detalle: '3 eventos previos de solo RC en 16 meses.',
+      },
       { code: 'AF04', puntos: 3, severidad: 'low', detalle: 'Monto reclamado dentro de rango.' },
     ],
     timeline: [
@@ -338,18 +547,34 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     estado: 'Reserva',
     sucursal: 'Quito Norte',
     proveedor: null,
-    descripcion: 'Robo de contenido en domicilio. Monto reclamado representa 76% de suma asegurada.',
+    descripcion:
+      'Robo de contenido en domicilio. Monto reclamado representa 76% de suma asegurada.',
     score: 68,
     alertas: [
       { code: 'AF04', puntos: 5, severidad: 'med', detalle: 'Reclamo 76% de la suma asegurada.' },
-      { code: 'AF02', puntos: 4, severidad: 'med', detalle: 'Faltan facturas de bienes sustraídos (>$2,000).' },
-      { code: 'RF02', puntos: 10, severidad: 'high', detalle: 'Una factura presentada tiene fecha posterior al evento.' },
+      {
+        code: 'AF02',
+        puntos: 4,
+        severidad: 'med',
+        detalle: 'Faltan facturas de bienes sustraídos (>$2,000).',
+      },
+      {
+        code: 'RF02',
+        puntos: 10,
+        severidad: 'high',
+        detalle: 'Una factura presentada tiene fecha posterior al evento.',
+      },
     ],
     timeline: [
       { date: '2025-05-18', title: 'Inicio de vigencia', tone: 'ok' },
       { date: '2026-03-18', title: 'Robo reportado', tone: 'warn' },
       { date: '2026-03-19', title: 'Reporte de siniestro', tone: 'ok' },
-      { date: '2026-03-25', title: 'Revisión documental', tone: 'danger', desc: 'Factura con fecha inconsistente.' },
+      {
+        date: '2026-03-25',
+        title: 'Revisión documental',
+        tone: 'danger',
+        desc: 'Factura con fecha inconsistente.',
+      },
     ],
     documentos: [
       { tipo: 'Solicitud', estado: 'Completo' },
@@ -375,7 +600,9 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     proveedor: null,
     descripcion: 'Indemnización por accidente laboral con incapacidad temporal. Caso estándar.',
     score: 22,
-    alertas: [{ code: 'AF02', puntos: 2, severidad: 'low', detalle: 'Falta certificado del IESS.' }],
+    alertas: [
+      { code: 'AF02', puntos: 2, severidad: 'low', detalle: 'Falta certificado del IESS.' },
+    ],
     timeline: [
       { date: '2024-08-01', title: 'Inicio de vigencia', tone: 'ok' },
       { date: '2026-03-12', title: 'Accidente laboral', tone: 'ok' },
@@ -405,7 +632,9 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     proveedor: 'PRV-0512',
     descripcion: 'Colisión múltiple en vía interbarrial. Documentación completa.',
     score: 28,
-    alertas: [{ code: 'AF05', puntos: 0, severidad: 'low', detalle: 'Tercero identificado, caso normal.' }],
+    alertas: [
+      { code: 'AF05', puntos: 0, severidad: 'low', detalle: 'Tercero identificado, caso normal.' },
+    ],
     timeline: [
       { date: '2025-07-01', title: 'Inicio de vigencia', tone: 'ok' },
       { date: '2026-03-05', title: 'Choque múltiple', tone: 'ok' },
@@ -434,7 +663,14 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     proveedor: 'PRV-0317',
     descripcion: 'Daños por colisión con elemento fijo. Documentación adecuada.',
     score: 34,
-    alertas: [{ code: 'AF02', puntos: 2, severidad: 'low', detalle: 'Falta certificado de licencia vigente.' }],
+    alertas: [
+      {
+        code: 'AF02',
+        puntos: 2,
+        severidad: 'low',
+        detalle: 'Falta certificado de licencia vigente.',
+      },
+    ],
     timeline: [
       { date: '2025-09-12', title: 'Inicio de vigencia', tone: 'ok' },
       { date: '2026-02-28', title: 'Daño reportado', tone: 'ok' },
@@ -492,7 +728,12 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     score: 44,
     alertas: [
       { code: 'AF03', puntos: 3, severidad: 'med', detalle: 'Reporte 4 días después.' },
-      { code: 'AF02', puntos: 4, severidad: 'low', detalle: 'Faltan facturas de accesorios reclamados.' },
+      {
+        code: 'AF02',
+        puntos: 4,
+        severidad: 'low',
+        detalle: 'Faltan facturas de accesorios reclamados.',
+      },
     ],
     timeline: [
       { date: '2025-10-20', title: 'Inicio de vigencia', tone: 'ok' },
@@ -521,7 +762,14 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     proveedor: null,
     descripcion: 'Incendio en cocina por falla eléctrica. Caso bien documentado.',
     score: 26,
-    alertas: [{ code: 'AF04', puntos: 3, severidad: 'low', detalle: 'Reclamo 67% de la suma asegurada (esperado para incendios).' }],
+    alertas: [
+      {
+        code: 'AF04',
+        puntos: 3,
+        severidad: 'low',
+        detalle: 'Reclamo 67% de la suma asegurada (esperado para incendios).',
+      },
+    ],
     timeline: [
       { date: '2024-12-15', title: 'Inicio de vigencia', tone: 'ok' },
       { date: '2026-02-08', title: 'Incendio', tone: 'ok' },
@@ -549,10 +797,16 @@ const RAW: Omit<Claim, 'nivel' | 'review'>[] = [
     sucursal: 'Riobamba',
     vehiculo: { marca: 'Kia', modelo: 'Picanto', anio: 2017, placa: 'HBA-9920' },
     proveedor: 'PRV-0142',
-    descripcion: 'Pérdida total por choque. Taller asignado en lista restrictiva. Asegurado con segundo siniestro en 14 meses.',
+    descripcion:
+      'Pérdida total por choque. Taller asignado en lista restrictiva. Asegurado con segundo siniestro en 14 meses.',
     score: 81,
     alertas: [
-      { code: 'RF03', puntos: 10, severidad: 'high', detalle: 'Taller PRV-0142 en lista restrictiva.' },
+      {
+        code: 'RF03',
+        puntos: 10,
+        severidad: 'high',
+        detalle: 'Taller PRV-0142 en lista restrictiva.',
+      },
       { code: 'AF04', puntos: 5, severidad: 'high', detalle: 'Reclamo 98% de la suma asegurada.' },
       { code: 'AF01', puntos: 4, severidad: 'med', detalle: 'Segundo siniestro en 14 meses.' },
     ],
