@@ -32,6 +32,16 @@ export interface RuleChangeDto {
   after_value?: string | null;
 }
 
+/** Wire shape of GET /rules/catalog (and /rules/{code}). */
+export interface RuleMetaDto {
+  code: string;
+  name: string;
+  tier_hint: RiskTierDto;
+  short_description: string;
+  what_triggers: string;
+  max_points: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class RulesApi {
   private readonly http = inject(HttpClient);
@@ -45,5 +55,9 @@ export class RulesApi {
     let params = new HttpParams();
     if (limit !== undefined) params = params.set('limit', String(limit));
     return this.http.get<RuleChangeDto[]>(`${this.base}/rules/changes`, { params });
+  }
+
+  listCatalog(): Observable<RuleMetaDto[]> {
+    return this.http.get<RuleMetaDto[]>(`${this.base}/rules/catalog`);
   }
 }

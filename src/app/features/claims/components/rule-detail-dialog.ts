@@ -1,11 +1,19 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { Router } from '@angular/router';
 
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { Modal } from '@shared/ui/modal';
 import type { ClaimAlert } from '../models';
-import { RULE_NARRATIVES } from '../services/rule-narratives-mock';
+import { RuleCatalogStore } from '../services/rule-catalog.store';
 
 const TIER_PILL: Record<'rojo' | 'amarillo' | 'verde', string> = {
   rojo: 'bg-tier-red-soft text-tier-red-ink',
@@ -26,28 +34,21 @@ const TIER_PILL: Record<'rojo' | 'amarillo' | 'verde', string> = {
       size="lg"
       (close)="close.emit()"
     >
-      @if (narrative(); as n) {
+      @if (meta(); as m) {
         <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-line">
-          <!-- Left: rule narrative -->
+          <!-- Left: rule narrative (from backend catalog) -->
           <section class="px-5 py-4">
             <div class="flex items-center gap-2 mb-2">
-              <span class="font-mono text-[12px] px-2 py-0.5 rounded" [class]="tierPill(n.clasificacion)">
-                {{ n.code }}
+              <span class="font-mono text-[12px] px-2 py-0.5 rounded" [class]="tierPill(m.tier_hint)">
+                {{ m.code }}
               </span>
-              <span class="text-[11px] uppercase tracking-wider text-ink-3">Hasta {{ n.maxPts }} pts</span>
+              <span class="text-[11px] uppercase tracking-wider text-ink-3">Hasta {{ m.max_points }} pts</span>
             </div>
-            <h4 class="text-[15px] font-semibold m-0 mb-2">{{ n.titulo }}</h4>
-            <p class="text-[13px] text-ink-2 leading-relaxed m-0 mb-3">{{ n.narrative }}</p>
+            <h4 class="text-[15px] font-semibold m-0 mb-2">{{ m.name }}</h4>
+            <p class="text-[13px] text-ink-2 leading-relaxed m-0 mb-3">{{ m.short_description }}</p>
 
             <div class="text-[11px] uppercase tracking-wider font-medium text-ink-3 mt-4 mb-1.5">Qué activa la regla</div>
-            <ul class="space-y-1.5 m-0 pl-0 list-none">
-              @for (t of n.whatTriggers; track $index) {
-                <li class="flex items-start gap-2 text-[12.5px] text-ink-2">
-                  <ui-icon name="check_small" [size]="14" />
-                  <span>{{ t }}</span>
-                </li>
-              }
-            </ul>
+            <p class="text-[12.5px] text-ink-2 leading-relaxed m-0">{{ m.what_triggers }}</p>
           </section>
 
           <!-- Right: this-claim evidence -->
@@ -71,7 +72,7 @@ const TIER_PILL: Record<'rojo' | 'amarillo' | 'verde', string> = {
             <ul class="space-y-1.5 m-0 pl-0 list-none text-[12.5px] text-ink-2">
               <li class="flex items-start gap-2">
                 <ui-icon name="info" [size]="14" />
-                <span>La regla aporta {{ alert().puntos }} de un máximo de {{ n.maxPts }} puntos.</span>
+                <span>La regla aporta {{ alert().puntos }} de un máximo de {{ m.max_points }} puntos.</span>
               </li>
               <li class="flex items-start gap-2">
                 <ui-icon name="info" [size]="14" />
@@ -84,9 +85,11 @@ const TIER_PILL: Record<'rojo' | 'amarillo' | 'verde', string> = {
             </ul>
           </section>
         </div>
+      } @else if (catalog.loading()) {
+        <div class="px-5 py-8 text-center text-ink-3 text-[13px]">Cargando descripción de la regla…</div>
       } @else {
         <div class="px-5 py-8 text-center text-ink-3 text-[13px]">
-          No tenemos descripción detallada para esta regla todavía.
+          No tenemos descripción detallada para {{ alert().code }} todavía.
         </div>
       }
 
@@ -106,15 +109,24 @@ export class RuleDetailDialog {
   readonly close = output<void>();
 
   private readonly router = inject(Router);
+  protected readonly catalog = inject(RuleCatalogStore);
 
-  protected readonly narrative = computed(() => RULE_NARRATIVES[this.alert().code] ?? null);
+  constructor() {
+    effect(() => {
+      if (this.open()) {
+        void this.catalog.ensureLoaded();
+      }
+    });
+  }
 
-  protected readonly title = computed(() => this.narrative()?.titulo ?? this.alert().code);
+  protected readonly meta = computed(() => this.catalog.findByCode(this.alert().code));
+
+  protected readonly title = computed(() => this.meta()?.name ?? this.alert().code);
 
   protected readonly subtitle = computed(() => {
-    const n = this.narrative();
-    if (!n) return 'Detalle de la regla activada';
-    return `${n.code} · Hasta ${n.maxPts} puntos · Nivel ${n.clasificacion}`;
+    const m = this.meta();
+    if (!m) return 'Detalle de la regla activada';
+    return `${m.code} · Hasta ${m.max_points} puntos · Nivel ${m.tier_hint}`;
   });
 
   protected tierPill(c: 'rojo' | 'amarillo' | 'verde'): string {
@@ -122,7 +134,7 @@ export class RuleDetailDialog {
   }
 
   protected ptsPill(): string {
-    return TIER_PILL[this.narrative()?.clasificacion ?? 'amarillo'];
+    return TIER_PILL[this.meta()?.tier_hint ?? 'amarillo'];
   }
 
   protected openCatalog(): void {
