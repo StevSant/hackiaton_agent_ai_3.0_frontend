@@ -34,16 +34,32 @@ const SUGGESTIONS = [
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
       <div>
         <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1 flex items-center gap-2.5">
-          <span class="w-8 h-8 rounded-md grid place-items-center"
-                style="background: linear-gradient(135deg, var(--brand), var(--brand-2)); box-shadow: 0 4px 12px color-mix(in oklch, var(--brand) 30%, transparent);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
-              <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2"/>
+          <span
+            class="w-8 h-8 rounded-md grid place-items-center"
+            style="background: linear-gradient(135deg, var(--brand), var(--brand-2)); box-shadow: 0 4px 12px color-mix(in oklch, var(--brand) 30%, transparent);"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z"
+                stroke="white"
+                stroke-width="2"
+                stroke-linejoin="round"
+              />
+              <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" />
             </svg>
           </span>
           Centinela IA
         </h1>
-        <p class="text-ink-3 text-[13.5px] m-0">Conversa con tu bandeja. Pregúntame por casos, patrones, proveedores o ramos.</p>
+        <p class="text-ink-3 text-[13.5px] m-0">
+          Conversa con tu bandeja. Pregúntame por casos, patrones, proveedores o ramos.
+        </p>
       </div>
       <div class="flex gap-2">
         <ui-button (click)="reset()">
@@ -53,7 +69,9 @@ const SUGGESTIONS = [
       </div>
     </div>
 
-    <div class="grid grid-rows-[1fr_auto] bg-surface border border-line rounded-xl shadow-2 overflow-hidden h-[calc(100vh-150px)] max-h-[880px]">
+    <div
+      class="grid grid-rows-[1fr_auto] bg-surface border border-line rounded-xl shadow-2 overflow-hidden h-[calc(100vh-150px)] max-h-[880px]"
+    >
       <div #scroll class="overflow-y-auto scroll-pretty px-8 pt-7 pb-3 flex flex-col gap-5">
         @for (m of store.messages(); track m.id; let last = $last) {
           <agent-chat-message
@@ -64,10 +82,25 @@ const SUGGESTIONS = [
         }
         @if (store.thinking()) {
           <div class="max-w-[720px] flex gap-3.5">
-            <div class="w-7 h-7 rounded-full grid place-items-center shrink-0" style="background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
-                <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2"/>
+            <div
+              class="w-7 h-7 rounded-full grid place-items-center shrink-0"
+              style="background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z"
+                  stroke="white"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                />
+                <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" />
               </svg>
             </div>
             <div class="text-[13.5px] px-3.5 py-3.5 rounded-2xl border border-line bg-surface">
@@ -78,7 +111,9 @@ const SUGGESTIONS = [
       </div>
 
       <div class="border-t border-line px-4 py-3.5 bg-surface">
-        <div class="flex gap-2 items-end px-2.5 py-2 bg-soft border border-line rounded-md focus-within:border-brand focus-within:ring-2 focus-within:ring-brand-soft">
+        <div
+          class="flex gap-2 items-end px-2.5 py-2 bg-soft border border-line rounded-md focus-within:border-brand focus-within:ring-2 focus-within:ring-brand-soft"
+        >
           <textarea
             #ta
             rows="1"
@@ -88,7 +123,11 @@ const SUGGESTIONS = [
             (input)="onInput($any($event.target).value)"
             (keydown)="onKey($event)"
           ></textarea>
-          <ui-button variant="primary" [disabled]="!input().trim() || store.thinking()" (click)="send()">
+          <ui-button
+            variant="primary"
+            [disabled]="!input().trim() || store.thinking()"
+            (click)="send()"
+          >
             <ui-icon name="send" [size]="14" />
           </ui-button>
         </div>
