@@ -18,4 +18,9 @@ export class AgentApi {
     formData.append('file', audioBlob, filename);
     return this.http.post<TranscribeResponseBody>(`${this.baseUrl}/transcribe`, formData);
   }
+
+  /** Synthesize speech for `text`; returns an audio/mpeg blob. Bearer added by interceptor. */
+  tts(text: string, voice: string): Observable<Blob> {
+    return this.http.post(`${this.baseUrl}/tts`, { text, voice }, { responseType: 'blob' });
+  }
 }
