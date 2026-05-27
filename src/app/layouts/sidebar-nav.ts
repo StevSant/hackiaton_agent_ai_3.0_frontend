@@ -36,7 +36,14 @@ interface NavItem {
           [routerLinkActiveOptions]="{ exact: false }"
           class="flex items-center gap-2.5 px-2 py-1.5 rounded-sm text-ink-2 text-[13.5px] cursor-pointer select-none hover:bg-hover hover:text-ink"
         >
-          <ui-icon [name]="it.icon" [size]="18" />
+          @if (it.icon === 'visibility') {
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="shrink-0">
+              <path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          } @else {
+            <ui-icon [name]="it.icon" [size]="18" />
+          }
           <span>{{ it.label }}</span>
           @if (it.badge) {
             <span class="count-badge ml-auto text-[11px] text-brand-ink bg-brand-soft px-1.5 py-px rounded-full tabular-nums">{{ it.badge }}</span>
