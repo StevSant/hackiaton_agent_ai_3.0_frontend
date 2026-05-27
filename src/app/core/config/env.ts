@@ -9,7 +9,7 @@ export const environment = {
    * These are not real secrets — they are the hackathon's demo accounts.
    */
   demoCredentials: {
-    analista: { email: 'analista@demo.com', password: 'secure123' },
-    antifraude: { email: 'antifraude@demo.com', password: 'secure123' },
+    analista: { email: 'analista@demo.com', password: 'Demo.Analista2026' },
+    antifraude: { email: 'antifraude@demo.com', password: 'Demo.Antifraude2026' },
   },
 } as const;
