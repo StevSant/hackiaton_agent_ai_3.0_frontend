@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 
 import type { TtsState } from '@core/tts/text-to-speech.service';
 import { MarkdownPipe } from '@shared/pipes';
@@ -7,6 +7,7 @@ import { AgentChart } from './agent-chart';
 import { AgentEyeIcon } from './agent-eye-icon';
 import { AgentSteps } from './agent-steps';
 import type { AgentMessage } from '../models';
+import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
 
 @Component({
   selector: 'agent-chat-message',
@@ -70,17 +71,19 @@ import type { AgentMessage } from '../models';
           }
 
           @if (chart(); as chartData) {
-            @if (chartAccepted()) {
-              <agent-chart [payload]="chartData" (openCase)="openCase.emit($event)" />
-            } @else {
-              <button
-                type="button"
-                class="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-ink bg-brand-soft border border-line rounded-lg px-2.5 py-1.5 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                (click)="acceptChart.emit(message().id)"
-              >
-                <ui-icon name="bar_chart" [size]="15" />
-                Ver como gráfico
-              </button>
+            @if (uiPrefs.showCharts()) {
+              @if (chartAccepted()) {
+                <agent-chart [payload]="chartData" (openCase)="openCase.emit($event)" />
+              } @else {
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-ink bg-brand-soft border border-line rounded-lg px-2.5 py-1.5 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  (click)="acceptChart.emit(message().id)"
+                >
+                  <ui-icon name="bar_chart" [size]="15" />
+                  Ver como gráfico
+                </button>
+              }
             }
           }
         </div>
@@ -113,6 +116,8 @@ export class ChatMessage {
   readonly openCase = output<string>();
   readonly ttsToggle = output<string>();
   readonly acceptChart = output<string>();
+
+  protected readonly uiPrefs = inject(ChatUiPrefsStore);
 
   protected readonly isUser = computed(() => this.message().role === 'user');
   protected readonly hasContent = computed(() => this.message().content.length > 0);

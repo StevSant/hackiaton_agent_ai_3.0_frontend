@@ -8,6 +8,7 @@ import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
 import { SegmentedTabs, type SegmentedTab } from '@shared/ui/segmented-tabs';
+import { SkeletonTable } from '@shared/ui/skeleton-table';
 import { formatDateTime, ramoIcon, ramoLabel } from '@shared/utils';
 import { AntifraudeInboxStore } from '../services/antifraude-inbox.store';
 import { InboxTable } from '../components/inbox-table';
@@ -17,7 +18,7 @@ type TabKey = 'activos' | 'historico';
 @Component({
   selector: 'page-antifraude-bandeja',
   standalone: true,
-  imports: [Button, Icon, KpiSmall, Pagination, SegmentedTabs, InboxTable],
+  imports: [Button, Icon, KpiSmall, Pagination, SegmentedTabs, SkeletonTable, InboxTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
@@ -74,7 +75,7 @@ type TabKey = 'activos' | 'historico';
 
       @if (tab() === 'activos') {
         @if (store.loading()) {
-          <div class="px-5 py-12 text-center text-ink-3 text-[13px]">Cargando casos activos…</div>
+          <ui-skeleton-table [rows]="6" [cols]="6" />
         } @else if (activeRows().length === 0) {
           <div class="px-5 py-12 text-center text-ink-3 text-[13px]">
             La bandeja activa está vacía. Cuando un analista escale un caso, aparecerá aquí.
@@ -91,7 +92,7 @@ type TabKey = 'activos' | 'historico';
         }
       } @else {
         @if (store.historicoLoading()) {
-          <div class="px-5 py-12 text-center text-ink-3 text-[13px]">Cargando histórico…</div>
+          <ui-skeleton-table [rows]="6" [cols]="6" />
         } @else if (historicoRows().length === 0) {
           <div class="px-5 py-12 text-center text-ink-3 text-[13px]">
             Todavía no has emitido dictámenes.

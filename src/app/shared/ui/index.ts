@@ -16,3 +16,7 @@ export { Modal } from './modal';
 export { Pagination } from './pagination';
 export { RoleBadge } from './role-badge';
 export { SegmentedTabs, type SegmentedTab } from './segmented-tabs';
+export { Skeleton } from './skeleton';
+export { SkeletonText } from './skeleton-text';
+export { SkeletonCard } from './skeleton-card';
+export { SkeletonTable } from './skeleton-table';

@@ -19,7 +19,8 @@ import type { Claim } from '../models';
         </div>
         <div>
           <div class="text-[11px] text-ink-3 uppercase tracking-wider font-medium mb-1">Asegurado</div>
-          <div class="text-[13.5px] font-medium font-mono">{{ claim().asegurado_id }}</div>
+          <div class="text-[13.5px] font-medium">{{ claim().asegurado }}</div>
+          <div class="text-[11px] text-ink-3 font-mono mt-0.5">{{ claim().asegurado_id }}</div>
         </div>
         <div>
           <div class="text-[11px] text-ink-3 uppercase tracking-wider font-medium mb-1">Suma asegurada</div>

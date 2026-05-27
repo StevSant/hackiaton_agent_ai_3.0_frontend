@@ -26,6 +26,7 @@ import { TtsPlayer } from '../components/tts-player';
 import { VoiceEqualizer } from '../components/voice-equalizer';
 import type { ConversationSummary } from '../models';
 import { AgentStore } from '../services/agent.store';
+import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
 import { ConversationsStore } from '../services/conversations.store';
 import { VoiceRecorderService } from '../services/voice-recorder.service';
 
@@ -69,6 +70,17 @@ function generateUuid(): string {
           title="Historial"
         >
           <ui-icon name="history" [size]="18" />
+        </button>
+
+        <button
+          type="button"
+          class="chat-panel__tool-btn"
+          [class.text-brand-ink]="uiPrefs.showCharts()"
+          (click)="uiPrefs.toggleCharts()"
+          [attr.aria-label]="uiPrefs.showCharts() ? 'Ocultar gráficos generados' : 'Mostrar gráficos generados'"
+          [attr.title]="uiPrefs.showCharts() ? 'Ocultar gráficos generados' : 'Mostrar gráficos generados'"
+        >
+          <ui-icon [name]="uiPrefs.showCharts() ? 'insert_chart' : 'bar_chart_off'" [size]="18" />
         </button>
 
         <button
@@ -313,6 +325,7 @@ export class ChatPage implements AfterViewChecked {
   protected readonly store = inject(AgentStore);
   protected readonly conversations = inject(ConversationsStore);
   protected readonly voice = inject(VoiceRecorderService);
+  protected readonly uiPrefs = inject(ChatUiPrefsStore);
   protected readonly tts = inject(TextToSpeechService);
   private readonly agentApi = inject(AgentApi);
   private readonly route = inject(ActivatedRoute);
@@ -382,9 +395,10 @@ export class ChatPage implements AfterViewChecked {
     const textareaElement = this.textarea()?.nativeElement;
     if (textareaElement) {
       const minHeight = 44;
+      const maxHeight = 200;
       textareaElement.style.height = 'auto';
       textareaElement.style.height =
-        Math.max(minHeight, Math.min(120, textareaElement.scrollHeight)) + 'px';
+        Math.max(minHeight, Math.min(maxHeight, textareaElement.scrollHeight)) + 'px';
     }
   }
 

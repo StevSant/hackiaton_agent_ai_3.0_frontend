@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { Pagination } from '@shared/ui/pagination';
+import { SkeletonTable } from '@shared/ui/skeleton-table';
 import { RAMOS, reviewStatusLabel, type RamoKey, type RiskTier } from '@shared/utils';
 import type { Claim } from '@shared/models';
 import { InvestigacionTable } from '../components/investigacion-table';
@@ -51,7 +52,7 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
 @Component({
   selector: 'page-antifraude-investigacion',
   standalone: true,
-  imports: [Button, Icon, Pagination, InvestigacionTable],
+  imports: [Button, Icon, Pagination, SkeletonTable, InvestigacionTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-start justify-between gap-4 py-2 pb-5">
@@ -199,7 +200,7 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
 
     <div class="bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
       @if (store.loading()) {
-        <div class="px-5 py-16 text-center text-ink-3 text-[13px]">Cargando siniestros…</div>
+        <ui-skeleton-table [rows]="8" [cols]="7" />
       } @else if (filtered().length === 0) {
         <div class="px-5 py-16 text-center text-ink-3 text-[13px]">
           @if (store.claims().length === 0 && !store.error()) {

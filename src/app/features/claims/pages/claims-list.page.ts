@@ -7,6 +7,7 @@ import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
 import { SegmentedTabs, type SegmentedTab } from '@shared/ui/segmented-tabs';
+import { SkeletonTable } from '@shared/ui/skeleton-table';
 import { ClaimsTable } from '../components/claims-table';
 import { ClaimsStore } from '@core/state/claims.store';
 import type { Claim } from '@shared/models';
@@ -18,7 +19,7 @@ type TierFilter = 'todos' | RiskTier | 'rebotados';
 @Component({
   selector: 'page-claims-list',
   standalone: true,
-  imports: [Chip, Icon, KpiSmall, Pagination, SegmentedTabs, ClaimsTable],
+  imports: [Chip, Icon, KpiSmall, Pagination, SegmentedTabs, SkeletonTable, ClaimsTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
@@ -83,7 +84,9 @@ type TierFilter = 'todos' | RiskTier | 'rebotados';
           </ui-chip>
         </div>
       </div>
-      @if (filtered().length === 0) {
+      @if (store.loading() && store.claims().length === 0) {
+        <ui-skeleton-table [rows]="8" [cols]="6" />
+      } @else if (filtered().length === 0) {
         <div class="px-5 py-12 text-center text-ink-3 text-[13px]">
           @if (tab() === 'activos') {
             Sin casos activos con los filtros seleccionados.
@@ -105,7 +108,7 @@ type TierFilter = 'todos' | RiskTier | 'rebotados';
   `,
 })
 export class ClaimsListPage {
-  private readonly store = inject(ClaimsStore);
+  protected readonly store = inject(ClaimsStore);
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
 

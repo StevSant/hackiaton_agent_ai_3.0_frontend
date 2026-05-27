@@ -5,7 +5,7 @@ import { AuthStore } from '@core/auth/auth.store';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { RiskBadge } from '@shared/ui/risk-badge';
-import { Spinner } from '@shared/ui/spinner';
+import { SkeletonCard } from '@shared/ui/skeleton-card';
 import { ramoIcon, ramoLabel } from '@shared/utils';
 import { AiExplanationCard } from '../components/ai-explanation-card';
 import { AlertsList } from '../components/alerts-list';
@@ -37,7 +37,7 @@ import { ProvidersStore } from '@core/state/providers.store';
     Button,
     Icon,
     RiskBadge,
-    Spinner,
+    SkeletonCard,
     AiExplanationCard,
     AlertsList,
     AnomalyIndicatorCard,
@@ -144,13 +144,10 @@ import { ProvidersStore } from '@core/state/providers.store';
               (uploaded)="onDocumentsUploaded()"
             />
           } @else {
-            <div
-              class="bg-surface border border-line rounded-lg shadow-1 px-5 py-6 flex items-center gap-3 text-[13px] text-ink-3"
-              role="status"
-              aria-live="polite"
-            >
-              <ui-spinner [size]="16" />
-              Cargando análisis del siniestro…
+            <div role="status" aria-label="Cargando análisis del siniestro" class="flex flex-col gap-5">
+              <ui-skeleton-card [bodyLines]="5" />
+              <ui-skeleton-card [bodyLines]="3" />
+              <ui-skeleton-card [bodyLines]="4" />
             </div>
           }
         </div>

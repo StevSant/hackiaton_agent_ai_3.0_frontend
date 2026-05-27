@@ -60,9 +60,8 @@
 
 .chat-composer {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 12px;
-  min-height: 56px;
   padding: 6px 8px 6px 14px;
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -99,7 +98,7 @@
   outline: 0;
   color: var(--ink);
   font-size: 14px;
-  max-height: 120px;
+  max-height: 200px;
   min-height: 44px;
   margin: 0;
   padding: 11px 6px;
@@ -159,7 +158,8 @@
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  align-self: center;
+  align-self: flex-end;
+  padding-bottom: 6px;
 }
 
 .chat-composer__icon-wrap {
