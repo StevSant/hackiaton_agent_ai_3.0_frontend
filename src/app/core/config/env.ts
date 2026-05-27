@@ -1,15 +1,6 @@
-export const environment = {
-  production: false,
-  backendUrl: 'http://localhost:8000',
-  apiPrefix: '/api/v1',
-  /**
-   * Seeded demo personas. Email + password MUST mirror the backend's
-   * AUTH_SEED_USERS entries in .env so the demo persona buttons on /login
-   * exercise the real auth flow (no mock tokens, no client-side persona fakery).
-   * These are not real secrets — they are the hackathon's demo accounts.
-   */
-  demoCredentials: {
-    analista: { email: 'analista@demo.com', password: 'Demo.Analista2026' },
-    antifraude: { email: 'antifraude@demo.com', password: 'Demo.Antifraude2026' },
-  },
-} as const;
+// Stable import path for the active environment. Angular swaps the underlying file
+// per build via `fileReplacements` in angular.json:
+//   development → src/environments/environment.ts      (backendUrl = http://localhost:8000)
+//   production  → src/environments/environment.prod.ts (backendUrl = Cloud Run URL)
+// Feature code keeps importing from 'core/config/env' — do NOT hardcode URLs here.
+export { environment } from '../../../environments/environment';
