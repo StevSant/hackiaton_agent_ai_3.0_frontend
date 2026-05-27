@@ -130,11 +130,17 @@ export class NetworkGraph {
       isHub: true,
     };
 
+    // Adapt node size + ring radius to provider count so 5 vs 15 nodes both
+    // look balanced (small ring + big nodes vs large ring + smaller nodes).
+    const count = providerList.length || 1;
+    const radius = count <= 6 ? 30 : count <= 10 ? 34 : 38;
+    const sizeBase = count <= 6 ? 56 : count <= 10 ? 50 : 44;
+    const sizeBonus = count <= 6 ? 22 : count <= 10 ? 16 : 12;
+
     const providerNodes = providerList.map((provider, index) => {
-      const angle = (index / providerList.length) * Math.PI * 2 - Math.PI / 2;
-      const radius = 36;
-      const alertRatio = provider.alertas / provider.casos;
-      const riskKind: NodeKind = alertRatio > 0.4 ? 'alert' : alertRatio > 0.2 ? 'warn' : 'prov';
+      const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
+      const ratio = provider.casos > 0 ? provider.alertas / provider.casos : 0;
+      const riskKind: NodeKind = ratio > 0.4 ? 'alert' : ratio > 0.2 ? 'warn' : 'prov';
 
       return {
         id: provider.id,
@@ -142,7 +148,7 @@ export class NetworkGraph {
         fullName: provider.nombre,
         x: centerX + Math.cos(angle) * radius,
         y: centerY + Math.sin(angle) * radius,
-        size: 48 + Math.min(18, Math.round(provider.casos * 1.4)),
+        size: sizeBase + Math.min(sizeBonus, Math.round(provider.casos * 1.4)),
         kind: riskKind,
         isHub: false,
       };
