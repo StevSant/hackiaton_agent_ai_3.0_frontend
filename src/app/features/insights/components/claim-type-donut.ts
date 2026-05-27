@@ -7,8 +7,8 @@ import { STITCH_CLAIM_SLICES } from '../constants/stitch-insights.constants';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="bg-white border border-[#c4c6cf] rounded-md p-3">
-      <h3 class="text-[12px] font-bold text-[#000515] mb-2 m-0">Riesgo por tipo de siniestro</h3>
+    <div class="bg-surface border border-line rounded-lg p-3">
+      <h3 class="text-[12px] font-bold text-ink mb-2 m-0">Riesgo por tipo de siniestro</h3>
 
       <div class="flex items-center gap-3">
         <div class="relative w-16 h-16 shrink-0">
@@ -18,7 +18,15 @@ import { STITCH_CLAIM_SLICES } from '../constants/stitch-insights.constants';
               cy="18"
               r="16"
               fill="transparent"
-              stroke="#041e41"
+              stroke="var(--border)"
+              stroke-width="4"
+            />
+            <circle
+              cx="18"
+              cy="18"
+              r="16"
+              fill="transparent"
+              stroke="#3b82f6"
               stroke-width="4"
               stroke-dasharray="60 100"
             />
@@ -44,8 +52,8 @@ import { STITCH_CLAIM_SLICES } from '../constants/stitch-insights.constants';
             />
           </svg>
           <div class="absolute inset-0 flex flex-col items-center justify-center">
-            <span class="text-[8px] font-mono text-[#44474e]">Total</span>
-            <span class="text-[11px] font-bold text-[#000515] tabular-nums">12.4k</span>
+            <span class="text-[8px] font-mono text-ink-3">Total</span>
+            <span class="text-[11px] font-bold text-ink tabular-nums">12.4k</span>
           </div>
         </div>
 
@@ -54,9 +62,9 @@ import { STITCH_CLAIM_SLICES } from '../constants/stitch-insights.constants';
             <div class="flex items-center justify-between gap-1">
               <div class="flex items-center gap-1 min-w-0">
                 <span class="w-1.5 h-1.5 rounded-full shrink-0" [style.background]="slice.color"></span>
-                <span class="text-[9px] font-mono text-[#44474e] truncate">{{ slice.label }}</span>
+                <span class="text-[9px] font-mono text-ink-3 truncate">{{ slice.label }}</span>
               </div>
-              <span class="text-[9px] font-mono font-bold text-[#1a1c1c] tabular-nums shrink-0">{{ slice.pct }}%</span>
+              <span class="text-[9px] font-mono font-bold text-ink tabular-nums shrink-0">{{ slice.pct }}%</span>
             </div>
           }
         </div>

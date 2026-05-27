@@ -40,7 +40,7 @@ export const STITCH_REGIONAL_BARS = [
 ] as const;
 
 export const STITCH_CLAIM_SLICES = [
-  { label: 'Automotriz', pct: 60, color: '#041e41' },
+  { label: 'Automotriz', pct: 60, color: '#3b82f6' },
   { label: 'Salud', pct: 25, color: '#00aeef' },
   { label: 'Vida/PYMES', pct: 15, color: '#8b5cf6' },
 ] as const;

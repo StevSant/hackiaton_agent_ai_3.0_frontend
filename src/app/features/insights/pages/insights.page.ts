@@ -43,10 +43,10 @@ import { exportInsightsCsv } from '../utils/export-insights';
       </div>
 
       <aside
-        class="insights-sidebar w-full lg:w-[292px] shrink-0 flex flex-col gap-2"
+        class="insights-sidebar w-full lg:w-[292px] shrink-0 flex flex-col gap-2 min-h-0"
       >
         <insights-fraud-tendency class="shrink-0" />
-        <insights-ai-anomalies class="flex-1 min-h-0" />
+        <insights-ai-anomalies class="flex-1 min-h-[160px] max-h-[280px] flex" />
         <insights-claim-type-donut class="shrink-0" />
         <insights-quarterly-outlook class="shrink-0" />
       </aside>
