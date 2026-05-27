@@ -1,10 +1,10 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { AuditApi, type AuditEventDto } from '@core/api/clients/audit.api';
+import { RulesApi, type RuleChangeDto } from '@core/api/clients/rules.api';
 import { AuthStore } from '@core/auth/auth.store';
 import { AppError } from '@core/errors/app-error';
-import type { AuditEvent } from '../models';
+import type { RuleChange } from '../models/rule-change.model';
 
 function formatTs(iso: string): string {
   const d = new Date(iso);
@@ -13,43 +13,34 @@ function formatTs(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function dtoToEvent(dto: AuditEventDto): AuditEvent {
+function dtoToChange(dto: RuleChangeDto): RuleChange {
   return {
     id: dto.id,
     ts: formatTs(dto.ts),
     actor: dto.actor,
-    actorName: dto.actor_name,
-    action: dto.action,
-    title: dto.title,
-    detail: dto.detail,
-    target: dto.target ?? undefined,
+    ruleCode: dto.rule_code,
+    ruleName: dto.rule_name,
+    kind: dto.kind,
+    summary: dto.summary,
+    before: dto.before_value ?? undefined,
+    after: dto.after_value ?? undefined,
   };
 }
 
 @Injectable({ providedIn: 'root' })
-export class AuditStore {
-  private readonly api = inject(AuditApi);
+export class RuleChangesStore {
+  private readonly api = inject(RulesApi);
   private readonly auth = inject(AuthStore);
 
-  private readonly _events = signal<AuditEvent[]>([]);
+  private readonly _changes = signal<RuleChange[]>([]);
   private readonly _loading = signal<boolean>(false);
   private readonly _error = signal<AppError | null>(null);
 
-  readonly events = this._events.asReadonly();
+  readonly changes = this._changes.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
 
   private lastUserId: string | null = null;
-
-  readonly stats = computed(() => {
-    const list = this._events();
-    return {
-      hoy: list.length,
-      escalamientos: list.filter((e) => e.action === 'escalamiento').length,
-      consultas: list.filter((e) => e.action === 'consulta_ia').length,
-      manuales: list.filter((e) => e.actor === 'analista').length,
-    };
-  });
 
   constructor() {
     effect(() => {
@@ -59,7 +50,7 @@ export class AuditStore {
       if (userId) {
         void this.loadList();
       } else {
-        this._events.set([]);
+        this._changes.set([]);
       }
     });
   }
@@ -69,8 +60,8 @@ export class AuditStore {
     this._loading.set(true);
     this._error.set(null);
     try {
-      const dtos = await firstValueFrom(this.api.listEvents());
-      this._events.set(dtos.map(dtoToEvent));
+      const dtos = await firstValueFrom(this.api.listChanges());
+      this._changes.set(dtos.map(dtoToChange));
     } catch (err) {
       this._error.set(err instanceof AppError ? err : new AppError('unknown', String(err)));
     } finally {

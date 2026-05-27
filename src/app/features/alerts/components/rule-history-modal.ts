@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { Modal } from '@shared/ui/modal';
-import { MOCK_RULE_CHANGES } from '../services/rule-changes-mock.data';
-import type { RuleChange, RuleChangeKind } from '../models/rule-change.model';
+import { RuleChangesStore } from '../services/rule-changes.store';
+import type { RuleChangeKind } from '../models/rule-change.model';
 
 @Component({
   selector: 'alerts-rule-history-modal',
@@ -20,7 +20,7 @@ import type { RuleChange, RuleChangeKind } from '../models/rule-change.model';
       (close)="close.emit()"
     >
       <div class="flex items-center justify-between px-5 py-3 border-b border-line bg-soft text-[12px] text-ink-3">
-        <span>{{ changes.length }} cambios en los últimos 30 días</span>
+        <span>{{ changes().length }} cambios en los últimos 30 días</span>
         <span class="flex items-center gap-1.5">
           <ui-icon name="lock" [size]="12" />
           Solo lectura · firmado con SHA-256
@@ -28,7 +28,7 @@ import type { RuleChange, RuleChangeKind } from '../models/rule-change.model';
       </div>
 
       <div class="timeline px-6 pt-5 pb-4">
-        @for (c of changes; track c.id) {
+        @for (c of changes(); track c.id) {
           <div class="tl-item" [attr.data-tone]="toneFor(c.kind)">
             <div class="flex items-center gap-2 text-[11.5px] text-ink-3 font-mono tabular-nums">
               <span>{{ c.ts }}</span>
@@ -80,7 +80,8 @@ export class RuleHistoryModal {
   readonly open = input.required<boolean>();
   readonly close = output<void>();
 
-  protected readonly changes: RuleChange[] = MOCK_RULE_CHANGES;
+  private readonly store = inject(RuleChangesStore);
+  protected readonly changes = this.store.changes;
 
   private readonly kindMeta: Record<
     RuleChangeKind,

@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
 import { Icon } from '@shared/ui/icon';
-import { MOCK_ANOMALIES } from '../services/insights-mock.data';
+import { InsightsStore } from '../services/insights.store';
 import type { AiAnomaly } from '../models';
 
 @Component({
@@ -17,7 +17,7 @@ import type { AiAnomaly } from '../models';
       </div>
 
       <div class="space-y-1.5 flex-1 overflow-y-auto scroll-pretty">
-        @for (item of anomalies; track item.id) {
+        @for (item of anomalies(); track item.id) {
           <button
             type="button"
             class="w-full text-left px-2 py-1.5 border border-[#c4c6cf] rounded hover:bg-[#eeeeee] transition-colors cursor-pointer group"
@@ -41,7 +41,8 @@ import type { AiAnomaly } from '../models';
   `,
 })
 export class AiAnomaliesPanel {
-  protected readonly anomalies = MOCK_ANOMALIES;
+  private readonly store = inject(InsightsStore);
+  protected readonly anomalies = this.store.anomalies;
 
   protected severityLabel(item: AiAnomaly): string {
     return item.severity === 'critical' ? 'Crítico' : 'Potencial';
