@@ -17,6 +17,7 @@ import { firstValueFrom } from 'rxjs';
 import { AgentApi } from '@core/api/clients/agent.api';
 import { TextToSpeechService } from '@core/tts/text-to-speech.service';
 import { Icon } from '@shared/ui/icon';
+import { AgentEyeIcon } from '../components/agent-eye-icon';
 import { ChatMessage } from '../components/chat-message';
 import { ConversationRenameModal } from '../components/conversation-rename-modal';
 import { ConversationsSidebar } from '../components/conversations-sidebar';
@@ -49,6 +50,7 @@ function generateUuid(): string {
   imports: [
     Icon,
     ChatMessage,
+    AgentEyeIcon,
     ConversationsSidebar,
     ConversationRenameModal,
     VoiceEqualizer,
@@ -56,58 +58,38 @@ function generateUuid(): string {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex flex-col h-[calc(100vh-7rem)] min-h-0">
-      <div class="flex items-end justify-between gap-6 py-2 pb-6 px-4">
-        <div class="flex items-center gap-3">
+    <div class="flex flex-col h-[calc(100vh-5rem)] min-h-0 -mx-4">
+      <div
+        class="chat-panel grid grid-rows-[auto_1fr_auto] bg-surface border border-line rounded-xl shadow-2 overflow-hidden flex-1 min-h-0"
+      >
+        <div class="chat-panel__toolbar">
           <button
             type="button"
-            class="chat-history-toggle"
+            class="chat-panel__tool-btn"
             (click)="historyOpen.set(true)"
             aria-label="Abrir historial de conversaciones"
-            title="Historial de conversaciones"
+            title="Historial"
           >
             <ui-icon name="history" [size]="18" />
           </button>
-          <div>
-            <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1 flex items-center gap-2.5">
-              <span
-                class="w-8 h-8 rounded-md grid place-items-center"
-                style="background: linear-gradient(135deg, var(--brand), var(--brand-2)); box-shadow: 0 4px 12px color-mix(in oklch, var(--brand) 30%, transparent);"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z"
-                    stroke="white"
-                    stroke-width="2"
-                    stroke-linejoin="round"
-                  />
-                  <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" />
-                </svg>
-              </span>
-              Centinela IA
-            </h1>
-            <p class="text-ink-3 text-[13.5px] m-0">
-              Conversa con tu bandeja. Pregúntame por casos, patrones, proveedores o ramos.
-            </p>
-          </div>
-        </div>
-      </div>
 
-      <div
-        class="mx-4 grid grid-rows-[1fr_auto] bg-surface border border-line rounded-xl shadow-2 overflow-hidden flex-1 min-h-0"
-      >
-        <div #scroll class="overflow-y-auto scroll-pretty px-8 pt-7 pb-3 flex flex-col gap-5">
+          <button
+            type="button"
+            class="chat-panel__tool-btn chat-panel__tool-btn--primary"
+            (click)="newChat()"
+            aria-label="Nueva conversación"
+            title="Nueva conversación"
+          >
+            <ui-icon name="add" [size]="20" [weight]="600" />
+          </button>
+        </div>
+
+        <div #scroll class="overflow-y-auto scroll-pretty px-4 pt-3 pb-3 flex flex-col gap-4">
           @for (m of store.messages(); track m.id; let last = $last) {
             <agent-chat-message
               [message]="m"
-              [streaming]="last && m.role === 'assistant' && !store.thinking()"
+              [streaming]="last && m.role === 'assistant' && store.isResponding()"
+              [tracking]="last && m.role === 'assistant' && store.isResponding()"
               [ttsSupported]="tts.supported"
               [ttsActive]="tts.activeId() === m.id"
               [ttsState]="tts.state()"
@@ -117,36 +99,23 @@ function generateUuid(): string {
             />
           }
           @if (store.thinking()) {
-            <div class="max-w-[720px] flex gap-3.5">
+            <div class="w-full flex gap-3 items-start">
               <div
-                class="w-7 h-7 rounded-full grid place-items-center shrink-0"
+                class="w-10 h-10 rounded-full grid place-items-center shrink-0"
                 style="background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);"
               >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z"
-                    stroke="white"
-                    stroke-width="2"
-                    stroke-linejoin="round"
-                  />
-                  <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" />
-                </svg>
+                <agent-eye-icon [size]="18" [tracking]="store.isResponding()" />
               </div>
-              <div class="text-[13.5px] px-3.5 py-3.5 rounded-2xl border border-line bg-surface">
+              <div
+                class="text-[13.5px] px-3.5 py-3.5 rounded-2xl border border-line bg-surface min-w-0 max-w-[min(720px,calc(100%-3.25rem))]"
+              >
                 <span class="dots"><span></span><span></span><span></span></span>
               </div>
             </div>
           }
         </div>
 
-        <div class="border-t border-line px-4 py-3.5 bg-surface">
+        <div class="border-t border-line px-3 py-3 bg-surface min-w-0">
           @if (tts.activeId() !== null) {
             <div class="mb-2.5">
               <agent-tts-player
@@ -243,16 +212,43 @@ function generateUuid(): string {
             <p class="text-[12px] text-danger m-0 mt-2">{{ voiceError() }}</p>
           }
 
-          <div class="flex gap-2 flex-wrap mt-2.5">
-            @for (s of suggestions; track s) {
-              <button type="button" class="chat-suggestion" (click)="quickSend(s)">
-                <span class="chat-suggestion__icon">
-                  <ui-icon name="visibility" [size]="15" [weight]="500" />
-                </span>
-                <span class="chat-suggestion__label">{{ s }}</span>
+          <section class="chat-suggestions" aria-label="Preguntas rápidas">
+            <p class="chat-suggestions__title">Preguntas rápidas</p>
+            <div class="chat-suggestions__row">
+              <button
+                type="button"
+                class="chat-suggestions__nav"
+                (click)="scrollSuggestions(-1)"
+                aria-label="Ver sugerencias anteriores"
+              >
+                <ui-icon name="chevron_left" [size]="18" />
               </button>
-            }
-          </div>
+
+              <div
+                #suggestionsStrip
+                class="chat-suggestions__strip"
+                (wheel)="onSuggestionsWheel($event)"
+              >
+                @for (s of suggestions; track s) {
+                  <button type="button" class="chat-suggestion" (click)="quickSend(s)">
+                    <span class="chat-suggestion__icon" aria-hidden="true">
+                      <agent-eye-icon [size]="15" />
+                    </span>
+                    <span class="chat-suggestion__label">{{ s }}</span>
+                  </button>
+                }
+              </div>
+
+              <button
+                type="button"
+                class="chat-suggestions__nav"
+                (click)="scrollSuggestions(1)"
+                aria-label="Ver más sugerencias"
+              >
+                <ui-icon name="chevron_right" [size]="18" />
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     </div>
@@ -309,6 +305,72 @@ function generateUuid(): string {
   `,
   styles: [
     `
+      .chat-panel {
+        box-shadow:
+          var(--shadow-2),
+          inset 0 1px 0 color-mix(in oklch, white 6%, transparent);
+      }
+
+      .chat-panel__toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        background: color-mix(in oklch, var(--bg-soft) 55%, var(--bg-elev));
+      }
+
+      .chat-panel__tool-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--bg-elev);
+        color: var(--ink-2);
+        cursor: pointer;
+        box-shadow: var(--shadow-1);
+        transition:
+          transform 120ms ease,
+          background 120ms ease,
+          border-color 120ms ease,
+          box-shadow 120ms ease;
+      }
+
+      .chat-panel__tool-btn:hover {
+        background: var(--brand-soft);
+        border-color: color-mix(in oklch, var(--brand) 25%, var(--border));
+        color: var(--brand-ink);
+        transform: translateY(-1px);
+      }
+
+      .chat-panel__tool-btn--primary {
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        border-color: transparent;
+        color: white;
+        box-shadow: 0 4px 14px color-mix(in oklch, var(--brand) 26%, transparent);
+      }
+
+      .chat-panel__tool-btn--primary:hover {
+        background: linear-gradient(135deg, var(--brand-2), var(--brand));
+        color: white;
+        box-shadow: 0 6px 18px color-mix(in oklch, var(--brand) 32%, transparent);
+      }
+
+      .chat-panel__tool-btn ::ng-deep .material-symbols-outlined {
+        display: block;
+        line-height: 1;
+      }
+
+      @media (max-width: 640px) {
+        .chat-panel__toolbar {
+          padding: 8px 10px;
+        }
+      }
+
       .chat-composer {
         display: flex;
         align-items: center;
@@ -496,47 +558,131 @@ function generateUuid(): string {
         box-shadow: none;
       }
 
-      .chat-suggestion {
+      .chat-suggestions {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed color-mix(in oklch, var(--border) 85%, transparent);
+        min-width: 0;
+      }
+
+      .chat-suggestions__title {
+        margin: 0 0 6px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+      }
+
+      .chat-suggestions__row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+      }
+
+      .chat-suggestions__nav {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        padding: 10px 15px;
-        min-height: 38px;
-        border-radius: 999px;
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
         border: 1px solid var(--border);
+        border-radius: 999px;
         background: var(--bg-elev);
         color: var(--ink-2);
-        font-size: 13px;
-        font-weight: 500;
-        line-height: 1;
         cursor: pointer;
         box-shadow: var(--shadow-1);
         transition:
           background 120ms ease,
           border-color 120ms ease,
-          color 120ms ease,
-          transform 120ms ease;
+          color 120ms ease;
       }
 
-      .chat-suggestion__icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 16px;
-        height: 16px;
-        flex-shrink: 0;
-        line-height: 0;
+      .chat-suggestions__nav:hover {
+        background: var(--brand-soft);
+        border-color: color-mix(in oklch, var(--brand) 22%, var(--border));
+        color: var(--brand-ink);
       }
 
-      .chat-suggestion__icon ::ng-deep .material-symbols-outlined {
+      .chat-suggestions__nav ::ng-deep .material-symbols-outlined {
         display: block;
         line-height: 1;
       }
 
+      .chat-suggestions__strip {
+        display: flex;
+        flex: 1;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        gap: 8px;
+        min-width: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 2px 0 4px;
+        scroll-snap-type: x proximity;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        touch-action: pan-x;
+        scrollbar-width: thin;
+      }
+
+      .chat-suggestions__strip::-webkit-scrollbar {
+        height: 6px;
+      }
+
+      .chat-suggestions__strip::-webkit-scrollbar-thumb {
+        background: var(--border-2);
+        border-radius: 999px;
+      }
+
+      .chat-suggestion {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        flex: 0 0 auto;
+        width: max-content;
+        max-width: 320px;
+        min-height: 42px;
+        padding: 8px 14px 8px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--bg-soft);
+        color: var(--ink-2);
+        font-size: 12.5px;
+        font-weight: 500;
+        line-height: 1.2;
+        text-align: left;
+        cursor: pointer;
+        scroll-snap-align: start;
+        box-shadow: var(--shadow-1);
+        transition:
+          background 120ms ease,
+          border-color 120ms ease,
+          color 120ms ease,
+          transform 120ms ease,
+          box-shadow 120ms ease;
+      }
+
+      .chat-suggestion__icon {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        flex-shrink: 0;
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        box-shadow: 0 3px 10px color-mix(in oklch, var(--brand) 24%, transparent);
+      }
+
       .chat-suggestion__label {
         display: block;
-        line-height: 1.25;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .chat-suggestion:hover {
@@ -544,37 +690,7 @@ function generateUuid(): string {
         border-color: color-mix(in oklch, var(--brand) 22%, var(--border));
         color: var(--brand-ink);
         transform: translateY(-1px);
-      }
-
-      .chat-history-toggle {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: var(--bg-elev);
-        color: var(--ink-2);
-        cursor: pointer;
-        box-shadow: var(--shadow-1);
-        transition:
-          background 120ms ease,
-          border-color 120ms ease,
-          color 120ms ease,
-          transform 120ms ease;
-      }
-
-      .chat-history-toggle:hover {
-        background: var(--brand-soft);
-        border-color: color-mix(in oklch, var(--brand) 25%, var(--border));
-        color: var(--brand-ink);
-        transform: translateY(-1px);
-      }
-
-      .chat-history-toggle ::ng-deep .material-symbols-outlined {
-        display: block;
-        line-height: 1;
+        box-shadow: 0 4px 14px color-mix(in oklch, var(--brand) 12%, transparent);
       }
 
       @keyframes chat-voice-pulse {
@@ -613,6 +729,7 @@ export class ChatPage implements AfterViewChecked {
 
   private readonly scrollEl = viewChild<ElementRef<HTMLDivElement>>('scroll');
   private readonly textarea = viewChild<ElementRef<HTMLTextAreaElement>>('ta');
+  private readonly suggestionsStrip = viewChild<ElementRef<HTMLDivElement>>('suggestionsStrip');
 
   constructor() {
     afterNextRender(() => {
@@ -725,6 +842,20 @@ export class ChatPage implements AfterViewChecked {
     void this.store.ask(text, convId);
   }
 
+  protected scrollSuggestions(direction: -1 | 1): void {
+    const stripElement = this.suggestionsStrip()?.nativeElement;
+    if (!stripElement) return;
+    stripElement.scrollBy({ left: direction * 260, behavior: 'smooth' });
+  }
+
+  protected onSuggestionsWheel(event: WheelEvent): void {
+    const stripElement = this.suggestionsStrip()?.nativeElement;
+    if (!stripElement) return;
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+    event.preventDefault();
+    stripElement.scrollLeft += event.deltaY;
+  }
+
   protected onTtsToggle(id: string): void {
     const message = this.store.messages().find((m) => m.id === id);
     if (message) this.tts.toggle(id, message.content);
@@ -732,6 +863,8 @@ export class ChatPage implements AfterViewChecked {
 
   protected newChat(): void {
     this.tts.stop();
+    this.input.set('');
+    this.voiceError.set(null);
     const id = generateUuid();
     this.activeConversationId.set(id);
     this.store.startNewConversation(id);
