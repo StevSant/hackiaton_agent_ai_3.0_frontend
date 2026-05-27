@@ -2,7 +2,13 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 
 import { Avatar } from '../../../shared/ui/avatar';
 import { Icon } from '../../../shared/ui/icon';
-import { formatMoney, ramoLabel, type RiskTier } from '../../../shared/utils';
+import {
+  formatMoney,
+  ramoLabel,
+  reviewStatusBadgeClass,
+  reviewStatusLabel,
+  type RiskTier,
+} from '../../../shared/utils';
 import type { Claim } from '../../claims/models';
 
 @Component({
@@ -15,12 +21,13 @@ import type { Claim } from '../../claims/models';
       <table class="w-full text-[13px] border-collapse">
         <thead>
           <tr class="border-b border-line">
-            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">ID Siniestro</th>
+            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">ID siniestro</th>
             <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Asegurado</th>
             <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Cobertura</th>
             <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Ciudad</th>
-            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Monto Estimado</th>
+            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Monto estimado</th>
             <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Alertas IA</th>
+            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Riesgo IA</th>
             <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Estado</th>
             <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4 w-16">Acciones</th>
           </tr>
@@ -41,29 +48,46 @@ import type { Claim } from '../../claims/models';
                 </div>
               </td>
               <td class="px-4 py-3.5 align-middle">
-                <div class="font-medium text-[13px]">{{ claim.cobertura }}</div>
-                <div class="text-[11.5px] text-ink-3 mt-0.5">{{ ramoLabel(claim.ramo) }}</div>
+                <div class="font-medium text-[13px] whitespace-nowrap">
+                  {{ claim.cobertura }}
+                  <span class="text-ink-3 font-normal text-[11.5px]"> · {{ ramoLabel(claim.ramo) }}</span>
+                </div>
               </td>
-              <td class="px-4 py-3.5 align-middle text-ink-2">{{ claim.ciudad }}</td>
-              <td class="px-4 py-3.5 align-middle tabular-nums font-semibold">{{ money(claim.monto_reclamado) }}</td>
-              <td class="px-4 py-3.5 align-middle">
+              <td class="px-4 py-3.5 align-middle text-ink-2 whitespace-nowrap">{{ claim.ciudad }}</td>
+              <td class="px-4 py-3.5 align-middle tabular-nums font-semibold whitespace-nowrap">{{ money(claim.monto_reclamado) }}</td>
+              <td class="px-4 py-3.5 align-middle whitespace-nowrap">
                 @if (claim.alertas.length > 0) {
-                  <div class="flex items-center gap-1 flex-wrap">
+                  <div class="inline-flex items-center gap-1 max-w-full">
                     @for (alert of topAlerts(claim); track alert.code) {
-                      <span class="font-mono text-[10px] px-1.5 py-0.5 rounded" [class]="alertChipClass(alert.severidad)">
+                      <span class="font-mono text-[10px] px-1.5 py-0.5 rounded shrink-0" [class]="alertChipClass(alert.severidad)">
                         {{ alert.code }}
                       </span>
                     }
+                    @if (claim.alertas.length > 3) {
+                      <span class="text-[10px] text-ink-3 shrink-0">+{{ claim.alertas.length - 3 }}</span>
+                    }
                   </div>
                 } @else {
-                  <span class="text-[12px] text-ink-3 italic">Sin alertas</span>
+                  <span class="text-[12px] text-ink-3 whitespace-nowrap">Sin alertas</span>
                 }
               </td>
-              <td class="px-4 py-3.5 align-middle">
-                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium" [class]="riskBadgeClass(claim.nivel)">
-                  <ui-icon [name]="riskBadgeIcon(claim.nivel)" [size]="13" />
-                  {{ riskBadgeLabel(claim.nivel) }}
+              <td class="px-4 py-3.5 align-middle whitespace-nowrap">
+                <span
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium tabular-nums"
+                  [class]="riskBadgeClass(claim.nivel)"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full shrink-0" [class]="riskDotClass(claim.nivel)"></span>
+                  {{ claim.score }}
                 </span>
+              </td>
+              <td class="px-4 py-3.5 align-middle whitespace-nowrap">
+                <span
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium"
+                  [class]="reviewStatusBadgeClass(claim.review.status)"
+                >
+                  {{ reviewStatusLabel(claim.review.status) }}
+                </span>
+                <div class="text-[10.5px] text-ink-3 mt-1">{{ claim.estado }}</div>
               </td>
               <td class="px-4 py-3.5 align-middle">
                 <button
@@ -88,6 +112,8 @@ export class InvestigacionTable {
 
   protected readonly money = formatMoney;
   protected readonly ramoLabel = ramoLabel;
+  protected readonly reviewStatusLabel = reviewStatusLabel;
+  protected readonly reviewStatusBadgeClass = reviewStatusBadgeClass;
 
   protected topAlerts(claim: Claim) {
     return claim.alertas.slice(0, 3);
@@ -106,19 +132,15 @@ export class InvestigacionTable {
         : 'bg-tier-green-soft text-tier-green-ink';
   }
 
-  protected riskBadgeLabel(tier: RiskTier): string {
-    return tier === 'rojo' ? 'Riesgo Crítico' : tier === 'amarillo' ? 'Revisión Req.' : 'Aprobado IA';
-  }
-
-  protected riskBadgeIcon(tier: RiskTier): string {
-    return tier === 'rojo' ? 'warning' : tier === 'amarillo' ? 'info' : 'check_circle';
-  }
-
   protected riskBadgeClass(tier: RiskTier): string {
     return tier === 'rojo'
       ? 'bg-tier-red-soft text-tier-red-ink'
       : tier === 'amarillo'
         ? 'bg-tier-yellow-soft text-tier-yellow-ink'
         : 'bg-tier-green-soft text-tier-green-ink';
+  }
+
+  protected riskDotClass(tier: RiskTier): string {
+    return tier === 'rojo' ? 'bg-tier-red' : tier === 'amarillo' ? 'bg-tier-yellow' : 'bg-tier-green';
   }
 }

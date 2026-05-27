@@ -10,15 +10,15 @@ type KpiTone = 'default' | 'red' | 'yellow' | 'brand';
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="bg-surface border border-line rounded-lg p-4 pb-4.5 shadow-1 flex flex-col min-h-[132px]">
-      <div class="text-[11.5px] text-ink-3 font-medium tracking-wider flex items-center gap-1.5">
+    <div class="bg-surface border border-line rounded-lg p-4 shadow-1 flex flex-col min-h-[132px]">
+      <div class="text-[11.5px] text-ink-3 font-medium tracking-wider flex items-center gap-1.5 shrink-0">
         <span class="w-6 h-6 rounded-md grid place-items-center" [style.background]="bg()" [style.color]="fg()">
           <ui-icon [name]="icon()" [size]="13" />
         </span>
         {{ label() }}
       </div>
-      <div class="font-serif text-[38px] leading-none mt-2.5">
-        <span class="tabular-nums">{{ value() }}</span>
+      <div class="flex-1 flex items-center">
+        <span class="font-serif text-[38px] leading-none tabular-nums">{{ value() }}</span>
       </div>
     </div>
   `,
