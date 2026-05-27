@@ -5,6 +5,7 @@ import { AuthStore } from '@core/auth/auth.store';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { RiskBadge } from '@shared/ui/risk-badge';
+import { Spinner } from '@shared/ui/spinner';
 import { ramoIcon, ramoLabel } from '@shared/utils';
 import { AiExplanationCard } from '../components/ai-explanation-card';
 import { AlertsList } from '../components/alerts-list';
@@ -36,6 +37,7 @@ import { ProvidersStore } from '../../network/services/providers.store';
     Button,
     Icon,
     RiskBadge,
+    Spinner,
     AiExplanationCard,
     AlertsList,
     AnomalyIndicatorCard,
@@ -129,35 +131,48 @@ import { ProvidersStore } from '../../network/services/providers.store';
           } @else if (c.review.status === 'revisado_sin_escalar') {
             <claim-revisado-card [review]="c.review" />
           }
-          <claim-ai-explanation-card [claim]="c" />
-          <claim-alerts-list [alerts]="c.alertas" />
-          <claim-ml-factors-card [claim]="c" />
-          <claim-anomaly-indicator-card [claim]="c" />
-          <claim-similar-narratives-card [claim]="c" />
-          <claim-timeline-card [events]="c.timeline" />
-          <claim-documents-card
-            [docs]="c.documentos"
-            [claimId]="c.id"
-            (uploaded)="onDocumentsUploaded()"
-          />
+          @if (detailLoaded()) {
+            <claim-ai-explanation-card [claim]="c" />
+            <claim-alerts-list [alerts]="c.alertas" />
+            <claim-ml-factors-card [claim]="c" />
+            <claim-anomaly-indicator-card [claim]="c" />
+            <claim-similar-narratives-card [claim]="c" />
+            <claim-timeline-card [events]="c.timeline" />
+            <claim-documents-card
+              [docs]="c.documentos"
+              [claimId]="c.id"
+              (uploaded)="onDocumentsUploaded()"
+            />
+          } @else {
+            <div
+              class="bg-surface border border-line rounded-lg shadow-1 px-5 py-6 flex items-center gap-3 text-[13px] text-ink-3"
+              role="status"
+              aria-live="polite"
+            >
+              <ui-spinner [size]="16" />
+              Cargando análisis del siniestro…
+            </div>
+          }
         </div>
 
         <div class="flex flex-col gap-5">
           <claim-review-timeline [review]="c.review" />
-          <claim-meta-card [claim]="c" />
-          @if (c.vehiculo) {
-            <claim-vehicle-card [vehicle]="c.vehiculo" />
-          }
-          @if (provider(); as p) {
-            <claim-provider-summary-card [provider]="p" />
-          }
-          <div class="bg-surface border border-line rounded-lg shadow-1">
-            <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
-              <h3 class="text-[13px] font-semibold m-0">Relato del reclamo</h3>
+          @if (detailLoaded()) {
+            <claim-meta-card [claim]="c" />
+            @if (c.vehiculo) {
+              <claim-vehicle-card [vehicle]="c.vehiculo" />
+            }
+            @if (provider(); as p) {
+              <claim-provider-summary-card [provider]="p" />
+            }
+            <div class="bg-surface border border-line rounded-lg shadow-1">
+              <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
+                <h3 class="text-[13px] font-semibold m-0">Relato del reclamo</h3>
+              </div>
+              <div class="px-5 py-5 text-[13px] leading-relaxed text-ink-2">{{ c.descripcion }}</div>
             </div>
-            <div class="px-5 py-5 text-[13px] leading-relaxed text-ink-2">{{ c.descripcion }}</div>
-          </div>
-          <claim-recommendation-card [claim]="c" />
+            <claim-recommendation-card [claim]="c" />
+          }
         </div>
       </div>
 
@@ -196,6 +211,9 @@ export class ClaimDetailPage {
   protected readonly dictamenOpen = signal(false);
 
   protected readonly claim = computed(() => this.claims.findById(this.id()));
+  protected readonly detailLoaded = computed(() =>
+    this.claims.detailLoadedIds().has(this.id()),
+  );
 
   constructor() {
     // Load the full detail (alertas, documentos, factores ML, similar) whenever

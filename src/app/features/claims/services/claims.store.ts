@@ -24,10 +24,17 @@ export class ClaimsStore {
   private readonly _loading = signal<boolean>(false);
   private readonly _error = signal<AppError | null>(null);
   private readonly _detailLoads = new Map<string, Promise<Claim | null>>();
+  // Tracks which claim ids have had their full detail fetched (alertas, ML
+  // factors, anomaly score, documents, similar narratives). Signal-backed so
+  // detail pages can render loading skeletons until the detail call resolves —
+  // without this, the page falls back to "Modelo no cargado" empty states
+  // while the data is genuinely still in flight.
+  private readonly _detailLoadedIds = signal<ReadonlySet<string>>(new Set());
 
   readonly claims = this._claims.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
+  readonly detailLoadedIds = this._detailLoadedIds.asReadonly();
   private initialized = false;
   private lastUserId: string | null = null;
 
@@ -120,7 +127,17 @@ export class ClaimsStore {
 
   async reloadDetail(id: string): Promise<Claim | null> {
     this._detailLoads.delete(id);
+    this._detailLoadedIds.update((s) => {
+      if (!s.has(id)) return s;
+      const next = new Set(s);
+      next.delete(id);
+      return next;
+    });
     return this.fetchDetail(id);
+  }
+
+  isDetailLoaded(id: string): boolean {
+    return this._detailLoadedIds().has(id);
   }
 
   private fetchDetail(id: string): Promise<Claim | null> {
@@ -129,6 +146,10 @@ export class ClaimsStore {
         const dto = await firstValueFrom(this.api.detail(id));
         const claim = dtoToClaim(dto);
         this.upsert(claim);
+        this._detailLoadedIds.update((s) => {
+          if (s.has(id)) return s;
+          return new Set([...s, id]);
+        });
         return claim;
       } catch (error) {
         this._error.set(error instanceof AppError ? error : toAppError(error));
