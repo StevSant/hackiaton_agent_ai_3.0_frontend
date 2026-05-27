@@ -9,10 +9,12 @@ import type { Claim, ClaimReview, DictamenOutcome } from '../models';
 
 /**
  * Default page size for the initial claims fetch. The list-page filtering
- * happens client-side over this set, so we ask for a generous window. The
- * backend caps `page_size` at 100; if more claims exist we keep loading.
+ * happens client-side over this set, so we ask for a generous window — the
+ * backend caps `page_size` at 500 (see backend Page schema). If the working
+ * set ever grows past that, the loop continues across pages, but the common
+ * case is one round-trip and an immediate render.
  */
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 500;
 const DEFAULT_REVIEW: ClaimReview = { status: 'pendiente', bounce_count: 0 };
 
 @Injectable({ providedIn: 'root' })
