@@ -19,8 +19,9 @@ import { ProvidersStore } from '@core/state/providers.store';
 
 type RamoFilter = 'todos' | RamoKey;
 type GraphTierFilter = 'todos' | 'rojo' | 'amarillo_rojo' | 'estandar';
+type GraphViewMode = 'ring' | 'grid';
 
-/** Cap on graph nodes — beyond this the ring becomes unreadable. */
+/** Cap on graph nodes in ring mode — beyond this the ring becomes unreadable. */
 const GRAPH_MAX_NODES = 15;
 
 @Component({
@@ -80,13 +81,21 @@ const GRAPH_MAX_NODES = 15;
           <div>
             <h3 class="text-[13px] font-semibold m-0">Mapa de relaciones</h3>
             <div class="text-[12px] text-ink-3 mt-0.5">
-              Tamaño por volumen · color por riesgo
-              @if (graphHiddenCount() > 0) {
-                · top {{ GRAPH_MAX_NODES }} de {{ tierFilteredProviders().length }}
-              }
+              Tamaño por volumen · color por riesgo · {{ graphSubtitle() }}
             </div>
           </div>
           <div class="flex flex-wrap items-center gap-1.5">
+            @for (m of viewModeOptions; track m.value) {
+              <button
+                type="button"
+                class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] border transition-colors"
+                [class]="viewModeChipClasses(m.value)"
+                (click)="setViewMode(m.value)"
+              >
+                {{ m.label }}
+              </button>
+            }
+            <span class="w-px h-4 bg-line mx-1" aria-hidden="true"></span>
             @for (opt of graphTierOptions; track opt.value) {
               <button
                 type="button"
@@ -99,7 +108,11 @@ const GRAPH_MAX_NODES = 15;
             }
           </div>
         </div>
-        <network-graph class="flex-1" [providers]="graphProviders()" />
+        <network-graph
+          class="flex-1"
+          [providers]="graphDisplayProviders()"
+          [viewMode]="viewMode()"
+        />
       </div>
 
       <network-ramo-distribution-card />
@@ -121,6 +134,7 @@ export class NetworkPage {
   protected readonly stats = this.store.stats;
   protected readonly filter = signal<RamoFilter>('todos');
   protected readonly graphTier = signal<GraphTierFilter>('amarillo_rojo');
+  protected readonly viewMode = signal<GraphViewMode>('ring');
   protected readonly ramoOptions: readonly RamoKey[] = RAMO_KEYS;
   protected readonly GRAPH_MAX_NODES = GRAPH_MAX_NODES;
   protected readonly graphTierOptions: ReadonlyArray<{ value: GraphTierFilter; label: string }> = [
@@ -128,6 +142,10 @@ export class NetworkPage {
     { value: 'rojo', label: 'Solo rojos' },
     { value: 'amarillo_rojo', label: 'Amarillos + rojos' },
     { value: 'estandar', label: 'Estándar' },
+  ];
+  protected readonly viewModeOptions: ReadonlyArray<{ value: GraphViewMode; label: string }> = [
+    { value: 'ring', label: 'Anillo' },
+    { value: 'grid', label: 'Cuadrícula' },
   ];
 
   protected readonly counts = computed<Record<RamoKey, number>>(() => {
@@ -173,16 +191,72 @@ export class NetworkPage {
     return list.filter((p) => matchesTierFilter(p, tier));
   });
 
-  /** What the graph actually renders — top-N by alert ratio after tier filter. */
+  /** What the graph actually renders — top-N after tier filter.
+   *
+   * Selection per filter:
+   *   • todos: reserve 3 slots for yellows + 3 for standards so all three
+   *     tiers appear in the ring; the rest go to the highest-alerted reds.
+   *     A pure top-N-by-alertas pick would always be all-red because reds
+   *     dominate the dataset.
+   *   • rojo: top-N reds by alertas desc, tie-break by ratio. Sorting by
+   *     ratio alone collapses every LISTA-restrictiva provider to 1.0.
+   *   • amarillo_rojo: split the budget so yellows actually appear next to
+   *     reds — that's the whole point of the mixed filter. Fall back to extra
+   *     reds when fewer yellows exist.
+   *   • estandar: rank by casos desc — standards usually have 0 alertas, so
+   *     sorting by alertas would produce a 15-way tie.
+   */
   protected readonly graphProviders = computed<Provider[]>(() => {
-    const list = [...this.tierFilteredProviders()];
-    list.sort((a, b) => alertRatio(b) - alertRatio(a));
-    return list.slice(0, GRAPH_MAX_NODES);
+    const tier = this.graphTier();
+    const list = this.tierFilteredProviders();
+
+    if (tier === 'estandar') {
+      return [...list].sort(byCasosThenAlertas).slice(0, GRAPH_MAX_NODES);
+    }
+
+    if (tier === 'amarillo_rojo') {
+      const reds = list.filter((p) => providerTier(p) === 'rojo').sort(byAlertasThenRatio);
+      const yellows = list.filter((p) => providerTier(p) === 'amarillo').sort(byAlertasThenRatio);
+      const yellowsTaken = yellows.slice(0, Math.ceil(GRAPH_MAX_NODES / 2));
+      const redsTaken = reds.slice(0, GRAPH_MAX_NODES - yellowsTaken.length);
+      return [...redsTaken, ...yellowsTaken];
+    }
+
+    if (tier === 'todos') {
+      const reds = list.filter((p) => providerTier(p) === 'rojo').sort(byAlertasThenRatio);
+      const yellows = list.filter((p) => providerTier(p) === 'amarillo').sort(byAlertasThenRatio);
+      const standards = list.filter((p) => providerTier(p) === 'estandar').sort(byCasosThenAlertas);
+      const yellowsTaken = yellows.slice(0, Math.min(yellows.length, 3));
+      const standardsTaken = standards.slice(0, Math.min(standards.length, 3));
+      const redsTaken = reds.slice(
+        0,
+        GRAPH_MAX_NODES - yellowsTaken.length - standardsTaken.length,
+      );
+      return [...redsTaken, ...yellowsTaken, ...standardsTaken];
+    }
+
+    return [...list].sort(byAlertasThenRatio).slice(0, GRAPH_MAX_NODES);
   });
 
   protected readonly graphHiddenCount = computed(() =>
     Math.max(0, this.tierFilteredProviders().length - GRAPH_MAX_NODES),
   );
+
+  /** Providers actually rendered: ring mode → top-15, grid mode → all in the tier filter. */
+  protected readonly graphDisplayProviders = computed<Provider[]>(() =>
+    this.viewMode() === 'grid' ? this.tierFilteredProviders() : this.graphProviders(),
+  );
+
+  protected readonly graphSubtitle = computed(() => {
+    const total = this.tierFilteredProviders().length;
+    if (this.viewMode() === 'grid') {
+      return `mostrando ${total}`;
+    }
+    if (total > GRAPH_MAX_NODES) {
+      return `top ${GRAPH_MAX_NODES} de ${total}`;
+    }
+    return `${total} proveedor${total === 1 ? '' : 'es'}`;
+  });
 
   protected setFilter(value: RamoFilter): void {
     this.filter.set(value);
@@ -190,6 +264,10 @@ export class NetworkPage {
 
   protected setGraphTier(value: GraphTierFilter): void {
     this.graphTier.set(value);
+  }
+
+  protected setViewMode(value: GraphViewMode): void {
+    this.viewMode.set(value);
   }
 
   protected ramoLabel(key: RamoKey): string {
@@ -211,10 +289,24 @@ export class NetworkPage {
       ? 'bg-brand-soft border-brand text-brand-ink'
       : 'bg-surface border-line text-ink-2 hover:bg-soft';
   }
+
+  protected viewModeChipClasses(value: GraphViewMode): string {
+    return value === this.viewMode()
+      ? 'bg-brand-soft border-brand text-brand-ink'
+      : 'bg-surface border-line text-ink-2 hover:bg-soft';
+  }
 }
 
 function alertRatio(p: Provider): number {
   return p.casos > 0 ? p.alertas / p.casos : 0;
+}
+
+function byAlertasThenRatio(a: Provider, b: Provider): number {
+  return b.alertas - a.alertas || alertRatio(b) - alertRatio(a);
+}
+
+function byCasosThenAlertas(a: Provider, b: Provider): number {
+  return b.casos - a.casos || b.alertas - a.alertas;
 }
 
 type TierBand = 'rojo' | 'amarillo' | 'estandar';

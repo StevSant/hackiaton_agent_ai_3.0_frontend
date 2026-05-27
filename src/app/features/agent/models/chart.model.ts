@@ -1,4 +1,4 @@
-export type ChartType = 'bar' | 'horizontal_bar' | 'line' | 'pie' | 'doughnut';
+export type ChartType = 'bar' | 'horizontal_bar' | 'line' | 'pie' | 'doughnut' | 'scatter';
 
 export interface ChartSeries {
   name: string;
@@ -15,4 +15,10 @@ export interface ChartPayload {
   series: ChartSeries[];
   unit?: string | null;
   citations?: string[];
+  /**
+   * Optional per-label tooltip rows. `meta[i]` is a flat key→value map rendered
+   * under labels[i] (e.g. ramo / ciudad / monto). Values are pre-formatted by
+   * the backend — the frontend renders them verbatim.
+   */
+  meta?: Record<string, string>[];
 }

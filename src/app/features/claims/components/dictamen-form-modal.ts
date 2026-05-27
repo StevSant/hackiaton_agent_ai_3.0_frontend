@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { Modal } from '@shared/ui/modal';
-import type { DictamenOutcome } from '../models/claim-review.model';
+import type { DictamenOutcome } from '@shared/models';
 
 interface OutcomeOption {
   value: DictamenOutcome;

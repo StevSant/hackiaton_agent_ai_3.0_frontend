@@ -1,6 +1,5 @@
 import { ramoLabel } from '@shared/utils';
-import { ALERT_CATALOG } from '../models/alert-catalog';
-import type { Claim } from '../models/claim.model';
+import { ALERT_CATALOG, type Claim } from '@shared/models';
 
 export function aiExplanation(c: Claim): string {
   if (c.nivel === 'verde') {

@@ -5,6 +5,7 @@ import {
   DestroyRef,
   ElementRef,
   afterNextRender,
+  computed,
   effect,
   inject,
   signal,
@@ -58,199 +59,202 @@ function generateUuid(): string {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex flex-col h-[calc(100vh-5rem)] min-h-0 -mx-4">
+    <div class="flex flex-col h-full min-h-0 bg-surface">
+      <header class="chat-panel__toolbar shrink-0">
+        <button
+          type="button"
+          class="chat-panel__tool-btn"
+          (click)="historyOpen.set(true)"
+          aria-label="Abrir historial de conversaciones"
+          title="Historial"
+        >
+          <ui-icon name="history" [size]="18" />
+        </button>
+
+        <button
+          type="button"
+          class="chat-panel__tool-btn chat-panel__tool-btn--primary"
+          (click)="newChat()"
+          aria-label="Nueva conversación"
+          title="Nueva conversación"
+        >
+          <ui-icon name="add" [size]="20" [weight]="600" />
+        </button>
+      </header>
+
       <div
-        class="chat-panel grid grid-rows-[auto_1fr_auto] bg-surface border border-line rounded-xl shadow-2 overflow-hidden flex-1 min-h-0"
+        #scroll
+        class="flex-1 min-h-0 overflow-y-auto scroll-pretty px-4 pt-3 pb-3 flex flex-col gap-4"
       >
-        <div class="chat-panel__toolbar">
-          <button
-            type="button"
-            class="chat-panel__tool-btn"
-            (click)="historyOpen.set(true)"
-            aria-label="Abrir historial de conversaciones"
-            title="Historial"
-          >
-            <ui-icon name="history" [size]="18" />
-          </button>
-
-          <button
-            type="button"
-            class="chat-panel__tool-btn chat-panel__tool-btn--primary"
-            (click)="newChat()"
-            aria-label="Nueva conversación"
-            title="Nueva conversación"
-          >
-            <ui-icon name="add" [size]="20" [weight]="600" />
-          </button>
-        </div>
-
-        <div #scroll class="overflow-y-auto scroll-pretty px-4 pt-3 pb-3 flex flex-col gap-4">
-          @for (m of store.messages(); track m.id; let last = $last) {
-            <agent-chat-message
-              [message]="m"
-              [streaming]="last && m.role === 'assistant' && store.isResponding()"
-              [tracking]="last && m.role === 'assistant' && store.isResponding()"
-              [ttsSupported]="tts.supported"
-              [ttsActive]="tts.activeId() === m.id"
-              [ttsState]="tts.state()"
-              (openCase)="openCase($event)"
-              (ttsToggle)="onTtsToggle($event)"
-              (acceptChart)="store.acceptChart($event)"
-            />
-          }
-          @if (store.thinking()) {
-            <div class="w-full flex gap-3 items-start">
-              <div
-                class="w-10 h-10 rounded-full grid place-items-center shrink-0"
-                style="background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);"
-              >
-                <agent-eye-icon [size]="18" [tracking]="store.isResponding()" />
-              </div>
-              <div
-                class="text-[13.5px] px-3.5 py-3.5 rounded-2xl border border-line bg-surface min-w-0 max-w-[min(720px,calc(100%-3.25rem))]"
-              >
-                <span class="dots"><span></span><span></span><span></span></span>
-              </div>
+        @for (m of store.messages(); track m.id; let last = $last) {
+          <agent-chat-message
+            [message]="m"
+            [streaming]="last && m.role === 'assistant' && store.isResponding()"
+            [tracking]="last && m.role === 'assistant' && store.isResponding()"
+            [ttsSupported]="tts.supported"
+            [ttsActive]="tts.activeId() === m.id"
+            [ttsState]="tts.state()"
+            (openCase)="openCase($event)"
+            (ttsToggle)="onTtsToggle($event)"
+            (acceptChart)="store.acceptChart($event)"
+          />
+        }
+        @if (store.thinking()) {
+          <div class="w-full flex gap-3 items-start">
+            <div
+              class="w-10 h-10 rounded-full grid place-items-center shrink-0"
+              style="background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);"
+            >
+              <agent-eye-icon [size]="18" [tracking]="store.isResponding()" />
             </div>
-          }
-        </div>
-
-        <div class="border-t border-line px-3 py-3 bg-surface min-w-0">
-          @if (tts.activeId() !== null) {
-            <div class="mb-2.5">
-              <agent-tts-player
-                [state]="tts.state()"
-                [progress]="tts.progress()"
-                [rate]="tts.rate()"
-                [volume]="tts.volume()"
-                [voices]="tts.voices"
-                [voice]="tts.voice()"
-                (toggle)="tts.toggleActive()"
-                (stop)="tts.stop()"
-                (seek)="tts.seekToFraction($event)"
-                (rateChange)="tts.setRate($event)"
-                (volumeChange)="tts.setVolume($event)"
-                (voiceChange)="tts.setVoice($event)"
-              />
-            </div>
-          }
-          <div
-            class="chat-composer"
-            [class.chat-composer--recording]="voice.recording()"
-            [class.chat-composer--transcribing]="transcribing()"
-          >
-            @if (voice.recording()) {
-              <div class="chat-composer__voice">
-                <span class="chat-composer__pulse" aria-hidden="true"></span>
-                <agent-voice-equalizer [live]="true" [active]="true" />
-                <div class="chat-composer__voice-copy">
-                  <span class="chat-composer__voice-title">Escuchando tu voz</span>
-                  <span class="chat-composer__voice-hint">Pulsa detener cuando termines</span>
-                </div>
-              </div>
-            } @else if (transcribing()) {
-              <div class="chat-composer__voice chat-composer__voice--transcribing">
-                <agent-voice-equalizer [active]="true" [processing]="true" />
-                <div class="chat-composer__voice-copy">
-                  <span class="chat-composer__voice-title">Transcribiendo…</span>
-                  <span class="chat-composer__voice-hint">Convirtiendo audio a texto</span>
-                </div>
-              </div>
-            } @else {
-              <textarea
-                #ta
-                rows="1"
-                class="chat-composer__input"
-                placeholder="Pregunta a Centinela…  (Shift+Enter para nueva línea)"
-                [value]="input()"
-                (input)="onInput($any($event.target).value)"
-                (keydown)="onKey($event)"
-              ></textarea>
-            }
-
-            <div class="chat-composer__actions">
-              @if (voiceSupported()) {
-                <button
-                  type="button"
-                  class="chat-composer__icon-btn"
-                  [class.chat-composer__icon-btn--recording]="voice.recording()"
-                  [disabled]="store.thinking() || transcribing()"
-                  (click)="toggleVoice()"
-                  [attr.aria-label]="
-                    voice.recording() ? 'Detener grabación' : 'Grabar mensaje de voz'
-                  "
-                >
-                  @if (voice.recording()) {
-                    <span class="chat-composer__icon-wrap">
-                      <ui-icon name="stop" [size]="22" [weight]="600" />
-                    </span>
-                  } @else {
-                    <span class="chat-composer__icon-wrap">
-                      <ui-icon name="mic" [size]="22" [weight]="500" />
-                    </span>
-                  }
-                </button>
-              }
-
-              <button
-                type="button"
-                class="chat-composer__send"
-                [disabled]="
-                  !input().trim() || store.thinking() || transcribing() || voice.recording()
-                "
-                (click)="send()"
-                aria-label="Enviar mensaje"
-              >
-                <span class="chat-composer__icon-wrap chat-composer__icon-wrap--send">
-                  <ui-icon name="send" [size]="22" [weight]="500" [fill]="true" />
-                </span>
-              </button>
+            <div
+              class="text-[13.5px] px-3.5 py-3.5 rounded-2xl border border-line bg-surface min-w-0 max-w-[min(720px,calc(100%-3.25rem))]"
+            >
+              <span class="dots"><span></span><span></span><span></span></span>
             </div>
           </div>
+        }
+      </div>
 
-          @if (voiceError()) {
-            <p class="text-[12px] text-danger m-0 mt-2">{{ voiceError() }}</p>
+      <footer class="border-t border-line px-3 py-3 bg-surface min-w-0 shrink-0">
+        @if (tts.activeId() !== null) {
+          <div class="mb-2.5">
+            <agent-tts-player
+              [state]="tts.state()"
+              [progress]="tts.progress()"
+              [rate]="tts.rate()"
+              [volume]="tts.volume()"
+              [voices]="tts.voices"
+              [voice]="tts.voice()"
+              (toggle)="tts.toggleActive()"
+              (stop)="tts.stop()"
+              (seek)="tts.seekToFraction($event)"
+              (rateChange)="tts.setRate($event)"
+              (volumeChange)="tts.setVolume($event)"
+              (voiceChange)="tts.setVoice($event)"
+            />
+          </div>
+        }
+        <div
+          class="chat-composer"
+          [class.chat-composer--recording]="voice.recording()"
+          [class.chat-composer--transcribing]="transcribing()"
+        >
+          @if (voice.recording()) {
+            <div class="chat-composer__voice">
+              <span class="chat-composer__pulse" aria-hidden="true"></span>
+              <agent-voice-equalizer [live]="true" [active]="true" />
+              <div class="chat-composer__voice-copy">
+                <span class="chat-composer__voice-title">Escuchando tu voz</span>
+                <span class="chat-composer__voice-hint">Pulsa detener cuando termines</span>
+              </div>
+            </div>
+          } @else if (transcribing()) {
+            <div class="chat-composer__voice chat-composer__voice--transcribing">
+              <agent-voice-equalizer [active]="true" [processing]="true" />
+              <div class="chat-composer__voice-copy">
+                <span class="chat-composer__voice-title">Transcribiendo…</span>
+                <span class="chat-composer__voice-hint">Convirtiendo audio a texto</span>
+              </div>
+            </div>
+          } @else {
+            <textarea
+              #ta
+              rows="1"
+              class="chat-composer__input"
+              placeholder="Pregunta a Centinela…  (Shift+Enter para nueva línea)"
+              [value]="input()"
+              (input)="onInput($any($event.target).value)"
+              (keydown)="onKey($event)"
+            ></textarea>
           }
 
-          <section class="chat-suggestions" aria-label="Preguntas rápidas">
-            <p class="chat-suggestions__title">Preguntas rápidas</p>
-            <div class="chat-suggestions__row">
+          <div class="chat-composer__actions">
+            @if (voiceSupported()) {
               <button
                 type="button"
-                class="chat-suggestions__nav"
-                (click)="scrollSuggestions(-1)"
-                aria-label="Ver sugerencias anteriores"
+                class="chat-composer__icon-btn"
+                [class.chat-composer__icon-btn--recording]="voice.recording()"
+                [disabled]="store.thinking() || transcribing()"
+                (click)="toggleVoice()"
+                [attr.aria-label]="
+                  voice.recording() ? 'Detener grabación' : 'Grabar mensaje de voz'
+                "
               >
-                <ui-icon name="chevron_left" [size]="18" />
-              </button>
-
-              <div
-                #suggestionsStrip
-                class="chat-suggestions__strip"
-                (wheel)="onSuggestionsWheel($event)"
-              >
-                @for (s of suggestions; track s) {
-                  <button type="button" class="chat-suggestion" (click)="quickSend(s)">
-                    <span class="chat-suggestion__icon" aria-hidden="true">
-                      <agent-eye-icon [size]="15" />
-                    </span>
-                    <span class="chat-suggestion__label">{{ s }}</span>
-                  </button>
+                @if (voice.recording()) {
+                  <span class="chat-composer__icon-wrap">
+                    <ui-icon name="stop" [size]="22" [weight]="600" />
+                  </span>
+                } @else {
+                  <span class="chat-composer__icon-wrap">
+                    <ui-icon name="mic" [size]="22" [weight]="500" />
+                  </span>
                 }
-              </div>
-
-              <button
-                type="button"
-                class="chat-suggestions__nav"
-                (click)="scrollSuggestions(1)"
-                aria-label="Ver más sugerencias"
-              >
-                <ui-icon name="chevron_right" [size]="18" />
               </button>
-            </div>
-          </section>
+            }
+
+            <button
+              type="button"
+              class="chat-composer__send"
+              [disabled]="
+                !input().trim() || store.thinking() || transcribing() || voice.recording()
+              "
+              (click)="send()"
+              aria-label="Enviar mensaje"
+            >
+              <span class="chat-composer__icon-wrap chat-composer__icon-wrap--send">
+                <ui-icon name="send" [size]="22" [weight]="500" [fill]="true" />
+              </span>
+            </button>
+          </div>
         </div>
-      </div>
+
+        @if (voiceError()) {
+          <p class="text-[12px] text-danger m-0 mt-2">{{ voiceError() }}</p>
+        }
+
+        <section class="chat-suggestions" aria-label="Preguntas rápidas">
+          @if (showSuggestions()) {
+            <div class="chat-suggestions__header">
+              <p class="chat-suggestions__title">Preguntas rápidas</p>
+              @if (hasUserMessages()) {
+                <button
+                  type="button"
+                  class="chat-suggestions__toggle"
+                  (click)="suggestionsOpen.set(false)"
+                  aria-label="Ocultar preguntas rápidas"
+                  title="Ocultar"
+                >
+                  <ui-icon name="expand_less" [size]="16" />
+                </button>
+              }
+            </div>
+            <div class="chat-suggestions__grid">
+              @for (s of suggestions; track s) {
+                <button type="button" class="chat-suggestion" (click)="quickSend(s)">
+                  <span class="chat-suggestion__icon" aria-hidden="true">
+                    <agent-eye-icon [size]="15" />
+                  </span>
+                  <span class="chat-suggestion__label">{{ s }}</span>
+                </button>
+              }
+            </div>
+          } @else {
+            <button
+              type="button"
+              class="chat-suggestions__pill"
+              (click)="suggestionsOpen.set(true)"
+              aria-label="Mostrar preguntas rápidas"
+            >
+              <span class="chat-suggestions__pill-dot" aria-hidden="true">
+                <agent-eye-icon [size]="13" />
+              </span>
+              <span class="chat-suggestions__pill-label">Preguntas rápidas</span>
+              <ui-icon name="expand_more" [size]="16" />
+            </button>
+          }
+        </section>
+      </footer>
     </div>
 
     <!-- History drawer (slide-over from the left) -->
@@ -303,409 +307,7 @@ function generateUuid(): string {
       (cancel)="renameModalOpen.set(false)"
     />
   `,
-  styles: [
-    `
-      .chat-panel {
-        box-shadow:
-          var(--shadow-2),
-          inset 0 1px 0 color-mix(in oklch, white 6%, transparent);
-      }
-
-      .chat-panel__toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 10px 12px;
-        border-bottom: 1px solid var(--border);
-        background: color-mix(in oklch, var(--bg-soft) 55%, var(--bg-elev));
-      }
-
-      .chat-panel__tool-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 36px;
-        height: 36px;
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        background: var(--bg-elev);
-        color: var(--ink-2);
-        cursor: pointer;
-        box-shadow: var(--shadow-1);
-        transition:
-          transform 120ms ease,
-          background 120ms ease,
-          border-color 120ms ease,
-          box-shadow 120ms ease;
-      }
-
-      .chat-panel__tool-btn:hover {
-        background: var(--brand-soft);
-        border-color: color-mix(in oklch, var(--brand) 25%, var(--border));
-        color: var(--brand-ink);
-        transform: translateY(-1px);
-      }
-
-      .chat-panel__tool-btn--primary {
-        background: linear-gradient(135deg, var(--brand), var(--brand-2));
-        border-color: transparent;
-        color: white;
-        box-shadow: 0 4px 14px color-mix(in oklch, var(--brand) 26%, transparent);
-      }
-
-      .chat-panel__tool-btn--primary:hover {
-        background: linear-gradient(135deg, var(--brand-2), var(--brand));
-        color: white;
-        box-shadow: 0 6px 18px color-mix(in oklch, var(--brand) 32%, transparent);
-      }
-
-      .chat-panel__tool-btn ::ng-deep .material-symbols-outlined {
-        display: block;
-        line-height: 1;
-      }
-
-      @media (max-width: 640px) {
-        .chat-panel__toolbar {
-          padding: 8px 10px;
-        }
-      }
-
-      .chat-composer {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-height: 56px;
-        padding: 6px 8px 6px 14px;
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        background: var(--bg-soft);
-        transition:
-          border-color 160ms ease,
-          box-shadow 160ms ease,
-          background 160ms ease;
-      }
-
-      .chat-composer:focus-within {
-        border-color: color-mix(in oklch, var(--brand) 45%, var(--border));
-        box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand) 14%, transparent);
-      }
-
-      .chat-composer--recording,
-      .chat-composer--transcribing {
-        border-color: color-mix(in oklch, var(--brand) 55%, var(--border));
-        background: linear-gradient(
-          135deg,
-          color-mix(in oklch, var(--brand-soft) 85%, white),
-          var(--bg-soft)
-        );
-        box-shadow:
-          0 0 0 3px color-mix(in oklch, var(--brand) 16%, transparent),
-          0 8px 24px color-mix(in oklch, var(--brand) 10%, transparent);
-      }
-
-      .chat-composer__input {
-        flex: 1;
-        resize: none;
-        border: 0;
-        background: transparent;
-        outline: 0;
-        color: var(--ink);
-        font-size: 14px;
-        max-height: 120px;
-        min-height: 44px;
-        margin: 0;
-        padding: 11px 6px;
-        line-height: 22px;
-        box-sizing: border-box;
-        vertical-align: middle;
-      }
-
-      .chat-composer__input::placeholder {
-        color: var(--ink-3);
-        line-height: 22px;
-      }
-
-      .chat-composer__voice {
-        flex: 1;
-        min-height: 44px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 0 4px;
-      }
-
-      .chat-composer__voice--transcribing agent-voice-equalizer {
-        opacity: 0.85;
-      }
-
-      .chat-composer__pulse {
-        width: 10px;
-        height: 10px;
-        border-radius: 999px;
-        background: var(--brand);
-        flex-shrink: 0;
-        box-shadow: 0 0 0 0 color-mix(in oklch, var(--brand) 40%, transparent);
-        animation: chat-voice-pulse 1.4s ease-out infinite;
-      }
-
-      .chat-composer__voice-copy {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        min-width: 0;
-      }
-
-      .chat-composer__voice-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--brand-ink);
-      }
-
-      .chat-composer__voice-hint {
-        font-size: 11.5px;
-        color: var(--ink-3);
-      }
-
-      .chat-composer__actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-shrink: 0;
-        align-self: center;
-      }
-
-      .chat-composer__icon-wrap {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 24px;
-        height: 24px;
-        line-height: 0;
-      }
-
-      .chat-composer__icon-wrap--send {
-        transform: translateX(-1px);
-      }
-
-      .chat-composer__icon-btn,
-      .chat-composer__send {
-        width: 44px;
-        height: 44px;
-        border-radius: 13px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        border: 1px solid transparent;
-        cursor: pointer;
-        transition:
-          transform 120ms ease,
-          background 120ms ease,
-          border-color 120ms ease,
-          box-shadow 120ms ease,
-          opacity 120ms ease;
-      }
-
-      .chat-composer__icon-btn ::ng-deep .material-symbols-outlined,
-      .chat-composer__send ::ng-deep .material-symbols-outlined {
-        display: block;
-        line-height: 1;
-      }
-
-      .chat-composer__icon-btn {
-        background: var(--bg-elev);
-        border-color: var(--border);
-        color: var(--ink-2);
-        box-shadow: var(--shadow-1);
-      }
-
-      .chat-composer__icon-btn:hover:not(:disabled) {
-        background: var(--brand-soft);
-        border-color: color-mix(in oklch, var(--brand) 25%, var(--border));
-        color: var(--brand-ink);
-      }
-
-      .chat-composer__icon-btn--recording {
-        background: linear-gradient(135deg, var(--brand), var(--brand-2));
-        border-color: transparent;
-        color: white;
-        box-shadow: 0 6px 16px color-mix(in oklch, var(--brand) 28%, transparent);
-      }
-
-      .chat-composer__icon-btn--recording:hover:not(:disabled) {
-        transform: scale(1.03);
-        background: linear-gradient(135deg, var(--brand-2), var(--brand));
-        color: white;
-      }
-
-      .chat-composer__send {
-        background: linear-gradient(135deg, var(--brand), var(--brand-2));
-        color: white;
-        box-shadow: 0 6px 16px color-mix(in oklch, var(--brand) 24%, transparent);
-      }
-
-      .chat-composer__send:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: 0 8px 20px color-mix(in oklch, var(--brand) 32%, transparent);
-      }
-
-      .chat-composer__icon-btn:disabled,
-      .chat-composer__send:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-        transform: none;
-        box-shadow: none;
-      }
-
-      .chat-suggestions {
-        margin-top: 10px;
-        padding-top: 10px;
-        border-top: 1px dashed color-mix(in oklch, var(--border) 85%, transparent);
-        min-width: 0;
-      }
-
-      .chat-suggestions__title {
-        margin: 0 0 6px;
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: var(--ink-3);
-      }
-
-      .chat-suggestions__row {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        min-width: 0;
-      }
-
-      .chat-suggestions__nav {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        flex-shrink: 0;
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        background: var(--bg-elev);
-        color: var(--ink-2);
-        cursor: pointer;
-        box-shadow: var(--shadow-1);
-        transition:
-          background 120ms ease,
-          border-color 120ms ease,
-          color 120ms ease;
-      }
-
-      .chat-suggestions__nav:hover {
-        background: var(--brand-soft);
-        border-color: color-mix(in oklch, var(--brand) 22%, var(--border));
-        color: var(--brand-ink);
-      }
-
-      .chat-suggestions__nav ::ng-deep .material-symbols-outlined {
-        display: block;
-        line-height: 1;
-      }
-
-      .chat-suggestions__strip {
-        display: flex;
-        flex: 1;
-        flex-wrap: nowrap;
-        align-items: stretch;
-        gap: 8px;
-        min-width: 0;
-        overflow-x: auto;
-        overflow-y: hidden;
-        padding: 2px 0 4px;
-        scroll-snap-type: x proximity;
-        scroll-behavior: smooth;
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior-x: contain;
-        touch-action: pan-x;
-        scrollbar-width: thin;
-      }
-
-      .chat-suggestions__strip::-webkit-scrollbar {
-        height: 6px;
-      }
-
-      .chat-suggestions__strip::-webkit-scrollbar-thumb {
-        background: var(--border-2);
-        border-radius: 999px;
-      }
-
-      .chat-suggestion {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        flex: 0 0 auto;
-        width: max-content;
-        max-width: 320px;
-        min-height: 42px;
-        padding: 8px 14px 8px 8px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        background: var(--bg-soft);
-        color: var(--ink-2);
-        font-size: 12.5px;
-        font-weight: 500;
-        line-height: 1.2;
-        text-align: left;
-        cursor: pointer;
-        scroll-snap-align: start;
-        box-shadow: var(--shadow-1);
-        transition:
-          background 120ms ease,
-          border-color 120ms ease,
-          color 120ms ease,
-          transform 120ms ease,
-          box-shadow 120ms ease;
-      }
-
-      .chat-suggestion__icon {
-        display: grid;
-        place-items: center;
-        width: 30px;
-        height: 30px;
-        border-radius: 999px;
-        flex-shrink: 0;
-        background: linear-gradient(135deg, var(--brand), var(--brand-2));
-        box-shadow: 0 3px 10px color-mix(in oklch, var(--brand) 24%, transparent);
-      }
-
-      .chat-suggestion__label {
-        display: block;
-        min-width: 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .chat-suggestion:hover {
-        background: var(--brand-soft);
-        border-color: color-mix(in oklch, var(--brand) 22%, var(--border));
-        color: var(--brand-ink);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 14px color-mix(in oklch, var(--brand) 12%, transparent);
-      }
-
-      @keyframes chat-voice-pulse {
-        0% {
-          box-shadow: 0 0 0 0 color-mix(in oklch, var(--brand) 45%, transparent);
-        }
-        70% {
-          box-shadow: 0 0 0 10px color-mix(in oklch, var(--brand) 0%, transparent);
-        }
-        100% {
-          box-shadow: 0 0 0 0 color-mix(in oklch, var(--brand) 0%, transparent);
-        }
-      }
-    `,
-  ],
+  styleUrl: './chat.page.css',
 })
 export class ChatPage implements AfterViewChecked {
   protected readonly store = inject(AgentStore);
@@ -726,10 +328,16 @@ export class ChatPage implements AfterViewChecked {
   protected readonly transcribing = signal<boolean>(false);
   protected readonly voiceError = signal<string | null>(null);
   protected readonly voiceSupported = signal<boolean>(false);
+  protected readonly suggestionsOpen = signal<boolean | null>(null);
+  protected readonly hasUserMessages = computed(() =>
+    this.store.messages().some((m) => m.role === 'user'),
+  );
+  protected readonly showSuggestions = computed(
+    () => this.suggestionsOpen() ?? !this.hasUserMessages(),
+  );
 
   private readonly scrollEl = viewChild<ElementRef<HTMLDivElement>>('scroll');
   private readonly textarea = viewChild<ElementRef<HTMLTextAreaElement>>('ta');
-  private readonly suggestionsStrip = viewChild<ElementRef<HTMLDivElement>>('suggestionsStrip');
 
   constructor() {
     afterNextRender(() => {
@@ -741,6 +349,9 @@ export class ChatPage implements AfterViewChecked {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const convId = params.get('conversation');
       if (convId) {
+        if (convId !== this.activeConversationId()) {
+          this.suggestionsOpen.set(null);
+        }
         this.activeConversationId.set(convId);
         void this.store.loadConversation(convId);
       } else {
@@ -842,20 +453,6 @@ export class ChatPage implements AfterViewChecked {
     void this.store.ask(text, convId);
   }
 
-  protected scrollSuggestions(direction: -1 | 1): void {
-    const stripElement = this.suggestionsStrip()?.nativeElement;
-    if (!stripElement) return;
-    stripElement.scrollBy({ left: direction * 260, behavior: 'smooth' });
-  }
-
-  protected onSuggestionsWheel(event: WheelEvent): void {
-    const stripElement = this.suggestionsStrip()?.nativeElement;
-    if (!stripElement) return;
-    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-    event.preventDefault();
-    stripElement.scrollLeft += event.deltaY;
-  }
-
   protected onTtsToggle(id: string): void {
     const message = this.store.messages().find((m) => m.id === id);
     if (message) this.tts.toggle(id, message.content);
@@ -865,6 +462,7 @@ export class ChatPage implements AfterViewChecked {
     this.tts.stop();
     this.input.set('');
     this.voiceError.set(null);
+    this.suggestionsOpen.set(null);
     const id = generateUuid();
     this.activeConversationId.set(id);
     this.store.startNewConversation(id);

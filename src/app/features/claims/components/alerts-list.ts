@@ -2,8 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
 import { EmptyState } from '@shared/ui/empty-state';
 import { Icon } from '@shared/ui/icon';
-import { ALERT_CATALOG } from '../models/alert-catalog';
-import type { ClaimAlert } from '../models';
+import { ALERT_CATALOG, type ClaimAlert } from '@shared/models';
 
 @Component({
   selector: 'claim-alerts-list',

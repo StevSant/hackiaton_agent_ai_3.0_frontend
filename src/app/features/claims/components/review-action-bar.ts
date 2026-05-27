@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import type { RoleCode } from '@core/auth/auth-user.model';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
-import type { ClaimReview } from '../models/claim-review.model';
+import type { ClaimReview } from '@shared/models';
 
 /**
  * Renders the role + state aware action bar on a claim detail page.

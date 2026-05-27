@@ -127,12 +127,22 @@ export class AgentStore {
       const detail = await firstValueFrom(this.conversationsApi.get(id));
       this._conversationId.set(id);
       this._messages.set(
-        detail.messages.map((m) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
-          steps: [],
-        })),
+        detail.messages.map((m) => {
+          // chart_payload only exists on persisted assistant messages and is
+          // typed only after `pnpm gen:api` picks up the new backend schema.
+          // Read it defensively so this works pre-regen too.
+          const stored = (m as unknown as { chart_payload?: ChartPayload | null }).chart_payload;
+          const chart = stored ?? undefined;
+          return {
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            steps: [],
+            chart,
+            // Already-rendered charts skip the "Ver como gráfico" affordance.
+            chartAccepted: chart !== undefined ? true : undefined,
+          };
+        }),
       );
       if (this._messages().length === 0) {
         this._messages.set([
@@ -228,8 +238,12 @@ export class AgentStore {
 
     const attachChart = (chart: ChartPayload): void => {
       ensureAssistantBubble();
+      // Charts now arrive only when the analyst explicitly asked — no intermediate
+      // "Ver como gráfico" gate; render immediately.
       this._messages.update((messages) =>
-        messages.map((msg) => (msg.id === assistantId ? { ...msg, chart } : msg)),
+        messages.map((msg) =>
+          msg.id === assistantId ? { ...msg, chart, chartAccepted: true } : msg,
+        ),
       );
     };
 
