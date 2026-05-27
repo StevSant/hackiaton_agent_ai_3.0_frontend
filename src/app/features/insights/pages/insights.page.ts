@@ -41,12 +41,12 @@ import { QuarterlyOutlookCard } from '../components/quarterly-outlook-card';
       </div>
 
       <aside
-        class="insights-sidebar w-full lg:w-[292px] shrink-0 flex flex-col gap-2 overflow-y-auto scroll-pretty"
+        class="insights-sidebar w-full lg:w-[292px] shrink-0 flex flex-col gap-2"
       >
-        <insights-fraud-tendency />
-        <insights-ai-anomalies />
-        <insights-claim-type-donut />
-        <insights-quarterly-outlook />
+        <insights-fraud-tendency class="shrink-0" />
+        <insights-ai-anomalies class="flex-1 min-h-0" />
+        <insights-claim-type-donut class="shrink-0" />
+        <insights-quarterly-outlook class="shrink-0" />
       </aside>
     </div>
   `,

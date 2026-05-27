@@ -26,9 +26,9 @@ import type { Claim } from '../../claims/models';
             <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Cobertura</th>
             <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Ciudad</th>
             <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Monto estimado</th>
-            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Alertas IA</th>
-            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Riesgo IA</th>
-            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Estado</th>
+            <th class="text-center font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Alertas IA</th>
+            <th class="text-center font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Riesgo IA</th>
+            <th class="text-center font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Estado</th>
             <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4 w-16">Acciones</th>
           </tr>
         </thead>
@@ -55,9 +55,9 @@ import type { Claim } from '../../claims/models';
               </td>
               <td class="px-4 py-3.5 align-middle text-ink-2 whitespace-nowrap">{{ claim.ciudad }}</td>
               <td class="px-4 py-3.5 align-middle tabular-nums font-semibold whitespace-nowrap">{{ money(claim.monto_reclamado) }}</td>
-              <td class="px-4 py-3.5 align-middle whitespace-nowrap">
+              <td class="px-4 py-3.5 align-middle whitespace-nowrap text-center">
                 @if (claim.alertas.length > 0) {
-                  <div class="inline-flex items-center gap-1 max-w-full">
+                  <div class="inline-flex items-center justify-center gap-1 flex-wrap">
                     @for (alert of topAlerts(claim); track alert.code) {
                       <span class="font-mono text-[10px] px-1.5 py-0.5 rounded shrink-0" [class]="alertChipClass(alert.severidad)">
                         {{ alert.code }}
@@ -68,12 +68,12 @@ import type { Claim } from '../../claims/models';
                     }
                   </div>
                 } @else {
-                  <span class="text-[12px] text-ink-3 whitespace-nowrap">Sin alertas</span>
+                  <span class="text-[12px] text-ink-3">Sin alertas</span>
                 }
               </td>
-              <td class="px-4 py-3.5 align-middle whitespace-nowrap">
+              <td class="px-4 py-3.5 align-middle whitespace-nowrap text-center">
                 <span
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium tabular-nums"
+                  class="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium tabular-nums"
                   [class]="riskBadgeClass(claim.nivel)"
                 >
                   <span class="w-1.5 h-1.5 rounded-full shrink-0" [class]="riskDotClass(claim.nivel)"></span>
@@ -81,13 +81,15 @@ import type { Claim } from '../../claims/models';
                 </span>
               </td>
               <td class="px-4 py-3.5 align-middle whitespace-nowrap">
-                <span
-                  class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium"
-                  [class]="reviewStatusBadgeClass(claim.review.status)"
-                >
-                  {{ reviewStatusLabel(claim.review.status) }}
-                </span>
-                <div class="text-[10.5px] text-ink-3 mt-1">{{ claim.estado }}</div>
+                <div class="flex flex-col items-center gap-1">
+                  <span
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium"
+                    [class]="reviewStatusBadgeClass(claim.review.status)"
+                  >
+                    {{ reviewStatusLabel(claim.review.status) }}
+                  </span>
+                  <span class="text-[10.5px] text-ink-3">{{ claim.estado }}</span>
+                </div>
               </td>
               <td class="px-4 py-3.5 align-middle">
                 <button

@@ -10,13 +10,13 @@ import type { AiAnomaly } from '../models';
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="bg-white border-t-2 border-[#8b5cf6] rounded-md p-3 shadow-sm h-full">
-      <div class="flex items-center gap-1 mb-2">
+    <div class="bg-white border-t-2 border-[#8b5cf6] rounded-md p-3 shadow-sm h-full flex flex-col">
+      <div class="flex items-center gap-1 mb-2 shrink-0">
         <span class="text-[#8b5cf6]"><ui-icon name="auto_awesome" [size]="15" /></span>
         <h3 class="text-[12px] font-bold text-[#000515] m-0">Anomalías IA</h3>
       </div>
 
-      <div class="space-y-1.5">
+      <div class="space-y-1.5 flex-1 overflow-y-auto scroll-pretty">
         @for (item of anomalies; track item.id) {
           <button
             type="button"
