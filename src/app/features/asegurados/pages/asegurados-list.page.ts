@@ -1,7 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+import {
+  type AseguradoCreate,
+  type AseguradoUpdate,
+} from '@core/api/clients/asegurados.api';
 import { AseguradosStore } from '@core/state/asegurados.store';
+import type { Asegurado } from '@shared/models';
 import { Button } from '@shared/ui/button';
 import { Chip } from '@shared/ui/chip';
 import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
@@ -10,6 +15,10 @@ import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
 import { formatMoney } from '@shared/utils';
+import {
+  AseguradoFormModal,
+  type AseguradoFormValue,
+} from '../components/asegurado-form-modal';
 import { AseguradosTable } from '../components/asegurados-table';
 import {
   ASEGURADO_EXPORT_COLUMNS,
@@ -31,6 +40,7 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
     Pagination,
     SkeletonTable,
     AseguradosTable,
+    AseguradoFormModal,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -41,15 +51,16 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
           Listado de personas aseguradas con su exposición y nivel de alertas acumuladas.
         </p>
       </div>
-      <ui-button
-        variant="primary"
-        class="shrink-0"
-        [disabled]="filtered().length === 0"
-        (click)="exportOpen.set(true)"
-      >
-        <ui-icon name="download" [size]="14" />
-        Exportar reporte
-      </ui-button>
+      <div class="flex items-center gap-2 shrink-0">
+        <ui-button variant="primary" (click)="openCreate()">
+          <ui-icon name="add" [size]="16" />
+          Agregar asegurado
+        </ui-button>
+        <ui-button [disabled]="filtered().length === 0" (click)="exportOpen.set(true)">
+          <ui-icon name="download" [size]="14" />
+          Exportar reporte
+        </ui-button>
+      </div>
     </div>
 
     <div class="grid grid-cols-4 gap-3 mb-5">
@@ -84,7 +95,12 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
         Sin asegurados que coincidan con los filtros aplicados.
       </div>
     } @else {
-      <asegurados-table [asegurados]="paged()" (open)="openAsegurado($event)" />
+      <asegurados-table
+        [asegurados]="paged()"
+        (open)="openAsegurado($event)"
+        (edit)="openEdit($event)"
+        (remove)="onDelete($event)"
+      />
       <ui-pagination
         [page]="page()"
         [pageSize]="pageSize()"
@@ -106,6 +122,14 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
       (close)="exportOpen.set(false)"
       (download)="onExport($event)"
     />
+
+    <asegurado-form-modal
+      [open]="formOpen()"
+      [mode]="formMode()"
+      [value]="formTarget()"
+      (save)="onFormSave($event)"
+      (close)="formOpen.set(false)"
+    />
   `,
 })
 export class AseguradosListPage {
@@ -118,6 +142,10 @@ export class AseguradosListPage {
   protected readonly pageSize = signal<number>(25);
   protected readonly exportOpen = signal<boolean>(false);
   protected readonly aseguradoColumns = ASEGURADO_EXPORT_COLUMNS;
+
+  protected readonly formOpen = signal<boolean>(false);
+  protected readonly formMode = signal<'create' | 'edit'>('create');
+  protected readonly formTarget = signal<Asegurado | null>(null);
 
   protected readonly stats = this.store.stats;
 
@@ -161,6 +189,54 @@ export class AseguradosListPage {
 
   protected onExport(req: ExportRequest): void {
     exportAsegurados(this.filtered(), req);
+  }
+
+  protected openCreate(): void {
+    this.formTarget.set(null);
+    this.formMode.set('create');
+    this.formOpen.set(true);
+  }
+
+  protected openEdit(asegurado: Asegurado): void {
+    this.formTarget.set(asegurado);
+    this.formMode.set('edit');
+    this.formOpen.set(true);
+  }
+
+  protected async onFormSave(value: AseguradoFormValue): Promise<void> {
+    try {
+      const target = this.formTarget();
+      const body: AseguradoUpdate = {
+        nombre: value.nombre || null,
+        segmento: value.segmento || null,
+        ciudad: value.ciudad,
+        antiguedad: value.antiguedad,
+        num_polizas: value.num_polizas,
+        reclamos_ultimos_12_meses: value.reclamos_ultimos_12_meses,
+        mora_actual: value.mora_actual,
+        score_cliente_simulado: value.score_cliente_simulado,
+      };
+      if (this.formMode() === 'edit' && target) {
+        await this.store.update(target.id, body);
+      } else {
+        await this.store.create(body as AseguradoCreate);
+      }
+      this.formOpen.set(false);
+    } catch {
+      // Failure surfaces via the HTTP error interceptor; keep the modal open.
+    }
+  }
+
+  protected async onDelete(asegurado: Asegurado): Promise<void> {
+    const confirmed = window.confirm(
+      `¿Eliminar al asegurado «${asegurado.nombre}»? Esta acción no se puede deshacer.`,
+    );
+    if (!confirmed) return;
+    try {
+      await this.store.remove(asegurado.id);
+    } catch {
+      // Failure surfaces via the HTTP error interceptor.
+    }
   }
 
   protected readonly formatMoney = formatMoney;

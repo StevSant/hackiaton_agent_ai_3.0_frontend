@@ -2,10 +2,12 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 
 import { formatMoney, initials } from '@shared/utils';
 import type { Asegurado } from '@shared/models';
+import { Icon } from '@shared/ui/icon';
 
 @Component({
   selector: 'asegurados-table',
   standalone: true,
+  imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
@@ -20,6 +22,7 @@ import type { Asegurado } from '@shared/models';
               <th class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Alertas</th>
               <th class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Monto</th>
               <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Estado</th>
+              <th class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -62,6 +65,28 @@ import type { Asegurado } from '@shared/models';
                     <span class="text-ink-3 text-[12px]">Al día</span>
                   }
                 </td>
+                <td class="py-2.5 px-4">
+                  <div class="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      class="rounded-sm w-8 h-8 grid place-items-center text-ink-3 hover:bg-hover hover:text-ink"
+                      title="Editar asegurado"
+                      aria-label="Editar asegurado"
+                      (click)="edit.emit(a); $event.stopPropagation()"
+                    >
+                      <ui-icon name="edit" [size]="16" />
+                    </button>
+                    <button
+                      type="button"
+                      class="rounded-sm w-8 h-8 grid place-items-center text-ink-3 hover:bg-tier-red-soft hover:text-tier-red-ink"
+                      title="Eliminar asegurado"
+                      aria-label="Eliminar asegurado"
+                      (click)="remove.emit(a); $event.stopPropagation()"
+                    >
+                      <ui-icon name="delete" [size]="16" />
+                    </button>
+                  </div>
+                </td>
               </tr>
             }
           </tbody>
@@ -73,6 +98,8 @@ import type { Asegurado } from '@shared/models';
 export class AseguradosTable {
   readonly asegurados = input.required<Asegurado[]>();
   readonly open = output<string>();
+  readonly edit = output<Asegurado>();
+  readonly remove = output<Asegurado>();
 
   protected readonly initials = initials;
   protected readonly money = formatMoney;

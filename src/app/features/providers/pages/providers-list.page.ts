@@ -1,7 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+import {
+  type ProviderCreate,
+  type ProviderUpdate,
+} from '@core/api/clients/network.api';
 import { ProvidersStore } from '@core/state/providers.store';
+import type { Provider } from '@shared/models';
 import { Button } from '@shared/ui/button';
 import { Chip } from '@shared/ui/chip';
 import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
@@ -15,6 +20,7 @@ import {
   formatMoney,
   projectProvider,
 } from '@shared/utils';
+import { ProviderFormModal, type ProviderFormValue } from '../components/provider-form-modal';
 import { ProvidersTable } from '../components/providers-table';
 
 type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
@@ -31,6 +37,7 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
     Pagination,
     SkeletonTable,
     ProvidersTable,
+    ProviderFormModal,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -41,15 +48,16 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
           Listado de talleres, clínicas y beneficiarios asociados a los siniestros.
         </p>
       </div>
-      <ui-button
-        variant="primary"
-        class="shrink-0"
-        [disabled]="filtered().length === 0"
-        (click)="exportOpen.set(true)"
-      >
-        <ui-icon name="download" [size]="14" />
-        Exportar reporte
-      </ui-button>
+      <div class="flex items-center gap-2 shrink-0">
+        <ui-button variant="primary" (click)="openCreate()">
+          <ui-icon name="add" [size]="16" />
+          Agregar proveedor
+        </ui-button>
+        <ui-button [disabled]="filtered().length === 0" (click)="exportOpen.set(true)">
+          <ui-icon name="download" [size]="14" />
+          Exportar reporte
+        </ui-button>
+      </div>
     </div>
 
     <div class="grid grid-cols-4 gap-3 mb-5">
@@ -84,7 +92,12 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
         Sin proveedores que coincidan con los filtros aplicados.
       </div>
     } @else {
-      <providers-table [providers]="paged()" (open)="openProvider($event)" />
+      <providers-table
+        [providers]="paged()"
+        (open)="openProvider($event)"
+        (edit)="openEdit($event)"
+        (remove)="onDelete($event)"
+      />
       <ui-pagination
         [page]="page()"
         [pageSize]="pageSize()"
@@ -105,6 +118,14 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
       (close)="exportOpen.set(false)"
       (download)="onExport($event)"
     />
+
+    <provider-form-modal
+      [open]="formOpen()"
+      [mode]="formMode()"
+      [value]="formTarget()"
+      (save)="onFormSave($event)"
+      (close)="formOpen.set(false)"
+    />
   `,
 })
 export class ProvidersListPage {
@@ -117,6 +138,10 @@ export class ProvidersListPage {
   protected readonly pageSize = signal<number>(20);
   protected readonly exportOpen = signal<boolean>(false);
   protected readonly providerColumns = PROVIDER_EXPORT_COLUMNS;
+
+  protected readonly formOpen = signal<boolean>(false);
+  protected readonly formMode = signal<'create' | 'edit'>('create');
+  protected readonly formTarget = signal<Provider | null>(null);
 
   protected readonly stats = this.store.stats;
 
@@ -160,6 +185,57 @@ export class ProvidersListPage {
 
   protected onExport(req: ExportRequest): void {
     exportProviders(this.filtered(), req);
+  }
+
+  protected openCreate(): void {
+    this.formTarget.set(null);
+    this.formMode.set('create');
+    this.formOpen.set(true);
+  }
+
+  protected openEdit(provider: Provider): void {
+    this.formTarget.set(provider);
+    this.formMode.set('edit');
+    this.formOpen.set(true);
+  }
+
+  protected async onFormSave(value: ProviderFormValue): Promise<void> {
+    try {
+      const target = this.formTarget();
+      if (this.formMode() === 'edit' && target) {
+        const update: ProviderUpdate = {
+          nombre: value.nombre || null,
+          tipo: value.tipo,
+          ciudad: value.ciudad,
+          lista_restrictiva: value.listaRestrictiva,
+        };
+        await this.store.update(target.id, update);
+      } else {
+        const create: ProviderCreate = {
+          nombre: value.nombre || null,
+          tipo: value.tipo,
+          ciudad: value.ciudad,
+          antiguedad: value.antiguedad,
+          lista_restrictiva: value.listaRestrictiva,
+        };
+        await this.store.create(create);
+      }
+      this.formOpen.set(false);
+    } catch {
+      // Failure surfaces via the HTTP error interceptor; keep the modal open.
+    }
+  }
+
+  protected async onDelete(provider: Provider): Promise<void> {
+    const confirmed = window.confirm(
+      `¿Eliminar al proveedor «${provider.nombre}»? Esta acción no se puede deshacer.`,
+    );
+    if (!confirmed) return;
+    try {
+      await this.store.remove(provider.id);
+    } catch {
+      // Failure surfaces via the HTTP error interceptor.
+    }
   }
 
   protected readonly formatMoney = formatMoney;

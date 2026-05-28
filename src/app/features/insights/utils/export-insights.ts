@@ -1,68 +1,73 @@
-import type { Claim } from '@features/claims/models';
+import type { Claim } from '@shared/models';
+import type { ExportColumnOption, ExportRequest } from '@shared/ui';
+import { downloadExport, ramoLabel, riskTierLabel } from '@shared/utils';
 
 /**
- * Export an insights snapshot (KPIs + per-tier counts + per-ramo counts +
- * per-city counts) as a CSV download. Computed off the same claims signal
- * that powers the dashboard so what the user exports is exactly what they
- * see on screen.
+ * Insights export — the analyzed siniestros as flat rows, so the page uses the
+ * same shared ExportModal (format + columns + preview + filename) as every
+ * other listing. The executive KPI rollup is now delivered by the agent's
+ * "resumen ejecutivo" (NL question #11), not a bespoke CSV.
  */
-export function exportInsightsCsv(claims: readonly Claim[]): void {
-  if (typeof window === 'undefined') return;
+export const INSIGHTS_EXPORT_COLUMNS: readonly ExportColumnOption[] = [
+  { key: 'id', label: 'ID Siniestro', defaultSelected: true },
+  { key: 'nivel', label: 'Nivel', hint: 'Verde / Amarillo / Rojo', defaultSelected: true },
+  { key: 'score', label: 'Score', hint: '0-100', defaultSelected: true },
+  { key: 'ramo', label: 'Ramo', defaultSelected: true },
+  { key: 'ciudad', label: 'Ciudad', defaultSelected: true },
+  { key: 'sucursal', label: 'Sucursal', defaultSelected: false },
+  { key: 'estado', label: 'Estado', defaultSelected: false },
+  { key: 'asegurado', label: 'Asegurado', defaultSelected: true },
+  { key: 'proveedor', label: 'Proveedor', hint: 'Beneficiario / proveedor', defaultSelected: false },
+  {
+    key: 'monto_reclamado',
+    label: 'Monto reclamado',
+    hint: 'USD',
+    defaultSelected: true,
+  },
+  { key: 'suma_asegurada', label: 'Suma asegurada', hint: 'USD', defaultSelected: false },
+  {
+    key: 'fecha_ocurrencia',
+    label: 'Fecha ocurrencia',
+    defaultSelected: true,
+  },
+  { key: 'fecha_reporte', label: 'Fecha reporte', defaultSelected: false },
+];
 
-  const total = claims.length;
-  const rojo = claims.filter((c) => c.nivel === 'rojo').length;
-  const amarillo = claims.filter((c) => c.nivel === 'amarillo').length;
-  const verde = claims.filter((c) => c.nivel === 'verde').length;
-  const exposed = claims
-    .filter((c) => c.nivel !== 'verde')
-    .reduce((s, c) => s + c.monto_reclamado, 0);
-  const avgScore = total ? Math.round(claims.reduce((s, c) => s + c.score, 0) / total) : 0;
+const COLUMN_LABELS: Record<string, string> = {
+  id: 'id_siniestro',
+  nivel: 'nivel',
+  score: 'score',
+  ramo: 'ramo',
+  ciudad: 'ciudad',
+  sucursal: 'sucursal',
+  estado: 'estado',
+  asegurado: 'asegurado',
+  proveedor: 'proveedor',
+  monto_reclamado: 'monto_reclamado_usd',
+  suma_asegurada: 'suma_asegurada_usd',
+  fecha_ocurrencia: 'fecha_ocurrencia',
+  fecha_reporte: 'fecha_reporte',
+};
 
-  const byRamo = countBy(claims, (c) => c.ramo || 'desconocido');
-  const byCiudad = countBy(claims, (c) => c.ciudad || 'desconocido');
-
-  const lines: string[] = [];
-  lines.push('seccion,clave,valor');
-  lines.push(`resumen,total_casos,${total}`);
-  lines.push(`resumen,rojo,${rojo}`);
-  lines.push(`resumen,amarillo,${amarillo}`);
-  lines.push(`resumen,verde,${verde}`);
-  lines.push(`resumen,score_promedio,${avgScore}`);
-  lines.push(`resumen,exposicion_no_verde_usd,${exposed.toFixed(2)}`);
-  for (const [k, v] of byRamo) lines.push(`por_ramo,${csv(k)},${v}`);
-  for (const [k, v] of byCiudad) lines.push(`por_ciudad,${csv(k)},${v}`);
-
-  triggerDownload(lines.join('\r\n'), `centinela-insights-${todayStamp()}.csv`, 'text/csv;charset=utf-8');
+export function projectInsightClaim(c: Claim): Record<string, unknown> {
+  return {
+    id: c.id,
+    nivel: riskTierLabel(c.nivel),
+    score: c.score,
+    ramo: ramoLabel(c.ramo),
+    ciudad: c.ciudad,
+    sucursal: c.sucursal,
+    estado: c.estado,
+    asegurado: c.asegurado,
+    proveedor: c.proveedor ?? '',
+    monto_reclamado: c.monto_reclamado,
+    suma_asegurada: c.suma_asegurada,
+    fecha_ocurrencia: c.fecha_ocurrencia,
+    fecha_reporte: c.fecha_reporte,
+  };
 }
 
-function countBy<T>(items: readonly T[], key: (item: T) => string): Map<string, number> {
-  const map = new Map<string, number>();
-  for (const item of items) {
-    const k = key(item);
-    map.set(k, (map.get(k) ?? 0) + 1);
-  }
-  return new Map([...map.entries()].sort((a, b) => b[1] - a[1]));
-}
-
-function csv(value: string): string {
-  if (/[",\r\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
-  return value;
-}
-
-function todayStamp(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function triggerDownload(content: string, filename: string, mime: string): void {
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
+export function exportInsightsClaims(claims: readonly Claim[], req: ExportRequest): void {
+  const rows = claims.map(projectInsightClaim);
+  downloadExport(rows, req.columns, req.format, req.filename, COLUMN_LABELS);
 }

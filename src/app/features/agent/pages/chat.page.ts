@@ -402,6 +402,10 @@ export class ChatPage implements AfterViewChecked {
   private readonly scrollEl = viewChild<ElementRef<HTMLDivElement>>('scroll');
   private readonly textarea = viewChild<ElementRef<HTMLTextAreaElement>>('ta');
 
+  // Deep-linked questions already auto-sent, keyed by `${convId}::${question}`,
+  // so a queryParam re-emit doesn't fire the same question twice.
+  private readonly autoAsked = new Set<string>();
+
   constructor() {
     afterNextRender(() => {
       this.voiceSupported.set(this.voice.isSupported());
@@ -418,15 +422,22 @@ export class ChatPage implements AfterViewChecked {
           this.suggestionsOpen.set(null);
         }
         this.activeConversationId.set(convId);
-        void this.bootstrapConversation(convId, caseId);
+        // `q` deep-links a question (e.g. from the Insights page) — auto-send it
+        // once the conversation is bootstrapped.
+        const pendingQuestion = params.get('q');
+        void this.bootstrapConversation(convId, caseId).then(() =>
+          this.maybeAutoAsk(convId, pendingQuestion),
+        );
         return;
       }
 
       const newId = generateUuid();
+      const pendingQuestion = params.get('q');
       void this.router.navigate([], {
         queryParams: {
           conversation: newId,
           ...(caseId ? { case: caseId } : {}),
+          ...(pendingQuestion ? { q: pendingQuestion } : {}),
         },
         replaceUrl: true,
       });
@@ -513,6 +524,15 @@ export class ChatPage implements AfterViewChecked {
   protected quickSend(text: string): void {
     const convId = this.activeConversationId() ?? undefined;
     void this.store.ask(text, convId);
+  }
+
+  private maybeAutoAsk(convId: string, question: string | null): void {
+    const q = question?.trim();
+    if (!q) return;
+    const key = `${convId}::${q}`;
+    if (this.autoAsked.has(key)) return;
+    this.autoAsked.add(key);
+    void this.store.ask(q, convId);
   }
 
   protected onTtsToggle(id: string): void {

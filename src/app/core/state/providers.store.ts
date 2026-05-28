@@ -1,7 +1,12 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { NetworkApi, type ProviderDto } from '@core/api/clients/network.api';
+import {
+  NetworkApi,
+  type ProviderCreate,
+  type ProviderDto,
+  type ProviderUpdate,
+} from '@core/api/clients/network.api';
 import { AuthStore } from '@core/auth/auth.store';
 import { AppError } from '@core/errors/app-error';
 import type { Provider } from '@shared/models';
@@ -66,12 +71,12 @@ export class ProvidersStore {
     });
   }
 
-  async loadList(): Promise<void> {
+  async loadList(fresh = false): Promise<void> {
     if (this._loading()) return;
     this._loading.set(true);
     this._error.set(null);
     try {
-      const dtos = await firstValueFrom(this.api.listProviders());
+      const dtos = await firstValueFrom(this.api.listProviders({ fresh }));
       this._providers.set(dtos.map(dtoToProvider));
     } catch (err) {
       this._error.set(err instanceof AppError ? err : new AppError('unknown', String(err)));
@@ -80,7 +85,39 @@ export class ProvidersStore {
     }
   }
 
+  async create(body: ProviderCreate): Promise<Provider> {
+    const dto = await firstValueFrom(this.api.createProvider(body));
+    const created = dtoToProvider(dto);
+    this._providers.update((list) => [created, ...list]); // optimistic
+    await this.loadList(true); // reconcile aggregates (cache-busted)
+    return created;
+  }
+
+  async update(id: string, body: ProviderUpdate): Promise<void> {
+    await firstValueFrom(this.api.updateProvider(id, body));
+    this._providers.update((list) =>
+      list.map((p) => (p.id === id ? applyProviderUpdate(p, body) : p)),
+    );
+    await this.loadList(true);
+  }
+
+  async remove(id: string): Promise<void> {
+    await firstValueFrom(this.api.deleteProvider(id));
+    this._providers.update((list) => list.filter((p) => p.id !== id)); // optimistic
+    await this.loadList(true);
+  }
+
   findById(id: string): Provider | undefined {
     return this._providers().find((p) => p.id === id);
   }
+}
+
+function applyProviderUpdate(p: Provider, body: ProviderUpdate): Provider {
+  return {
+    ...p,
+    nombre: body.nombre ?? p.nombre,
+    tipo: body.tipo ?? p.tipo,
+    ciudad: body.ciudad ?? p.ciudad,
+    listaRestrictiva: body.lista_restrictiva ?? p.listaRestrictiva,
+  };
 }
