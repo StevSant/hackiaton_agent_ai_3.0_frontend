@@ -8,9 +8,9 @@ import { AppError } from '../errors/app-error';
 import { initials } from '@shared/utils';
 import type { AuthUser, RoleCode } from './auth-user.model';
 
-// Bumped key invalidates pre-real-auth mock sessions so stale "mock_*" tokens
-// don't end up in Authorization headers after this rollout.
-const STORAGE_KEY = 'centinela:session:v2';
+// v3: backend-provided user id (UUID) replaces the frontend-built "usr_<local>" —
+// stale v2 sessions would otherwise leave `assigned_to === me` permanently false.
+const STORAGE_KEY = 'centinela:session:v3';
 
 interface StoredSession {
   user: AuthUser;
@@ -34,9 +34,8 @@ function readStored(): StoredSession | null {
 }
 
 function toAuthUser(payload: LoginUserPayload): AuthUser {
-  const local = payload.email.split('@')[0] ?? 'usuario';
   return {
-    id: `usr_${local}`,
+    id: payload.id,
     name: payload.full_name,
     email: payload.email,
     role: ROLE_LABEL[payload.role],

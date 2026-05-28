@@ -12,6 +12,7 @@ export interface LoginRequestBody {
 }
 
 export interface LoginUserPayload {
+  id: string;
   email: string;
   role: BackendRole;
   full_name: string;

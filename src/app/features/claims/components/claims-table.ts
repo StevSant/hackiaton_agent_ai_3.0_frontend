@@ -69,7 +69,15 @@ import type { Claim } from '../models';
                 }
               </td>
               <td class="px-3 py-3 border-b border-line align-middle">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line">{{ c.estado }}</span>
+                <div class="flex flex-col items-start gap-1">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line">{{ c.estado }}</span>
+                  @if (reviewBadge(c); as rb) {
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]" [class]="rb.chip">
+                      <ui-icon [name]="rb.icon" [size]="11" />
+                      {{ rb.label }}
+                    </span>
+                  }
+                </div>
               </td>
               <td class="px-3 py-3 border-b border-line align-middle text-ink-4">
                 <ui-icon name="chevron_right" [size]="16" />
@@ -99,5 +107,28 @@ export class ClaimsTable {
       : sev === 'med'
         ? 'bg-tier-yellow-soft text-tier-yellow-ink'
         : 'bg-tier-green-soft text-tier-green-ink';
+  }
+
+  protected reviewBadge(c: Claim): { label: string; icon: string; chip: string } | null {
+    switch (c.review.status) {
+      case 'escalado':
+        return { label: 'Escalado', icon: 'flag', chip: 'bg-tier-red-soft text-tier-red-ink' };
+      case 'en_revision':
+        return {
+          label: 'En revisión',
+          icon: 'visibility',
+          chip: 'bg-tier-yellow-soft text-tier-yellow-ink',
+        };
+      case 'dictaminado':
+        return { label: 'Dictaminado', icon: 'gavel', chip: 'bg-brand-soft text-brand-ink' };
+      case 'revisado_sin_escalar':
+        return {
+          label: 'Revisado',
+          icon: 'check_circle',
+          chip: 'bg-tier-green-soft text-tier-green-ink',
+        };
+      default:
+        return null;
+    }
   }
 }

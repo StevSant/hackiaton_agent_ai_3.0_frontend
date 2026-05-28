@@ -19,6 +19,9 @@ import type { AuditAction, AuditActor, AuditEvent } from '../models';
       <div class="min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
           <span class="font-medium text-[13.5px]">{{ event().title }}</span>
+          @if (event().actorName) {
+            <span class="text-[12px] text-ink-2 font-medium">{{ event().actorName }}</span>
+          }
           <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] bg-soft text-ink-3 border border-line">{{ actorLabel() }}</span>
           @if (event().target) {
             <button class="font-mono text-[11.5px] px-1.5 py-px rounded bg-brand-soft text-brand-ink hover:opacity-80 cursor-pointer" (click)="openTarget.emit(event().target!)">
