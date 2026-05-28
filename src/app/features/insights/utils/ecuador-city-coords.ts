@@ -45,3 +45,13 @@ export const ECUADOR_CITY_COORDS: Readonly<Record<string, CityCoords>> = {
   },
   'San Cristóbal': { latitude: -0.9019, longitude: -89.6064, province: 'Galápagos' },
 };
+
+/** Map sucursal names (e.g. "Quito Norte") to a known city center key. */
+export function normalizeToCity(sucursalOrCity: string): string | null {
+  if (!sucursalOrCity) return null;
+  if (sucursalOrCity in ECUADOR_CITY_COORDS) return sucursalOrCity;
+  for (const city of Object.keys(ECUADOR_CITY_COORDS)) {
+    if (sucursalOrCity.includes(city)) return city;
+  }
+  return null;
+}

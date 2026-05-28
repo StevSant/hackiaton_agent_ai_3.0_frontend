@@ -13,7 +13,7 @@ import {
 import { AuthStore } from '@core/auth/auth.store';
 import { AppError } from '@core/errors/app-error';
 import type { AiAnomaly, ClaimTypeSlice, MapHotspot, RegionalFraudPoint } from '../models';
-import { ECUADOR_CITY_COORDS } from '../utils/ecuador-city-coords';
+import { ECUADOR_CITY_COORDS, normalizeToCity } from '../utils/ecuador-city-coords';
 
 const REGION_PALETTE = ['#1e293b', '#334155', '#475569', '#64748b', '#94a3b8'];
 const SLICE_COLORS: Record<string, string> = {
@@ -62,11 +62,12 @@ function dtoToSlice(dto: ClaimTypeSliceDto): ClaimTypeSlice {
 }
 
 function dtoToHotspot(dto: HotspotDto): MapHotspot | null {
-  const coords = ECUADOR_CITY_COORDS[dto.sucursal];
+  const city = normalizeToCity(dto.sucursal) ?? dto.sucursal;
+  const coords = ECUADOR_CITY_COORDS[city];
   if (!coords) return null;
   return {
-    id: dto.sucursal.toLowerCase().replace(/\s+/g, '-'),
-    city: dto.sucursal,
+    id: city.toLowerCase().replace(/\s+/g, '-'),
+    city,
     province: coords.province,
     risk: dto.avg_score >= HIGH_RISK_THRESHOLD ? 'high' : 'medium',
     latitude: coords.latitude,

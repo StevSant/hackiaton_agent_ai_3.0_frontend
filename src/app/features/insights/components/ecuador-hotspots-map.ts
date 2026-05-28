@@ -60,10 +60,25 @@ const TOPO_ATTRIBUTION =
           >
             <p class="text-[11px] font-semibold text-ink m-0 leading-tight">Intensidad regional</p>
             <p class="text-[10.5px] text-ink-3 m-0 mt-0.5 leading-snug">
-              {{ store.hotspots().length }} sucursales con actividad. Haz clic para ver detalle.
+              {{ store.hotspots().length }} ciudades con actividad. Haz clic en un hotspot para ver detalle.
+            </p>
+            <p class="text-[10px] text-ink-4 m-0 mt-1.5 leading-snug border-t border-line pt-1.5">
+              Ubicación aproximada — no es el punto exacto del siniestro.
             </p>
           </div>
         }
+      </div>
+
+      <div
+        class="absolute top-2.5 right-2.5 z-[1000] max-w-[min(100%,200px)] pointer-events-none"
+        aria-hidden="true"
+      >
+        <div class="insights-glass-card px-2 py-1 rounded-md border border-line shadow-sm">
+          <p class="text-[9.5px] text-ink-3 m-0 leading-snug">
+            <ui-icon name="info" [size]="11" class="inline align-[-2px] mr-0.5" />
+            Ubicación aproximada
+          </p>
+        </div>
       </div>
 
       <div class="absolute bottom-2 left-2 right-2 flex justify-between items-end z-[1000] pointer-events-none">
