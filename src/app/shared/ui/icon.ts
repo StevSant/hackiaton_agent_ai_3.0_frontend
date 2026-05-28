@@ -4,7 +4,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
   selector: 'ui-icon',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="material-symbols-outlined" [style.fontSize.px]="size()" [style.lineHeight]="1" [attr.aria-hidden]="ariaHidden() ? 'true' : null" [style.fontVariationSettings]="settings()">{{ name() }}</span>`,
+  template: `<span class="ui-icon material-symbols-outlined" [style.fontSize.px]="size()" [style.width.px]="size()" [style.height.px]="size()" [attr.aria-hidden]="ariaHidden() ? 'true' : null" [style.fontVariationSettings]="settings()">{{ name() }}</span>`,
 })
 export class Icon {
   readonly name = input.required<string>();

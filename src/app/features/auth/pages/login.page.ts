@@ -110,10 +110,10 @@ import type { RoleCode } from '@core/auth/auth-user.model';
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <button
             type="button"
-            class="flex items-start gap-2.5 text-left px-3 py-2.5 rounded-sm border border-line bg-surface hover:bg-hover hover:border-line-2 transition-colors"
+            class="flex items-center gap-2.5 text-left px-3 py-2.5 rounded-sm border border-line bg-surface hover:bg-hover hover:border-line-2 transition-colors"
             (click)="onDemo('analista')"
           >
-            <span class="mt-0.5 w-7 h-7 rounded-full grid place-items-center bg-soft text-ink-2 border border-line">
+            <span class="w-7 h-7 rounded-full shrink-0 grid place-items-center bg-soft text-ink-2 border border-line">
               <ui-icon name="badge" [size]="14" />
             </span>
             <span class="flex-1 leading-tight">
@@ -124,10 +124,10 @@ import type { RoleCode } from '@core/auth/auth-user.model';
 
           <button
             type="button"
-            class="flex items-start gap-2.5 text-left px-3 py-2.5 rounded-sm border border-tier-red-ink/20 bg-tier-red-soft/30 hover:bg-tier-red-soft/50 transition-colors"
+            class="flex items-center gap-2.5 text-left px-3 py-2.5 rounded-sm border border-tier-red-ink/20 bg-tier-red-soft/30 hover:bg-tier-red-soft/50 transition-colors"
             (click)="onDemo('antifraude')"
           >
-            <span class="mt-0.5 w-7 h-7 rounded-full grid place-items-center bg-tier-red-soft text-tier-red-ink border border-transparent">
+            <span class="w-7 h-7 rounded-full shrink-0 grid place-items-center bg-tier-red-soft text-tier-red-ink border border-transparent">
               <ui-icon name="shield_person" [size]="14" />
             </span>
             <span class="flex-1 leading-tight">
