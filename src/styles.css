@@ -838,6 +838,13 @@ page-insights {
   background: rgba(255, 255, 255, 0.8);
 }
 
+.insights-map-selection-card {
+  border-color: color-mix(in oklch, var(--brand) 35%, var(--border)) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--brand) 12%, transparent),
+    0 4px 12px rgba(15, 23, 42, 0.08) !important;
+}
+
 .insights-chart-bar {
   min-height: 4px;
 }
@@ -862,6 +869,26 @@ page-insights {
 
 .insights-leaflet-host .leaflet-marker-pane {
   z-index: 650 !important;
+}
+
+.insights-leaflet-host .leaflet-tooltip {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklch, var(--brand) 28%, var(--border));
+  box-shadow: var(--shadow-2);
+}
+
+.insights-leaflet-host .insights-incident-pin-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.insights-incident-pin {
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 2px 6px rgba(15, 23, 42, 0.35));
+  pointer-events: none;
 }
 
 .insights-leaflet-host .leaflet-control-attribution {
