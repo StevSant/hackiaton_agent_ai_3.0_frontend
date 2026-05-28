@@ -101,6 +101,12 @@ function generateUuid(): string {
         #scroll
         class="flex-1 min-h-0 overflow-y-auto scroll-pretty px-4 pt-3 pb-3 flex flex-col gap-4"
       >
+        <!-- Spacer pushes the message stack to the bottom when content is short.
+             When overflow kicks in, this collapses to 0 and the scroll behaves
+             normally — same trick WhatsApp / ChatGPT use to make sparse
+             conversations feel anchored to the composer. -->
+        <div class="flex-1 min-h-0" aria-hidden="true"></div>
+
         @for (m of store.messages(); track m.id; let last = $last) {
           <agent-chat-message
             [message]="m"
