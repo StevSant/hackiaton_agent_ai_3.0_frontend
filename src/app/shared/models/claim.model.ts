@@ -23,6 +23,7 @@ export interface Claim {
   sucursal: string;
   vehiculo?: ClaimVehicle;
   proveedor: string | null;
+  proveedor_id?: string | null;
   descripcion: string;
   score: number;
   nivel: RiskTier;

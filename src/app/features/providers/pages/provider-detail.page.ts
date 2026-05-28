@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { ClaimsStore } from '@core/state/claims.store';
 import { ProvidersStore } from '@core/state/providers.store';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
+import { Pagination } from '@shared/ui/pagination';
 import { SkeletonCard } from '@shared/ui/skeleton-card';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
 import { formatMoney, initials } from '@shared/utils';
@@ -13,7 +14,7 @@ import { ProviderClaimsList } from '../components/provider-claims-list';
 @Component({
   selector: 'page-provider-detail',
   standalone: true,
-  imports: [Icon, KpiSmall, SkeletonCard, SkeletonTable, ProviderClaimsList],
+  imports: [Icon, KpiSmall, Pagination, SkeletonCard, SkeletonTable, ProviderClaimsList],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-center gap-2 mb-3.5">
@@ -70,7 +71,18 @@ import { ProviderClaimsList } from '../components/provider-claims-list';
           Sin siniestros asociados a este proveedor.
         </div>
       } @else {
-        <provider-claims-list [claims]="providerClaims()" (open)="openClaim($event)" />
+        <div class="bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
+          <provider-claims-list [claims]="pagedClaims()" (open)="openClaim($event)" />
+          <ui-pagination
+            [page]="page()"
+            [pageSize]="pageSize()"
+            [total]="providerClaims().length"
+            variant="compact"
+            noun="siniestros"
+            (pageChange)="onPageChange($event)"
+            (pageSizeChange)="onPageSizeChange($event)"
+          />
+        </div>
       }
     } @else if (providersStore.loading()) {
       <ui-skeleton-card [bodyLines]="3" />
@@ -93,10 +105,33 @@ export class ProviderDetailPage {
   protected readonly providerClaims = computed(() => {
     const p = this.provider();
     if (!p) return [];
-    return this.claimsStore
-      .claims()
-      .filter((c) => c.proveedor && c.proveedor.toLowerCase() === p.nombre.toLowerCase());
+    const targetId = p.id.toLowerCase();
+    const targetName = p.nombre.toLowerCase();
+    return this.claimsStore.claims().filter((c) => {
+      // Match by id first (the canonical FK on siniestros.beneficiario), then
+      // fall back to name (covers older summary rows without proveedor_id).
+      if (c.proveedor_id && c.proveedor_id.toLowerCase() === targetId) return true;
+      return !!c.proveedor && c.proveedor.toLowerCase() === targetName;
+    });
   });
+
+  protected readonly page = signal(0);
+  protected readonly pageSize = signal(10);
+
+  protected readonly pagedClaims = computed(() => {
+    const start = this.page() * this.pageSize();
+    return this.providerClaims().slice(start, start + this.pageSize());
+  });
+
+  constructor() {
+    // Reset to the first page whenever the underlying provider (or its claim
+    // count) changes — otherwise a deep page number leaks across navigations.
+    effect(() => {
+      this.id();
+      this.providerClaims().length;
+      this.page.set(0);
+    });
+  }
 
   protected readonly riskPct = computed(() => {
     const p = this.provider();
@@ -110,6 +145,15 @@ export class ProviderDetailPage {
 
   protected openClaim(id: string): void {
     void this.router.navigate(['/claims', id]);
+  }
+
+  protected onPageChange(page: number): void {
+    this.page.set(page);
+  }
+
+  protected onPageSizeChange(size: number): void {
+    this.pageSize.set(size);
+    this.page.set(0);
   }
 
   protected readonly formatMoney = formatMoney;

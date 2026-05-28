@@ -214,6 +214,10 @@ export class ClaimsStore {
         alertas: claim.alertas?.length ? claim.alertas : prev.alertas ?? [],
         timeline: claim.timeline?.length ? claim.timeline : prev.timeline ?? [],
         documentos: claim.documentos?.length ? claim.documentos : prev.documentos ?? [],
+        // ClaimDetail doesn't currently carry proveedor_id, but ClaimSummary
+        // does — preserve it across a detail fetch so the provider page filter
+        // (which matches by id) keeps working after the user opens a claim.
+        proveedor_id: claim.proveedor_id ?? prev.proveedor_id ?? null,
       };
       return next;
     });
@@ -235,7 +239,8 @@ function summaryToClaim(row: ClaimSummaryDto): Claim {
     suma_asegurada: 0,
     estado: row.estado,
     sucursal: '',
-    proveedor: null,
+    proveedor: row.proveedor ?? null,
+    proveedor_id: row.proveedor_id ?? null,
     descripcion: '',
     score: row.score,
     nivel: row.nivel,

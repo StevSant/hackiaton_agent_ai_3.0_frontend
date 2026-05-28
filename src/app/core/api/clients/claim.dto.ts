@@ -123,6 +123,8 @@ export interface ClaimSummaryDto {
   score: number;
   nivel: RiskTierDto;
   review_status: ReviewStatusDto;
+  proveedor?: string | null;
+  proveedor_id?: string | null;
 }
 
 export interface InboxRowDto {
