@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { ConversationsApi } from '@core/api/clients/conversations.api';
@@ -6,9 +6,12 @@ import { environment } from '@core/config/env';
 import { AppError } from '@core/errors/app-error';
 import { SseClient } from '@core/realtime/sse.client';
 import type { AgentMessage, AgentStep, ChartPayload } from '../models';
+import type { ChatContext } from '../models/chat-context';
 import { ConversationsStore } from './conversations.store';
 import { buildCaseWelcomeMessage } from '../utils/case-context-message';
-import type { Claim } from '@shared/models';
+import { buildProviderWelcomeMessage } from '../utils/provider-context-message';
+import { buildAseguradoWelcomeMessage } from '../utils/asegurado-context-message';
+import type { Asegurado, Claim, Provider } from '@shared/models';
 
 let nextId = 0;
 const newId = (): string => `m_${Date.now()}_${++nextId}`;
@@ -177,47 +180,79 @@ export class AgentStore {
   private readonly _thinking = signal<boolean>(false);
   private readonly _responding = signal<boolean>(false);
   private readonly _conversationId = signal<string | null>(null);
-  private readonly _contextClaimId = signal<string | null>(null);
+  private readonly _chatContext = signal<ChatContext>(null);
 
   readonly messages = this._messages.asReadonly();
   readonly thinking = this._thinking.asReadonly();
   readonly isResponding = this._responding.asReadonly();
   readonly conversationId = this._conversationId.asReadonly();
-  readonly contextClaimId = this._contextClaimId.asReadonly();
+  readonly chatContext = this._chatContext.asReadonly();
 
-  setContextClaimId(claimId: string | null): void {
-    this._contextClaimId.set(claimId);
+  /** Backward-compat wrapper — maps claim id to ChatContext union. */
+  readonly contextClaimId = computed(() => {
+    const ctx = this._chatContext();
+    return ctx?.kind === 'claim' ? ctx.id : null;
+  });
+
+  setChatContext(ctx: ChatContext): void {
+    this._chatContext.set(ctx);
   }
 
-  startNewConversation(id: string, claim?: Claim | null): void {
+  /** Backward-compat wrapper for existing call sites that pass a claim id. */
+  setContextClaimId(claimId: string | null): void {
+    this._chatContext.set(claimId ? { kind: 'claim', id: claimId } : null);
+  }
+
+  startNewConversation(
+    id: string,
+    entity?: Claim | Provider | { kind: 'provider'; data: Provider } | { kind: 'asegurado'; data: Asegurado } | null,
+    asegurado?: Asegurado | null,
+  ): void {
     this._conversationId.set(id);
-    if (claim) {
-      this._contextClaimId.set(claim.id);
-      this._messages.set([
-        {
-          id: newId(),
-          role: 'assistant',
-          content: buildCaseWelcomeMessage(claim),
-        },
-      ]);
+
+    // Overloaded: when called with (id, claim) from legacy sites, entity is a Claim.
+    // New callers pass tagged objects.
+    if (entity && 'kind' in entity && entity.kind === 'provider') {
+      this._chatContext.set({ kind: 'provider', id: entity.data.id });
+      this._messages.set([{ id: newId(), role: 'assistant', content: buildProviderWelcomeMessage(entity.data) }]);
       return;
     }
 
-    this._contextClaimId.set(null);
-    this._messages.set([
-      {
-        id: newId(),
-        role: 'assistant',
-        content: DEFAULT_WELCOME,
-      },
-    ]);
+    if (entity && 'kind' in entity && entity.kind === 'asegurado') {
+      this._chatContext.set({ kind: 'asegurado', id: entity.data.id });
+      this._messages.set([{ id: newId(), role: 'assistant', content: buildAseguradoWelcomeMessage(entity.data) }]);
+      return;
+    }
+
+    // Legacy call: entity is a Claim (no 'kind' property on Claim shape)
+    const claim = entity as Claim | null | undefined;
+    if (claim && !('kind' in (claim as object))) {
+      this._chatContext.set({ kind: 'claim', id: claim.id });
+      this._messages.set([{ id: newId(), role: 'assistant', content: buildCaseWelcomeMessage(claim) }]);
+      return;
+    }
+
+    // Asegurado passed as third arg (legacy compat path not used currently)
+    if (asegurado) {
+      this._chatContext.set({ kind: 'asegurado', id: asegurado.id });
+      this._messages.set([{ id: newId(), role: 'assistant', content: buildAseguradoWelcomeMessage(asegurado) }]);
+      return;
+    }
+
+    this._chatContext.set(null);
+    this._messages.set([{ id: newId(), role: 'assistant', content: DEFAULT_WELCOME }]);
   }
 
   async loadConversation(id: string): Promise<void> {
     try {
       const detail = await firstValueFrom(this.conversationsApi.get(id));
       this._conversationId.set(id);
-      this._contextClaimId.set(detail.context_claim_id ?? null);
+      // Restore the tagged ChatContext from whichever context field is set.
+      const restoredCtx: ChatContext =
+        detail.context_claim_id    ? { kind: 'claim',     id: detail.context_claim_id }    :
+        detail.context_provider_id ? { kind: 'provider',  id: detail.context_provider_id } :
+        detail.context_asegurado_id? { kind: 'asegurado', id: detail.context_asegurado_id }: null;
+      this._chatContext.set(restoredCtx);
       this._messages.set(
         detail.messages.map((m) => {
           // chart_payload and transparency_metadata only exist on persisted
@@ -346,6 +381,7 @@ export class AgentStore {
     };
 
     const url = `${environment.backendUrl}${environment.apiPrefix}/agent/ask`;
+    const ctx = this._chatContext();
 
     this.sse
       .stream<AgentStreamEvent>({
@@ -354,7 +390,9 @@ export class AgentStore {
         body: {
           message: trimmed,
           conversation_id: this._conversationId(),
-          context_claim_id: this._contextClaimId(),
+          context_claim_id:     ctx?.kind === 'claim'     ? ctx.id : null,
+          context_provider_id:  ctx?.kind === 'provider'  ? ctx.id : null,
+          context_asegurado_id: ctx?.kind === 'asegurado' ? ctx.id : null,
         },
       })
       .subscribe({

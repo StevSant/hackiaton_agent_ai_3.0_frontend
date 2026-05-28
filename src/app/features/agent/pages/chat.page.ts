@@ -25,12 +25,16 @@ import { ConversationsSidebar } from '../components/conversations-sidebar';
 import { TtsPlayer } from '../components/tts-player';
 import { VoiceEqualizer } from '../components/voice-equalizer';
 import type { ConversationSummary } from '../models';
+import type { ChatContext } from '../models/chat-context';
 import { ProvidersStore } from '@core/state/providers.store';
+import { AseguradosStore } from '@core/state/asegurados.store';
 import { AgentStore } from '../services/agent.store';
 import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
 import { ConversationsStore } from '../services/conversations.store';
 import { VoiceRecorderService } from '../services/voice-recorder.service';
 import { CASE_CHAT_SUGGESTIONS } from '../utils/case-context-message';
+import { PROVIDER_CHAT_SUGGESTIONS } from '../utils/provider-context-message';
+import { ASEGURADO_CHAT_SUGGESTIONS } from '../utils/asegurado-context-message';
 import { ClaimsStore } from '@core/state/claims.store';
 import { formatMoneyShort, ramoLabel, riskTierLabel } from '@shared/utils';
 
@@ -100,31 +104,98 @@ function generateUuid(): string {
         </div>
       </header>
 
-      @if (contextClaim(); as claim) {
-        <div class="chat-case-context shrink-0">
-          <div class="chat-case-context__copy">
-            <span class="chat-case-context__eyebrow">Contexto del caso</span>
-            <div class="chat-case-context__title-row">
-              <span class="chat-case-context__id">{{ claim.id }}</span>
-              <span class="chat-case-context__meta">{{ ramoLabel(claim.ramo) }} · score {{ claim.score }}</span>
+      @switch (store.chatContext()?.kind) {
+        @case ('claim') {
+          @if (contextClaim(); as claim) {
+            <div class="chat-case-context shrink-0">
+              <div class="chat-case-context__copy">
+                <span class="chat-case-context__eyebrow">Contexto del caso</span>
+                <div class="chat-case-context__title-row">
+                  <span class="chat-case-context__id">{{ claim.id }}</span>
+                  <span class="chat-case-context__meta">{{ ramoLabel(claim.ramo) }} · score {{ claim.score }}</span>
+                </div>
+                <p class="chat-case-context__subtitle">{{ claim.cobertura }} · {{ claim.asegurado }}</p>
+                <p class="chat-case-context__risk">{{ riskTierLabel(claim.nivel) }} · {{ formatMoneyShort(claim.monto_reclamado) }}</p>
+              </div>
+              <div class="chat-case-context__actions">
+                <button type="button" class="chat-case-context__link" (click)="openCase(claim.id)">
+                  Ver caso
+                </button>
+                <button
+                  type="button"
+                  class="chat-case-context__clear"
+                  (click)="clearCaseContext()"
+                  aria-label="Quitar contexto del caso"
+                >
+                  <ui-icon name="close" [size]="14" />
+                </button>
+              </div>
             </div>
-            <p class="chat-case-context__subtitle">{{ claim.cobertura }} · {{ claim.asegurado }}</p>
-            <p class="chat-case-context__risk">{{ riskTierLabel(claim.nivel) }} · {{ formatMoneyShort(claim.monto_reclamado) }}</p>
-          </div>
-          <div class="chat-case-context__actions">
-            <button type="button" class="chat-case-context__link" (click)="openCase(claim.id)">
-              Ver caso
-            </button>
-            <button
-              type="button"
-              class="chat-case-context__clear"
-              (click)="clearCaseContext()"
-              aria-label="Quitar contexto del caso"
-            >
-              <ui-icon name="close" [size]="14" />
-            </button>
-          </div>
-        </div>
+          }
+        }
+        @case ('provider') {
+          @if (contextProvider(); as p) {
+            <div class="chat-case-context shrink-0">
+              <div class="chat-case-context__copy">
+                <span class="chat-case-context__eyebrow">Contexto del proveedor</span>
+                <div class="chat-case-context__title-row">
+                  <span class="chat-case-context__id">{{ p.nombre }}</span>
+                  @if (p.listaRestrictiva) {
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] bg-tier-red-soft text-tier-red-ink">Lista restrictiva</span>
+                  }
+                </div>
+                <p class="chat-case-context__subtitle">{{ p.tipo }} · {{ p.ciudad }}</p>
+                <p class="chat-case-context__risk">{{ p.alertas }} alertas / {{ p.casos }} casos · {{ contextProviderRiskPct() }}% riesgo</p>
+              </div>
+              <div class="chat-case-context__actions">
+                <button type="button" class="chat-case-context__link" (click)="openProvider(p.id)">
+                  Ver proveedor
+                </button>
+                <button
+                  type="button"
+                  class="chat-case-context__clear"
+                  (click)="clearCaseContext()"
+                  aria-label="Quitar contexto del proveedor"
+                >
+                  <ui-icon name="close" [size]="14" />
+                </button>
+              </div>
+            </div>
+          }
+        }
+        @case ('asegurado') {
+          @if (contextAsegurado(); as a) {
+            <div class="chat-case-context shrink-0">
+              <div class="chat-case-context__copy">
+                <span class="chat-case-context__eyebrow">Contexto del asegurado</span>
+                <div class="chat-case-context__title-row">
+                  <span class="chat-case-context__id">{{ a.nombre }}</span>
+                  @if (a.mora_actual) {
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] bg-tier-red-soft text-tier-red-ink">Mora</span>
+                  }
+                  @if (a.segmento) {
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] bg-soft text-ink-2 border border-line">{{ a.segmento }}</span>
+                  }
+                </div>
+                <p class="chat-case-context__subtitle">{{ a.ciudad }}</p>
+                <p class="chat-case-context__risk">{{ a.alertas }} alertas / {{ a.casos }} casos · {{ contextAseguradoRiskPct() }}% riesgo</p>
+              </div>
+              <div class="chat-case-context__actions">
+                <button type="button" class="chat-case-context__link" (click)="openAsegurado(a.id)">
+                  Ver asegurado
+                </button>
+                <button
+                  type="button"
+                  class="chat-case-context__clear"
+                  (click)="clearCaseContext()"
+                  aria-label="Quitar contexto del asegurado"
+                >
+                  <ui-icon name="close" [size]="14" />
+                </button>
+              </div>
+            </div>
+          }
+        }
       }
 
       <div
@@ -367,6 +438,7 @@ export class ChatPage implements AfterViewChecked {
   protected readonly voice = inject(VoiceRecorderService);
   protected readonly uiPrefs = inject(ChatUiPrefsStore);
   private readonly providers = inject(ProvidersStore);
+  private readonly asegurados = inject(AseguradosStore);
   protected readonly tts = inject(TextToSpeechService);
   private readonly agentApi = inject(AgentApi);
   private readonly route = inject(ActivatedRoute);
@@ -376,12 +448,43 @@ export class ChatPage implements AfterViewChecked {
   protected readonly formatMoneyShort = formatMoneyShort;
   protected readonly ramoLabel = ramoLabel;
   protected readonly riskTierLabel = riskTierLabel;
-  protected readonly activeSuggestions = computed(() =>
-    this.contextClaim() ? [...CASE_CHAT_SUGGESTIONS] : SUGGESTIONS,
-  );
+
   protected readonly contextClaim = computed(() => {
-    const claimId = this.store.contextClaimId();
-    return claimId ? (this.claims.findById(claimId) ?? null) : null;
+    const ctx = this.store.chatContext();
+    if (ctx?.kind !== 'claim') return null;
+    return this.claims.findById(ctx.id) ?? null;
+  });
+
+  protected readonly contextProvider = computed(() => {
+    const ctx = this.store.chatContext();
+    if (ctx?.kind !== 'provider') return null;
+    return this.providers.providers().find((p) => p.id === ctx.id) ?? null;
+  });
+
+  protected readonly contextAsegurado = computed(() => {
+    const ctx = this.store.chatContext();
+    if (ctx?.kind !== 'asegurado') return null;
+    return this.asegurados.findById(ctx.id) ?? null;
+  });
+
+  protected readonly contextProviderRiskPct = computed(() => {
+    const p = this.contextProvider();
+    if (!p || p.casos === 0) return 0;
+    return Math.round((p.alertas / p.casos) * 100);
+  });
+
+  protected readonly contextAseguradoRiskPct = computed(() => {
+    const a = this.contextAsegurado();
+    if (!a || a.casos === 0) return 0;
+    return Math.round((a.alertas / a.casos) * 100);
+  });
+
+  protected readonly activeSuggestions = computed(() => {
+    const ctx = this.store.chatContext();
+    if (ctx?.kind === 'claim') return [...CASE_CHAT_SUGGESTIONS];
+    if (ctx?.kind === 'provider') return [...PROVIDER_CHAT_SUGGESTIONS];
+    if (ctx?.kind === 'asegurado') return [...ASEGURADO_CHAT_SUGGESTIONS];
+    return SUGGESTIONS;
   });
   protected readonly input = signal<string>('');
   protected readonly activeConversationId = signal<string | null>(null);
@@ -412,22 +515,32 @@ export class ChatPage implements AfterViewChecked {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const convId = params.get('conversation');
       const caseId = params.get('case');
+      const providerId = params.get('provider');
+      const aseguradoId = params.get('asegurado');
+
+      // Resolve to a single ChatContext — case wins, then provider, then asegurado.
+      const urlCtx: ChatContext =
+        caseId      ? { kind: 'claim',     id: caseId }      :
+        providerId  ? { kind: 'provider',  id: providerId }  :
+        aseguradoId ? { kind: 'asegurado', id: aseguradoId } : null;
 
       if (convId) {
         if (convId !== this.activeConversationId()) {
           this.suggestionsOpen.set(null);
         }
         this.activeConversationId.set(convId);
-        void this.bootstrapConversation(convId, caseId);
+        void this.bootstrapConversation(convId, urlCtx);
         return;
       }
 
       const newId = generateUuid();
+      const extraParams: Record<string, string> = {};
+      if (caseId) extraParams['case'] = caseId;
+      else if (providerId) extraParams['provider'] = providerId;
+      else if (aseguradoId) extraParams['asegurado'] = aseguradoId;
+
       void this.router.navigate([], {
-        queryParams: {
-          conversation: newId,
-          ...(caseId ? { case: caseId } : {}),
-        },
+        queryParams: { conversation: newId, ...extraParams },
         replaceUrl: true,
       });
     });
@@ -525,7 +638,7 @@ export class ChatPage implements AfterViewChecked {
     this.input.set('');
     this.voiceError.set(null);
     this.suggestionsOpen.set(null);
-    this.store.setContextClaimId(null);
+    this.store.setChatContext(null);
     const id = generateUuid();
     this.activeConversationId.set(id);
     this.store.startNewConversation(id);
@@ -585,11 +698,19 @@ export class ChatPage implements AfterViewChecked {
   }
 
   protected clearCaseContext(): void {
-    this.store.setContextClaimId(null);
+    this.store.setChatContext(null);
     void this.router.navigate([], {
       queryParams: { conversation: this.activeConversationId() },
       replaceUrl: true,
     });
+  }
+
+  protected openProvider(id: string): void {
+    void this.router.navigate(['/providers', id]);
+  }
+
+  protected openAsegurado(id: string): void {
+    void this.router.navigate(['/asegurados', id]);
   }
 
   protected openCase(idOrLabel: string): void {
@@ -599,39 +720,76 @@ export class ChatPage implements AfterViewChecked {
       return;
     }
     // Provider names emitted by aggregate charts — look up the id and route.
-    const match = this.providers
+    const providerMatch = this.providers
       .providers()
       .find((p) => p.nombre.toLowerCase() === idOrLabel.toLowerCase());
-    if (match) {
-      void this.router.navigate(['/providers', match.id]);
+    if (providerMatch) {
+      void this.router.navigate(['/providers', providerMatch.id]);
+      return;
+    }
+    // Asegurado names emitted by agent chips — look up and route.
+    const aseguradoMatch = this.asegurados
+      .asegurados()
+      .find((a) => a.nombre.toLowerCase() === idOrLabel.toLowerCase());
+    if (aseguradoMatch) {
+      void this.router.navigate(['/asegurados', aseguradoMatch.id]);
     }
   }
 
-  private async bootstrapConversation(convId: string, caseId: string | null): Promise<void> {
-    if (caseId) {
-      this.store.setContextClaimId(caseId);
+  private async bootstrapConversation(
+    convId: string,
+    ctx: ChatContext,
+  ): Promise<void> {
+    // Set the context from URL params first (overrides any restored context from loadConversation).
+    if (ctx) {
+      this.store.setChatContext(ctx);
     } else {
-      this.store.setContextClaimId(null);
+      this.store.setChatContext(null);
     }
 
     await this.store.loadConversation(convId);
 
-    const resolvedCaseId = caseId ?? this.store.contextClaimId();
-    if (resolvedCaseId) {
-      this.store.setContextClaimId(resolvedCaseId);
-      await this.claims.loadDetail(resolvedCaseId);
-    }
+    // After loadConversation, context may have been restored from the persisted conversation.
+    // URL params win over restored context when explicitly set.
+    const resolvedCtx: ChatContext = ctx ?? this.store.chatContext();
 
-    const claim = resolvedCaseId ? this.claims.findById(resolvedCaseId) : null;
+    // Load the entity detail so the context pill can render.
+    if (resolvedCtx?.kind === 'claim') {
+      await this.claims.loadDetail(resolvedCtx.id);
+    }
+    // Provider and asegurado detail is already available via their stores (loaded at app init).
+
     const hasUserMessages = this.store.messages().some((message) => message.role === 'user');
 
     if (this.store.messages().length === 0) {
-      this.store.startNewConversation(convId, claim);
+      // Fresh conversation — show welcome message for the entity.
+      if (resolvedCtx?.kind === 'claim') {
+        const claim = this.claims.findById(resolvedCtx.id);
+        this.store.startNewConversation(convId, claim ?? null);
+      } else if (resolvedCtx?.kind === 'provider') {
+        const provider = this.providers.providers().find((p) => p.id === resolvedCtx.id);
+        if (provider) {
+          this.store.startNewConversation(convId, { kind: 'provider', data: provider });
+        } else {
+          this.store.startNewConversation(convId);
+        }
+      } else if (resolvedCtx?.kind === 'asegurado') {
+        const asegurado = this.asegurados.findById(resolvedCtx.id);
+        if (asegurado) {
+          this.store.startNewConversation(convId, { kind: 'asegurado', data: asegurado });
+        } else {
+          this.store.startNewConversation(convId);
+        }
+      } else {
+        this.store.startNewConversation(convId);
+      }
       return;
     }
 
-    if (resolvedCaseId && claim && !hasUserMessages) {
-      this.store.startNewConversation(convId, claim);
+    // Existing conversation with no user messages yet — still show welcome.
+    if (resolvedCtx?.kind === 'claim' && !hasUserMessages) {
+      const claim = this.claims.findById(resolvedCtx.id);
+      if (claim) this.store.startNewConversation(convId, claim);
     }
   }
 
