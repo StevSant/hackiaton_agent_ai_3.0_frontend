@@ -33,6 +33,7 @@ export const ALERT_CATALOG: Record<string, AlertCatalogEntry> = {
   'FS-12': { code: 'FS-12', titulo: 'Reporte tardío', clasificacion: 'amarillo' },
   'FS-13': { code: 'FS-13', titulo: 'Narrativas similares detectadas', clasificacion: 'amarillo' },
   'FS-14': { code: 'FS-14', titulo: 'Monto cercano o superior a la suma asegurada', clasificacion: 'amarillo' },
+  'FS-15': { code: 'FS-15', titulo: 'Inconsistencia de datos del vehículo', clasificacion: 'amarillo' },
   'RF-01': { code: 'RF-01', titulo: 'Cobertura Pérdida Total por Robo', clasificacion: 'rojo' },
   'RF-02': { code: 'RF-02', titulo: 'Falsificación evidente de documentos', clasificacion: 'rojo' },
   'RF-03': { code: 'RF-03', titulo: 'Coincidencia con lista restrictiva', clasificacion: 'rojo' },
