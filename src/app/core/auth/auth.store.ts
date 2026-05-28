@@ -144,6 +144,19 @@ export class AuthStore {
     this._token.set(null);
   }
 
+  /**
+   * Called by the error interceptor when a protected request comes back 401:
+   * clears the session like logout() but leaves an error message so the login
+   * page tells the user *why* they got bounced.
+   */
+  expireSession(): void {
+    this._user.set(null);
+    this._token.set(null);
+    this._error.set(
+      new AppError('auth/expired', 'Sesión expirada — vuelve a iniciar sesión.', 401),
+    );
+  }
+
   clearError(): void {
     this._error.set(null);
   }
