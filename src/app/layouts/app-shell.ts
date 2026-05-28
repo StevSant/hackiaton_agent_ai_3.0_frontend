@@ -12,7 +12,7 @@ import { SidebarNav } from './sidebar-nav';
   imports: [RouterOutlet, SidebarNav, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="h-screen bg-canvas text-ink md:grid md:grid-cols-[232px_1fr] relative">
+    <div class="h-screen bg-canvas text-ink flex flex-col md:grid md:grid-cols-[232px_1fr] relative">
       <!-- Mobile hamburger: opens the sidebar as a drawer below md -->
       <button
         type="button"
@@ -42,11 +42,11 @@ import { SidebarNav } from './sidebar-nav';
       </div>
 
       @if (fullBleed()) {
-        <main class="bg-canvas min-h-0 overflow-hidden">
+        <main class="flex-1 md:flex-initial bg-canvas min-h-0 overflow-hidden">
           <router-outlet />
         </main>
       } @else {
-        <main class="overflow-y-auto scroll-pretty bg-canvas">
+        <main class="flex-1 md:flex-initial min-h-0 overflow-y-auto scroll-pretty bg-canvas">
           <div class="max-w-page mx-auto px-4 md:px-8 pt-14 md:pt-6 pb-20">
             <router-outlet />
           </div>
