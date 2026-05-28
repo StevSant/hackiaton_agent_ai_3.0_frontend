@@ -108,13 +108,16 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
           <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Ciudad o región</span>
           <div class="flex items-center gap-2 bg-surface border border-line rounded-md px-3 py-2">
             <ui-icon name="location_on" [size]="16" class="text-ink-3 shrink-0" />
-            <input
-              type="text"
-              placeholder="Ej. Quito, Guayaquil…"
-              class="flex-1 border-0 outline-0 bg-transparent text-[13px] text-ink min-w-0"
+            <select
+              class="flex-1 border-0 outline-0 bg-transparent text-[13px] text-ink min-w-0 cursor-pointer focus-visible:outline-none"
               [value]="filters().city"
-              (input)="patchFilter('city', $any($event.target).value)"
-            />
+              (change)="patchFilter('city', $any($event.target).value)"
+            >
+              <option value="">Todas</option>
+              @for (city of cityOptions(); track city) {
+                <option [value]="city">{{ city }}</option>
+              }
+            </select>
           </div>
         </label>
 
@@ -241,6 +244,15 @@ export class InvestigacionPage {
     label: RAMOS[key].label,
   }));
 
+  protected readonly cityOptions = computed(() => {
+    const cities = new Set<string>();
+    for (const claim of this.store.claims()) {
+      const cityName = claim.ciudad.trim();
+      if (cityName) cities.add(cityName);
+    }
+    return [...cities].sort((a, b) => a.localeCompare(b, 'es'));
+  });
+
   protected readonly activeFilterTags = computed<ActiveFilterTag[]>(() => {
     const filterState = this.filters();
     const tags: ActiveFilterTag[] = [];
@@ -251,8 +263,8 @@ export class InvestigacionPage {
     if (filterState.ramo !== 'todos') {
       tags.push({ key: 'ramo', label: `Ramo: ${RAMOS[filterState.ramo].label}` });
     }
-    if (filterState.city.trim()) {
-      tags.push({ key: 'city', label: `Ciudad: ${filterState.city.trim()}` });
+    if (filterState.city) {
+      tags.push({ key: 'city', label: `Ciudad: ${filterState.city}` });
     }
     if (filterState.dateFrom) {
       tags.push({ key: 'dateFrom', label: `Fecha desde: ${formatFilterDate(filterState.dateFrom)}` });
@@ -311,8 +323,7 @@ export class InvestigacionPage {
     if (filters.tier !== 'todos' && claim.nivel !== filters.tier) return false;
     if (filters.ramo !== 'todos' && claim.ramo !== filters.ramo) return false;
 
-    const cityQuery = filters.city.trim().toLowerCase();
-    if (cityQuery && !claim.ciudad.toLowerCase().includes(cityQuery)) return false;
+    if (filters.city && claim.ciudad !== filters.city) return false;
 
     if (filters.dateFrom && claim.fecha_ocurrencia < filters.dateFrom) return false;
 
