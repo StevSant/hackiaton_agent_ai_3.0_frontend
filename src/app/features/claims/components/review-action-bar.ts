@@ -44,7 +44,7 @@ import type { ClaimReview } from '@shared/models';
         @case ('analista-waiting-dictamen') {
           <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-tier-yellow-ink bg-tier-yellow-soft border border-transparent">
             <ui-icon name="visibility" [size]="13" />
-            Pendiente de dictamen — {{ review().assigned_to_name }} tomó el caso
+            Pendiente de dictamen — {{ review().assigned_to_name || 'la Unidad Antifraude' }} tomó el caso
           </span>
         }
         @case ('antifraude-can-take') {
@@ -66,7 +66,7 @@ import type { ClaimReview } from '@shared/models';
         @case ('antifraude-other-owns') {
           <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-ink-3 bg-soft border border-line">
             <ui-icon name="lock" [size]="13" />
-            En revisión por {{ review().assigned_to_name }}
+            En revisión por {{ review().assigned_to_name || 'la Unidad Antifraude' }}
           </span>
         }
         @case ('dictaminado-terminal') {
