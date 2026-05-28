@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 
 import { ConversationsApi } from '@core/api/clients/conversations.api';
 import { environment } from '@core/config/env';
@@ -63,6 +63,7 @@ type AgentStreamEvent =
 const NODE_LABEL: Record<string, string> = {
   react_step: 'Razonamiento',
   compose: 'Componiendo respuesta',
+  chart_pending: 'Preparando visualización',
 };
 
 function nodeLabel(node: string): string {
@@ -110,6 +111,9 @@ export class AgentStore {
   private readonly _responding = signal<boolean>(false);
   private readonly _conversationId = signal<string | null>(null);
   private readonly _contextClaimId = signal<string | null>(null);
+  // Tracks the in-flight SSE stream so a new ask() can abort the previous one
+  // — prevents orphaned streams competing for the same assistant bubble.
+  private activeStreamSub: Subscription | null = null;
 
   readonly messages = this._messages.asReadonly();
   readonly thinking = this._thinking.asReadonly();
@@ -205,6 +209,12 @@ export class AgentStore {
   async ask(text: string, conversationId?: string): Promise<void> {
     const trimmed = text.trim();
     if (!trimmed || this._thinking()) return;
+    // Abort any in-flight stream first so two rapid asks don't both write to
+    // the same assistant bubble.
+    if (this.activeStreamSub !== null) {
+      this.activeStreamSub.unsubscribe();
+      this.activeStreamSub = null;
+    }
 
     if (conversationId) {
       this._conversationId.set(conversationId);
@@ -265,17 +275,28 @@ export class AgentStore {
     const attachChart = (chart: ChartPayload): void => {
       ensureAssistantBubble();
       // Charts now arrive only when the analyst explicitly asked — no intermediate
-      // "Ver como gráfico" gate; render immediately.
+      // "Ver como gráfico" gate; render immediately. Clear chartPending too.
       this._messages.update((messages) =>
         messages.map((msg) =>
-          msg.id === assistantId ? { ...msg, chart, chartAccepted: true } : msg,
+          msg.id === assistantId
+            ? { ...msg, chart, chartAccepted: true, chartPending: false }
+            : msg,
+        ),
+      );
+    };
+
+    const markChartPending = (): void => {
+      ensureAssistantBubble();
+      this._messages.update((messages) =>
+        messages.map((msg) =>
+          msg.id === assistantId ? { ...msg, chartPending: true } : msg,
         ),
       );
     };
 
     const url = `${environment.backendUrl}${environment.apiPrefix}/agent/ask`;
 
-    this.sse
+    this.activeStreamSub = this.sse
       .stream<AgentStreamEvent>({
         url,
         method: 'POST',
@@ -290,6 +311,9 @@ export class AgentStore {
           switch (event.type) {
             case 'agent_step': {
               const thought = event.data.meta?.thought?.trim();
+              if (event.data.node === 'chart_pending') {
+                markChartPending();
+              }
               appendStep({
                 kind: 'agent_step',
                 label: nodeLabel(event.data.node),
@@ -343,6 +367,7 @@ export class AgentStore {
         complete: () => {
           this._thinking.set(false);
           this._responding.set(false);
+          this.activeStreamSub = null;
           if (!assistantAdded) {
             this._messages.update((messages) => [
               ...messages,
@@ -357,6 +382,7 @@ export class AgentStore {
         error: () => {
           this._thinking.set(false);
           this._responding.set(false);
+          this.activeStreamSub = null;
           this._messages.update((messages) => [
             ...messages,
             {

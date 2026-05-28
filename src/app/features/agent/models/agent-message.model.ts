@@ -13,4 +13,10 @@ export interface AgentMessage {
   chart?: ChartPayload;
   /** Whether the user accepted to view the offered chart. */
   chartAccepted?: boolean;
+  /**
+   * True between the `chart_pending` SSE step and the matching `chart` event —
+   * the UI renders a chart skeleton so the user knows a viz is coming while
+   * the compose stream is still finishing.
+   */
+  chartPending?: boolean;
 }

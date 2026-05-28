@@ -6,6 +6,7 @@ import { Chip } from '@shared/ui/chip';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
+import { SkeletonTable } from '@shared/ui/skeleton-table';
 import { NewRuleModal } from '../components/new-rule-modal';
 import { RuleHistoryModal } from '../components/rule-history-modal';
 import { RuleRow } from '../components/rule-row';
@@ -17,7 +18,7 @@ type Filter = 'todas' | RiskTier;
 @Component({
   selector: 'page-alerts',
   standalone: true,
-  imports: [Button, Chip, Icon, KpiSmall, Pagination, NewRuleModal, RuleHistoryModal, RuleRow],
+  imports: [Button, Chip, Icon, KpiSmall, Pagination, SkeletonTable, NewRuleModal, RuleHistoryModal, RuleRow],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
@@ -88,16 +89,22 @@ type Filter = 'todas' | RiskTier;
         <span class="text-center">Estado</span>
       </div>
 
-      @for (r of paged(); track r.code) {
-        <alerts-rule-row [rule]="r" [maxActivations]="maxActivations()" [readonly]="!canEdit()" (toggle)="onToggle($event)" />
+      @if (initialLoading()) {
+        <div class="p-3">
+          <ui-skeleton-table [rows]="8" [cols]="6" />
+        </div>
+      } @else {
+        @for (r of paged(); track r.code) {
+          <alerts-rule-row [rule]="r" [maxActivations]="maxActivations()" [readonly]="!canEdit()" (toggle)="onToggle($event)" />
+        }
+        <ui-pagination
+          [page]="page()"
+          [pageSize]="pageSize()"
+          [total]="filtered().length"
+          (pageChange)="page.set($event)"
+          (pageSizeChange)="onPageSize($event)"
+        />
       }
-      <ui-pagination
-        [page]="page()"
-        [pageSize]="pageSize()"
-        [total]="filtered().length"
-        (pageChange)="page.set($event)"
-        (pageSizeChange)="onPageSize($event)"
-      />
     </div>
 
     @if (canEdit()) {
@@ -114,6 +121,7 @@ export class AlertsPage {
   protected readonly historyOpen = signal<boolean>(false);
   protected readonly newRuleOpen = signal<boolean>(false);
   protected readonly stats = this.store.stats;
+  protected readonly initialLoading = this.store.initialLoading;
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(10);
 

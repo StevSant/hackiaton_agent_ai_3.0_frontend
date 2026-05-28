@@ -11,8 +11,7 @@ import {
   output,
   viewChild,
 } from '@angular/core';
-import * as echarts from 'echarts';
-import type { EChartsOption } from 'echarts';
+import type { ECharts, EChartsOption } from 'echarts';
 
 import { Icon } from '@shared/ui/icon';
 import type { ChartPayload, ChartType } from '../models';
@@ -49,6 +48,18 @@ const TYPE_LABEL: Record<ChartType, string> = {
 const AXIS_TEXT = '#94a3b8'; // slate-400 — readable on light and dark surfaces
 
 const CLAIM_ID_RE = /^(SIN|IMP|CL)-/i;
+
+// Loaded once on first chart render and reused across instances — ECharts is
+// ~1.2 MB gzipped so we keep it out of the initial app bundle.
+type EChartsModule = typeof import('echarts');
+let echartsModulePromise: Promise<EChartsModule> | null = null;
+
+function loadECharts(): Promise<EChartsModule> {
+  if (echartsModulePromise === null) {
+    echartsModulePromise = import('echarts');
+  }
+  return echartsModulePromise;
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -293,11 +304,15 @@ export class AgentChart implements OnDestroy {
   protected readonly citations = computed(() => this.payload().citations ?? []);
   private readonly option = computed(() => buildOption(this.payload(), this.selectedType()));
 
-  private chart: echarts.ECharts | null = null;
+  private chart: ECharts | null = null;
+  private echartsModule: EChartsModule | null = null;
   private observer: ResizeObserver | null = null;
+  private setOptionRaf: number | null = null;
 
   constructor() {
-    afterNextRender(() => {
+    afterNextRender(async () => {
+      const echarts = await loadECharts();
+      this.echartsModule = echarts;
       this.chart = echarts.init(this.host().nativeElement, undefined, { renderer: 'canvas' });
       this.chart.setOption(this.option());
       this.chart.on('click', (params) => {
@@ -323,11 +338,18 @@ export class AgentChart implements OnDestroy {
     });
     effect(() => {
       const option = this.option();
-      this.chart?.setOption(option, true);
+      // Coalesce rapid option changes into one rAF flush so that streamed
+      // input updates don't trigger a layout thrash inside ECharts.
+      if (this.setOptionRaf !== null) cancelAnimationFrame(this.setOptionRaf);
+      this.setOptionRaf = requestAnimationFrame(() => {
+        this.setOptionRaf = null;
+        this.chart?.setOption(option, { notMerge: true, lazyUpdate: true });
+      });
     });
   }
 
   ngOnDestroy(): void {
+    if (this.setOptionRaf !== null) cancelAnimationFrame(this.setOptionRaf);
     this.observer?.disconnect();
     this.chart?.dispose();
   }

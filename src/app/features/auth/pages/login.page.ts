@@ -6,6 +6,8 @@ import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { AuthStore } from '@core/auth/auth.store';
 import type { RoleCode } from '@core/auth/auth-user.model';
+import { ClaimsStore } from '@core/state/claims.store';
+import { RulesStore } from '@features/alerts/services/rules.store';
 
 @Component({
   selector: 'page-login',
@@ -142,16 +144,30 @@ import type { RoleCode } from '@core/auth/auth-user.model';
 export class LoginPage {
   protected readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly claims = inject(ClaimsStore);
+  private readonly rules = inject(RulesStore);
 
   protected readonly email = signal<string>(environment.demoCredentials.analista.email);
   protected readonly password = signal<string>(environment.demoCredentials.analista.password);
   protected readonly showPassword = signal<boolean>(false);
   protected readonly remember = signal<boolean>(true);
 
+  /**
+   * Kick off the heavy dashboard fetches as soon as auth completes — the
+   * navigate call ships to the router synchronously and Angular tears down
+   * this page in the next tick, but the in-flight HTTP requests carry over
+   * so the destination route can render against a warm store.
+   */
+  private prefetchAfterLogin(): void {
+    void this.claims.loadList().catch(() => undefined);
+    void this.rules.loadList().catch(() => undefined);
+  }
+
   protected async onSubmit(e: Event): Promise<void> {
     e.preventDefault();
     const ok = await this.auth.login(this.email(), this.password());
     if (!ok) return;
+    this.prefetchAfterLogin();
     const landing = this.auth.user()?.roleCode === 'antifraude' ? '/antifraude/bandeja' : '/claims';
     void this.router.navigateByUrl(landing);
   }
@@ -163,6 +179,7 @@ export class LoginPage {
     this.password.set(creds.password);
     const ok = await this.auth.login(creds.email, creds.password);
     if (!ok) return;
+    this.prefetchAfterLogin();
     const landing = role === 'antifraude' ? '/antifraude/bandeja' : '/claims';
     void this.router.navigateByUrl(landing);
   }

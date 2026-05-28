@@ -17,6 +17,44 @@ import type { Claim, ClaimReview, DictamenOutcome } from '@shared/models';
 const PAGE_SIZE = 500;
 const DEFAULT_REVIEW: ClaimReview = { status: 'pendiente', bounce_count: 0 };
 
+// Cache key prefix — keyed per user so a role switch doesn't show stale data.
+// Bump the suffix to invalidate after schema changes.
+const CACHE_KEY_PREFIX = 'centinela:claims-cache:v1:';
+
+function cacheKey(userId: string): string {
+  return `${CACHE_KEY_PREFIX}${userId}`;
+}
+
+function readCache(userId: string | null): Claim[] | null {
+  if (!userId || typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(cacheKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Claim[];
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(userId: string | null, claims: Claim[]): void {
+  if (!userId || typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(cacheKey(userId), JSON.stringify(claims));
+  } catch {
+    // quota exceeded or storage disabled — silently skip
+  }
+}
+
+function dropCache(userId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(cacheKey(userId));
+  } catch {
+    // ignore
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class ClaimsStore {
   private readonly api = inject(ClaimsApi);
@@ -65,11 +103,23 @@ export class ClaimsStore {
     effect(() => {
       const userId = this.auth.user()?.id ?? null;
       if (userId === this.lastUserId) return;
+      const prevUserId = this.lastUserId;
       this.lastUserId = userId;
       this._detailLoads.clear();
       if (userId) {
+        // Hydrate from cache for instant render; loadList() refreshes in BG.
+        const cached = readCache(userId);
+        if (cached && cached.length > 0) {
+          this._claims.set(cached);
+          this.initialized = true;
+        } else {
+          this._claims.set([]);
+        }
         void this.loadList();
       } else {
+        // On logout, drop the previous user's cache so the next persona doesn't
+        // briefly see stale data if they log in as someone else.
+        if (prevUserId) dropCache(prevUserId);
         this._claims.set([]);
       }
     });
@@ -102,6 +152,7 @@ export class ClaimsStore {
         const detailById = new Map(this._claims().filter((c) => c.alertas?.length).map((c) => [c.id, c]));
         const merged = summaries.map((s) => detailById.get(s.id) ?? s);
         this._claims.set(merged);
+        writeCache(this.lastUserId, merged);
         this.initialized = true;
         break;
       } catch (error) {

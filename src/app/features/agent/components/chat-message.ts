@@ -85,6 +85,14 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
                 {{ chartAccepted() ? 'Ocultar gráfico' : 'Ver como gráfico' }}
               </button>
             }
+          } @else if (chartPending() && uiPrefs.showCharts()) {
+            <div class="rounded-xl border border-line bg-surface p-3 mt-1 w-full max-w-[640px]">
+              <div class="flex items-center gap-2 mb-2">
+                <ui-icon name="bar_chart" [size]="14" class="text-ink-3" />
+                <span class="text-[12.5px] font-semibold text-ink-3">Preparando visualización…</span>
+              </div>
+              <div class="w-full h-[280px] rounded-lg bg-soft animate-pulse"></div>
+            </div>
           }
         </div>
       }
@@ -131,6 +139,7 @@ export class ChatMessage {
   protected readonly steps = computed(() => (this.isUser() ? [] : (this.message().steps ?? [])));
   protected readonly chart = computed(() => this.message().chart ?? null);
   protected readonly chartAccepted = computed(() => this.message().chartAccepted === true);
+  protected readonly chartPending = computed(() => this.message().chartPending === true);
 
   protected readonly listenIcon = computed(() => {
     if (this.ttsActive() && this.ttsState() === 'loading') return 'progress_activity';
