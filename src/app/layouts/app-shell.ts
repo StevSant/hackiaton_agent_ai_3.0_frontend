@@ -12,7 +12,7 @@ import { SidebarNav } from './sidebar-nav';
   imports: [RouterOutlet, SidebarNav, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="h-screen bg-canvas text-ink flex flex-col md:grid md:grid-cols-[232px_1fr] relative">
+    <div class="h-screen bg-canvas text-ink flex flex-col md:grid md:grid-cols-[248px_1fr] md:grid-rows-1 relative min-h-0">
       <!-- Mobile hamburger: opens the sidebar as a drawer below md -->
       <button
         type="button"
@@ -34,7 +34,7 @@ import { SidebarNav } from './sidebar-nav';
 
       <!-- Sidebar: static at md+, fixed slide-in drawer below md -->
       <div
-        class="fixed md:static inset-y-0 left-0 z-50 md:z-auto w-[260px] max-w-[82vw] md:w-auto md:max-w-none md:translate-x-0 transform transition-transform duration-200 ease-out shadow-pop md:shadow-none"
+        class="fixed md:static inset-y-0 left-0 z-50 md:z-auto w-[260px] max-w-[82vw] md:w-auto md:max-w-none md:translate-x-0 transform transition-transform duration-200 ease-out shadow-pop md:shadow-none h-full min-h-0 flex flex-col"
         [class.translate-x-0]="sidebarOpen()"
         [class.-translate-x-full]="!sidebarOpen()"
       >
@@ -42,12 +42,18 @@ import { SidebarNav } from './sidebar-nav';
       </div>
 
       @if (fullBleed()) {
-        <main class="flex-1 md:flex-initial bg-canvas min-h-0 overflow-hidden">
+        <main class="centinela-main centinela-main--full-bleed min-h-0 h-full overflow-hidden">
           <router-outlet />
         </main>
+      } @else if (viewportFit()) {
+        <main class="centinela-main centinela-main--viewport min-h-0 h-full overflow-hidden">
+          <div class="centinela-viewport-shell">
+            <router-outlet />
+          </div>
+        </main>
       } @else {
-        <main class="flex-1 md:flex-initial min-h-0 overflow-y-auto scroll-pretty bg-canvas">
-          <div class="max-w-page mx-auto px-4 md:px-8 pt-14 md:pt-6 pb-20">
+        <main class="flex-1 md:flex-initial min-h-0 overflow-y-auto scroll-pretty centinela-main">
+          <div class="max-w-page mx-auto px-4 md:px-8 pt-14 md:pt-8 pb-24">
             <router-outlet />
           </div>
         </main>
@@ -65,8 +71,17 @@ export class AppShell {
   protected readonly fullBleed = toSignal(
     this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-      map(() => this.resolveFullBleed()),
-      startWith(this.resolveFullBleed()),
+      map(() => this.resolveRouteFlag('fullBleed')),
+      startWith(this.resolveRouteFlag('fullBleed')),
+    ),
+    { initialValue: false },
+  );
+
+  protected readonly viewportFit = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map(() => this.resolveRouteFlag('viewportFit')),
+      startWith(this.resolveRouteFlag('viewportFit')),
     ),
     { initialValue: false },
   );
@@ -82,11 +97,11 @@ export class AppShell {
       .subscribe(() => this.sidebarOpen.set(false));
   }
 
-  private resolveFullBleed(): boolean {
+  private resolveRouteFlag(flag: 'fullBleed' | 'viewportFit'): boolean {
     let route = this.route.snapshot;
     while (route.firstChild) {
       route = route.firstChild;
     }
-    return route.data?.['fullBleed'] === true;
+    return route.data?.[flag] === true;
   }
 }

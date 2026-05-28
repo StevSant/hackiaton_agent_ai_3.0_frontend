@@ -16,6 +16,7 @@ interface NavItem {
   icon: string;
   badge?: string;
   count?: number;
+  featured?: boolean;
 }
 
 @Component({
@@ -23,54 +24,68 @@ interface NavItem {
   standalone: true,
   imports: [RouterLink, RouterLinkActive, BrandLogo, Icon, RoleBadge],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: [
+    `
+      :host {
+        display: block;
+        height: 100%;
+        min-height: 0;
+      }
+    `,
+  ],
   template: `
-    <aside
-      class="bg-canvas border-r border-line h-full overflow-y-auto scroll-pretty flex flex-col gap-1 px-3.5 pt-4 pb-2"
-    >
-      <ui-brand-logo />
+    <aside class="centinela-sidebar h-full min-h-0 flex flex-col">
+      <div class="centinela-sidebar__scroll flex-1 min-h-0 overflow-y-auto scroll-pretty px-3 pt-4">
+        <ui-brand-logo />
 
-      <div class="text-[10.5px] font-medium uppercase tracking-[0.06em] text-ink-4 px-2 pt-3 pb-1.5">Bandeja</div>
-      @for (it of primary(); track it.link) {
-        <a
-          [routerLink]="it.link"
-          routerLinkActive="bg-surface text-ink shadow-1 font-medium [&_ui-icon_span]:!text-brand [&_.count-badge]:bg-brand-soft [&_.count-badge]:text-brand-ink"
-          [routerLinkActiveOptions]="{ exact: false }"
-          class="flex items-center gap-2.5 px-2 py-1.5 rounded-sm text-ink-2 text-[13.5px] cursor-pointer select-none hover:bg-hover hover:text-ink"
-        >
-          @if (it.icon === 'visibility') {
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="shrink-0">
-              <path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
-            </svg>
-          } @else {
-            <ui-icon [name]="it.icon" [size]="18" />
+        <nav class="flex flex-col gap-0.5" aria-label="Bandeja">
+          <p class="centinela-nav-label">Bandeja</p>
+          @for (it of primary(); track it.link) {
+            <a
+              [routerLink]="it.link"
+              routerLinkActive="centinela-nav-link--active"
+              [routerLinkActiveOptions]="{ exact: false }"
+              class="centinela-nav-link"
+              [class.centinela-nav-link--featured]="it.featured"
+            >
+              @if (it.icon === 'visibility') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="shrink-0">
+                  <path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                  <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              } @else {
+                <ui-icon [name]="it.icon" [size]="18" />
+              }
+              <span>{{ it.label }}</span>
+              @if (it.badge) {
+                <span class="centinela-nav-badge centinela-nav-badge--new">{{ it.badge }}</span>
+              } @else if (it.count) {
+                <span class="centinela-nav-badge centinela-nav-badge--count">{{ it.count }}</span>
+              }
+            </a>
           }
-          <span>{{ it.label }}</span>
-          @if (it.badge) {
-            <span class="count-badge ml-auto text-[11px] text-brand-ink bg-brand-soft px-1.5 py-px rounded-full tabular-nums">{{ it.badge }}</span>
-          } @else if (it.count) {
-            <span class="count-badge ml-auto text-[11px] text-ink-3 bg-soft px-1.5 py-px rounded-full tabular-nums">{{ it.count }}</span>
+        </nav>
+
+        <nav class="flex flex-col gap-0.5 mt-1 pb-3" aria-label="Operación">
+          <p class="centinela-nav-label">Operación</p>
+          @for (it of secondary(); track it.link) {
+            <a
+              [routerLink]="it.link"
+              routerLinkActive="centinela-nav-link--active"
+              class="centinela-nav-link"
+            >
+              <ui-icon [name]="it.icon" [size]="18" />
+              <span>{{ it.label }}</span>
+            </a>
           }
-        </a>
-      }
+        </nav>
+      </div>
 
-      <div class="text-[10.5px] font-medium uppercase tracking-[0.06em] text-ink-4 px-2 pt-4 pb-1.5">Operación</div>
-      @for (it of secondary(); track it.link) {
-        <a
-          [routerLink]="it.link"
-          routerLinkActive="bg-surface text-ink shadow-1 font-medium"
-          class="flex items-center gap-2.5 px-2 py-1.5 rounded-sm text-ink-2 text-[13.5px] cursor-pointer select-none hover:bg-hover hover:text-ink"
-        >
-          <ui-icon [name]="it.icon" [size]="18" />
-          <span>{{ it.label }}</span>
-        </a>
-      }
-
-      <div class="mt-auto pt-4 border-t border-line flex flex-col gap-3">
+      <div class="centinela-sidebar__foot shrink-0 px-3 pb-3 pt-3 flex flex-col gap-3">
         @if (roleCode(); as r) {
           <button
             type="button"
-            class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-[12.5px] font-medium text-ink-2 hover:bg-hover hover:text-ink border border-dashed border-line-2 transition-colors"
+            class="centinela-sidebar__role-switch w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-[var(--radius-control)] text-[12.5px] font-medium text-ink-2 hover:bg-hover hover:text-ink border border-dashed border-line-2 transition-colors"
             (click)="toggleRole()"
             [title]="otherRoleHint()"
           >
@@ -79,11 +94,11 @@ interface NavItem {
           </button>
         }
 
-        <div class="bg-soft rounded-lg p-3 flex flex-col gap-3">
+        <div class="centinela-user-card">
           <div class="flex items-center gap-3">
             <div
-              class="w-10 h-10 rounded-full grid place-items-center font-semibold text-[14px] text-white shrink-0 shadow-sm"
-              style="background: linear-gradient(135deg, oklch(0.55 0.16 30), oklch(0.5 0.18 350));"
+              class="w-10 h-10 rounded-full grid place-items-center font-semibold text-[14px] text-brand-on shrink-0"
+              style="background: linear-gradient(145deg, var(--brand), var(--brand-2));"
             >
               {{ initials() }}
             </div>
@@ -98,10 +113,10 @@ interface NavItem {
             </div>
           </div>
 
-          <div class="flex items-center gap-1.5 border-t border-line pt-2.5">
+          <div class="flex items-center gap-1.5 border-t border-line pt-3 mt-3">
             <button
               type="button"
-              class="flex-1 flex items-center justify-center gap-1.5 rounded-sm px-2 py-1.5 text-[11.5px] text-ink-3 hover:bg-hover hover:text-ink transition-colors"
+              class="flex-1 flex items-center justify-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[11.5px] text-ink-3 hover:bg-hover hover:text-ink transition-colors"
               (click)="theme.toggle()"
               [attr.aria-label]="theme.dark() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
             >
@@ -111,7 +126,7 @@ interface NavItem {
             <div class="w-px h-5 bg-line shrink-0"></div>
             <button
               type="button"
-              class="flex-1 flex items-center justify-center gap-1.5 rounded-sm px-2 py-1.5 text-[11.5px] text-tier-red-ink hover:bg-tier-red-soft transition-colors"
+              class="flex-1 flex items-center justify-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[11.5px] text-tier-red-ink hover:bg-tier-red-soft transition-colors"
               (click)="onLogout()"
               aria-label="Cerrar sesión"
             >
@@ -160,11 +175,10 @@ export class SidebarNav {
         { link: '/providers', label: 'Proveedores', icon: 'storefront', count: this.providers.providers().length },
         { link: '/asegurados', label: 'Asegurados', icon: 'group', count: this.asegurados.asegurados().length },
         { link: '/network', label: 'Red de relaciones', icon: 'hub' },
-        { link: '/agent', label: 'Centinela IA', icon: 'visibility', badge: 'Nuevo' },
+        { link: '/agent', label: 'Centinela IA', icon: 'visibility', badge: 'Nuevo', featured: true },
         { link: '/uploads', label: 'Importar casos', icon: 'cloud_upload' },
       ];
     }
-    // analista (default)
     const myActive = this.claims
       .claims()
       .filter((c) => c.review.status === 'pendiente' || c.review.status === 'escalado' || c.review.status === 'en_revision')
@@ -174,7 +188,7 @@ export class SidebarNav {
       { link: '/insights', label: 'Insights IA', icon: 'insights' },
       { link: '/providers', label: 'Proveedores', icon: 'storefront', count: this.providers.providers().length },
       { link: '/asegurados', label: 'Asegurados', icon: 'group', count: this.asegurados.asegurados().length },
-      { link: '/agent', label: 'Centinela IA', icon: 'visibility', badge: 'Nuevo' },
+      { link: '/agent', label: 'Centinela IA', icon: 'visibility', badge: 'Nuevo', featured: true },
       { link: '/uploads', label: 'Importar casos', icon: 'cloud_upload' },
     ];
   });
@@ -194,10 +208,13 @@ export class SidebarNav {
     ];
   });
 
-  protected toggleRole(): void {
+  protected async toggleRole(): Promise<void> {
     const r = this.roleCode();
     if (!r) return;
-    void this.auth.switchRole(r === 'antifraude' ? 'analista' : 'antifraude');
+    const target: 'analista' | 'antifraude' = r === 'antifraude' ? 'analista' : 'antifraude';
+    const ok = await this.auth.switchRole(target);
+    if (!ok) return;
+    void this.router.navigateByUrl(target === 'antifraude' ? '/antifraude/bandeja' : '/claims');
   }
 
   protected onLogout(): void {

@@ -68,7 +68,7 @@ function generateUuid(): string {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex flex-col h-full min-h-0 bg-surface">
+    <div class="chat-page flex flex-col flex-1 min-h-0 h-full bg-surface">
       <header class="chat-panel__toolbar shrink-0">
         <button
           type="button"
@@ -200,7 +200,7 @@ function generateUuid(): string {
 
       <div
         #scroll
-        class="flex-1 min-h-0 overflow-y-auto scroll-pretty px-4 pt-3 pb-3 flex flex-col gap-4"
+        class="chat-page__messages flex-1 min-h-0 overflow-y-auto scroll-pretty px-4 pt-3 pb-3 flex flex-col gap-4"
       >
         <!-- Spacer pushes the message stack to the bottom when content is short.
              When overflow kicks in, this collapses to 0 and the scroll behaves
@@ -238,7 +238,7 @@ function generateUuid(): string {
         }
       </div>
 
-      <footer class="border-t border-line px-3 py-3 bg-surface min-w-0 shrink-0">
+      <footer class="chat-page__footer border-t border-line px-3 py-3 bg-surface min-w-0 shrink-0">
         @if (tts.activeId() !== null) {
           <div class="mb-2.5">
             <agent-tts-player

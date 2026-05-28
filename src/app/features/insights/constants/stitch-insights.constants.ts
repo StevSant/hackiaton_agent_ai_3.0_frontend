@@ -10,7 +10,7 @@ export const STITCH_INSIGHTS = {
     onPrimaryContainer: '#7287af',
     primaryFixed: '#d7e3ff',
     secondary: '#00658d',
-    aiAccent: '#8b5cf6',
+    aiAccent: '#6286B8',
     riskHigh: '#ef4444',
     riskMedium: '#f59e0b',
     riskLow: '#10b981',
@@ -42,5 +42,5 @@ export const STITCH_REGIONAL_BARS = [
 export const STITCH_CLAIM_SLICES = [
   { label: 'Automotriz', pct: 60, color: '#3b82f6' },
   { label: 'Salud', pct: 25, color: '#00aeef' },
-  { label: 'Vida/PYMES', pct: 15, color: '#8b5cf6' },
+  { label: 'Vida/PYMES', pct: 15, color: '#6286B8' },
 ] as const;

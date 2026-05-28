@@ -20,26 +20,26 @@ interface InboxRowVm {
   imports: [Icon, RiskRing],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="overflow-x-auto">
-      <table class="w-full text-[13px] border-collapse">
+    <div class="centinela-table-wrap">
+      <table class="centinela-table">
         <thead>
-          <tr class="bg-soft">
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line w-16">Riesgo</th>
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Siniestro</th>
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Nota del analista</th>
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Dueño</th>
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Recibido</th>
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Estado</th>
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Re-trabajo</th>
+          <tr>
+            <th class="w-16">Riesgo</th>
+            <th>Siniestro</th>
+            <th>Nota del analista</th>
+            <th>Dueño</th>
+            <th>Recibido</th>
+            <th>Estado</th>
+            <th>Re-trabajo</th>
           </tr>
         </thead>
         <tbody>
           @for (vm of vms(); track vm.row.claim_id) {
-            <tr class="cursor-pointer hover:bg-soft transition-colors" (click)="open.emit(vm.row.claim_id)">
-              <td class="px-3 py-3 border-b border-line align-middle">
+            <tr (click)="open.emit(vm.row.claim_id)">
+              <td>
                 <ui-risk-ring [score]="vm.row.score" [size]="42" [stroke]="4" />
               </td>
-              <td class="px-3 py-3 border-b border-line align-middle">
+              <td>
                 <div class="flex items-center gap-2">
                   <ui-icon [name]="ramoIcon(vm.row.ramo)" [size]="16" />
                   <div>
@@ -48,17 +48,17 @@ interface InboxRowVm {
                   </div>
                 </div>
               </td>
-              <td class="px-3 py-3 border-b border-line align-middle max-w-[320px]">
+              <td class="max-w-[320px]">
                 <span class="text-[12.5px] text-ink-2 line-clamp-2">{{ vm.notePreview }}</span>
               </td>
-              <td class="px-3 py-3 border-b border-line align-middle text-[12.5px]">{{ vm.duenoLabel }}</td>
-              <td class="px-3 py-3 border-b border-line align-middle text-[12px] text-ink-3 tabular-nums">{{ vm.whenLabel }}</td>
-              <td class="px-3 py-3 border-b border-line align-middle">
+              <td class="text-[12.5px]">{{ vm.duenoLabel }}</td>
+              <td class="text-[12px] text-ink-3 tabular-nums">{{ vm.whenLabel }}</td>
+              <td>
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium" [class]="vm.statusPalette">
                   {{ vm.statusLabel }}
                 </span>
               </td>
-              <td class="px-3 py-3 border-b border-line align-middle text-[12px] tabular-nums">
+              <td class="text-[12px] tabular-nums">
                 @if (vm.row.bounce_count > 0) {
                   <span class="inline-flex items-center gap-1 text-tier-yellow-ink">
                     <ui-icon name="restart_alt" [size]="13" />

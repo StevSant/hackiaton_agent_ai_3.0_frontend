@@ -11,6 +11,7 @@ import { AuthStore } from '@core/auth/auth.store';
 import { Chip } from '@shared/ui/chip';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
+import { PageHeader } from '@shared/ui/page-header';
 import { Pagination } from '@shared/ui/pagination';
 import { SegmentedTabs, type SegmentedTab } from '@shared/ui/segmented-tabs';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
@@ -35,90 +36,97 @@ const DEFAULT_FILTER_STATE: BandejaFilterState = {
 @Component({
   selector: 'page-claims-list',
   standalone: true,
-  imports: [Chip, Icon, KpiSmall, Pagination, SegmentedTabs, SkeletonTable, ClaimsTable, BandejaFilters],
+  imports: [Chip, Icon, KpiSmall, PageHeader, Pagination, SegmentedTabs, SkeletonTable, ClaimsTable, BandejaFilters],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-end justify-between gap-6 py-2 pb-6">
-      <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">{{ greeting() }}</h1>
-        <p class="text-ink-3 text-[13.5px] m-0">
+    <div class="centinela-viewport-page">
+      <ui-page-header eyebrow="Bandeja de triaje" [title]="greeting()" [compact]="true">
+        <p class="centinela-page-header__desc" ngProjectAs="[description]">
           @if (kpis().pendientes > 0) {
             Tienes <b class="text-tier-red-ink">{{ kpis().pendientes }} casos</b> esperando tu decisión de triaje.
           } @else {
             Sin casos pendientes — te puedes enfocar en seguimiento.
           }
           @if (kpis().rebotados > 0) {
-            <span class="ml-1.5 text-tier-yellow-ink">·  {{ kpis().rebotados }} caso{{ kpis().rebotados > 1 ? 's' : '' }} rebotado{{ kpis().rebotados > 1 ? 's' : '' }} de Antifraude.</span>
+            <span class="ml-1.5 text-tier-yellow-ink">· {{ kpis().rebotados }} caso{{ kpis().rebotados > 1 ? 's' : '' }} rebotado{{ kpis().rebotados > 1 ? 's' : '' }} de Antifraude.</span>
           }
         </p>
+      </ui-page-header>
+
+      <div class="centinela-kpi-row">
+        <ui-kpi-small label="Por triagear hoy" [value]="kpis().pendientes" icon="inbox" tone="brand" />
+        <ui-kpi-small label="Escalados (míos)" [value]="kpis().escalados" icon="flag" tone="yellow" />
+        <ui-kpi-small label="Rebotados" [value]="kpis().rebotados" icon="restart_alt" [tone]="kpis().rebotados > 0 ? 'red' : 'default'" />
+        <ui-kpi-small label="T. medio decisión" value="2h 41m" icon="schedule" />
       </div>
-    </div>
 
-    <div class="grid grid-cols-4 gap-3 mb-5">
-      <ui-kpi-small label="Por triagear hoy" [value]="kpis().pendientes" icon="inbox" tone="brand" />
-      <ui-kpi-small label="Escalados (míos)" [value]="kpis().escalados" icon="flag" tone="yellow" />
-      <ui-kpi-small label="Rebotados" [value]="kpis().rebotados" icon="restart_alt" [tone]="kpis().rebotados > 0 ? 'red' : 'default'" />
-      <ui-kpi-small label="T. medio decisión" value="2h 41m" icon="schedule" />
-    </div>
-
-    <div class="bg-surface border border-line rounded-lg shadow-1">
-      <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line flex-wrap">
-        <div class="flex items-center gap-3.5">
-          <h3 class="text-[13px] font-semibold m-0">Mi bandeja</h3>
-          <ui-segmented-tabs [tabs]="tabs()" [active]="tab()" (select)="onTab($any($event))" />
-        </div>
-        <div class="flex items-center gap-1.5 flex-wrap">
-          @if (tab() === 'activos') {
-            <ui-chip [active]="tierFilter() === 'todos'" (click)="setTier('todos')">Todos</ui-chip>
-            @if (kpis().rebotados > 0) {
-              <ui-chip [active]="tierFilter() === 'rebotados'" (click)="setTier('rebotados')">
-                <ui-icon name="restart_alt" [size]="11" /> Rebotados ({{ kpis().rebotados }})
-              </ui-chip>
+      <div class="centinela-panel centinela-panel--fill">
+        <div class="centinela-panel__head">
+          <div class="flex items-center gap-3.5 flex-wrap">
+            <h2 class="centinela-panel__title">Mi bandeja</h2>
+            <ui-segmented-tabs [tabs]="tabs()" [active]="tab()" (select)="onTab($any($event))" />
+          </div>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            @if (tab() === 'activos') {
+              <ui-chip [active]="tierFilter() === 'todos'" (click)="setTier('todos')">Todos</ui-chip>
+              @if (kpis().rebotados > 0) {
+                <ui-chip [active]="tierFilter() === 'rebotados'" (click)="setTier('rebotados')">
+                  <ui-icon name="restart_alt" [size]="11" /> Rebotados ({{ kpis().rebotados }})
+                </ui-chip>
+              }
             }
-          }
-          <ui-chip [active]="tierFilter() === 'rojo'" (click)="setTier('rojo')">
-            <span class="tier-dot tier-dot-r" style="box-shadow: none"></span> Alto
-          </ui-chip>
-          <ui-chip [active]="tierFilter() === 'amarillo'" (click)="setTier('amarillo')">
-            <span class="tier-dot tier-dot-y" style="box-shadow: none"></span> Medio
-          </ui-chip>
-          <ui-chip [active]="tierFilter() === 'verde'" (click)="setTier('verde')">
-            <span class="tier-dot tier-dot-g" style="box-shadow: none"></span> Bajo
-          </ui-chip>
+            <ui-chip [active]="tierFilter() === 'rojo'" (click)="setTier('rojo')">
+              <span class="tier-dot tier-dot-r" style="box-shadow: none"></span> Alto
+            </ui-chip>
+            <ui-chip [active]="tierFilter() === 'amarillo'" (click)="setTier('amarillo')">
+              <span class="tier-dot tier-dot-y" style="box-shadow: none"></span> Medio
+            </ui-chip>
+            <ui-chip [active]="tierFilter() === 'verde'" (click)="setTier('verde')">
+              <span class="tier-dot tier-dot-g" style="box-shadow: none"></span> Bajo
+            </ui-chip>
+          </div>
         </div>
-      </div>
 
-      <!-- Filter bar -->
-      <div class="px-5 py-3 border-b border-line">
-        <claims-bandeja-filters
-          [state]="filterState()"
-          [ramos]="availableRamos()"
-          [ciudades]="availableCiudades()"
-          (stateChange)="onFilterChange($event)"
-          (resetFilters)="resetFilters()"
-        />
-      </div>
-
-      @if (store.loading() && store.claims().length === 0) {
-        <ui-skeleton-table [rows]="8" [cols]="6" />
-      } @else if (filtered().length === 0) {
-        <div class="px-5 py-12 text-center text-ink-3 text-[13px]">
-          @if (tab() === 'activos') {
-            Sin casos activos con los filtros seleccionados.
-          } @else {
-            Todavía no tienes casos en histórico.
-          }
+        <div class="centinela-panel__toolbar">
+          <claims-bandeja-filters
+            [state]="filterState()"
+            [ramos]="availableRamos()"
+            [ciudades]="availableCiudades()"
+            (stateChange)="onFilterChange($event)"
+            (resetFilters)="resetFilters()"
+          />
         </div>
-      } @else {
-        <claims-table [claims]="paged()" (open)="openCase($event)" />
-        <ui-pagination
-          [page]="page()"
-          [pageSize]="pageSize()"
-          [total]="filtered().length"
-          (pageChange)="page.set($event)"
-          (pageSizeChange)="onPageSize($event)"
-        />
-      }
+
+        @if (store.loading() && store.claims().length === 0) {
+          <div class="centinela-panel__scroll">
+            <ui-skeleton-table [rows]="8" [cols]="6" />
+          </div>
+        } @else if (filtered().length === 0) {
+          <div class="centinela-panel__scroll">
+            <div class="centinela-empty centinela-empty--compact">
+              <div class="centinela-empty__icon">
+                <ui-icon name="inbox" [size]="22" />
+              </div>
+              @if (tab() === 'activos') {
+                Sin casos activos con los filtros seleccionados.
+              } @else {
+                Todavía no tienes casos en histórico.
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="centinela-panel__scroll">
+            <claims-table [claims]="paged()" (open)="openCase($event)" />
+          </div>
+          <ui-pagination
+            [page]="page()"
+            [pageSize]="pageSize()"
+            [total]="filtered().length"
+            (pageChange)="page.set($event)"
+            (pageSizeChange)="onPageSize($event)"
+          />
+        }
+      </div>
     </div>
   `,
 })

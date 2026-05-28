@@ -10,15 +10,21 @@ type KpiTone = 'default' | 'red' | 'yellow' | 'brand';
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="bg-surface border border-line rounded-lg p-4 shadow-1 flex flex-col min-h-[132px]">
-      <div class="text-[11.5px] text-ink-3 font-medium tracking-wider flex items-center gap-1.5 shrink-0">
-        <span class="w-6 h-6 rounded-md grid place-items-center" [style.background]="bg()" [style.color]="fg()">
-          <ui-icon [name]="icon()" [size]="13" />
+    <div
+      class="centinela-kpi-card"
+    >
+      <div class="centinela-kpi-card__label flex items-center gap-2 shrink-0">
+        <span
+          class="centinela-kpi-card__icon w-8 h-8 rounded-[10px] grid place-items-center shrink-0"
+          [style.background]="bg()"
+          [style.color]="fg()"
+        >
+          <ui-icon [name]="icon()" [size]="16" />
         </span>
         {{ label() }}
       </div>
-      <div class="flex-1 flex items-center">
-        <span class="font-serif text-[38px] leading-none tabular-nums">{{ value() }}</span>
+      <div class="flex-1 flex items-end pt-3">
+        <span class="centinela-kpi-card__value">{{ value() }}</span>
       </div>
     </div>
   `,

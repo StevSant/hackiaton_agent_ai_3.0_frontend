@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/cor
 
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
+import { PageHeader } from '@shared/ui/page-header';
 import { ClaimsStore } from '@core/state/claims.store';
 import { AiAnomaliesPanel } from '../components/ai-anomalies-panel';
 import { ClaimTypeDonut } from '../components/claim-type-donut';
@@ -17,6 +18,7 @@ import { exportInsightsCsv } from '../utils/export-insights';
   imports: [
     Button,
     Icon,
+    PageHeader,
     EcuadorHotspotsMap,
     AiAnomaliesPanel,
     FraudTendencyChart,
@@ -25,32 +27,29 @@ import { exportInsightsCsv } from '../utils/export-insights';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-center justify-between gap-2 pb-2 shrink-0">
-      <div class="min-w-0">
-        <h1 class="text-[18px] font-semibold tracking-tight m-0">Tendencias estratégicas de IA</h1>
-        <p class="text-ink-3 text-[11px] m-0 truncate">
+    <div class="centinela-viewport-page">
+      <ui-page-header eyebrow="Insights" title="Tendencias estratégicas de IA" [compact]="true">
+        <p class="centinela-page-header__desc" ngProjectAs="[description]">
           Dinámica de fraude y exposición al riesgo regional en Ecuador.
         </p>
-      </div>
-      <ui-button class="shrink-0 text-[11px] px-2.5 py-1 h-auto" (click)="onExport()">
-        <ui-icon name="download" [size]="12" />
-        Exportar
-      </ui-button>
-    </div>
+        <ui-button actions ngProjectAs="[actions]" class="shrink-0 text-[11px] px-2.5 py-1 h-auto" (click)="onExport()">
+          <ui-icon name="download" [size]="12" />
+          Exportar
+        </ui-button>
+      </ui-page-header>
 
-    <div class="insights-layout flex flex-col lg:flex-row gap-3 min-h-0">
-      <div class="flex-1 min-w-0 min-h-[420px] lg:min-h-0">
-        <insights-ecuador-map />
-      </div>
+      <div class="insights-layout flex flex-col lg:flex-row gap-3 min-h-0 flex-1">
+        <div class="flex-1 min-w-0 min-h-0">
+          <insights-ecuador-map />
+        </div>
 
-      <aside
-        class="insights-sidebar w-full lg:w-[292px] shrink-0 flex flex-col gap-2 min-h-0"
-      >
-        <insights-fraud-tendency class="shrink-0" />
-        <insights-ai-anomalies class="shrink-0" />
-        <insights-claim-type-donut class="shrink-0" />
-        <insights-quarterly-outlook class="shrink-0" />
-      </aside>
+        <aside class="insights-sidebar w-full lg:w-[280px] shrink-0 flex flex-col gap-2 min-h-0 scroll-pretty">
+          <insights-fraud-tendency class="shrink-0" />
+          <insights-ai-anomalies class="shrink-0" />
+          <insights-claim-type-donut class="shrink-0" />
+          <insights-quarterly-outlook class="shrink-0" />
+        </aside>
+      </div>
     </div>
   `,
 })

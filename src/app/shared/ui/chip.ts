@@ -18,7 +18,7 @@ export class Chip {
 
   protected readonly classes = computed(() =>
     this.active()
-      ? 'bg-ink border-ink text-canvas hover:bg-ink'
-      : 'bg-surface border-line text-ink-2 hover:bg-hover',
+      ? 'bg-brand text-[var(--brand-on)] border-brand hover:bg-brand-2 shadow-sm'
+      : 'bg-surface border-line text-ink-2 hover:border-brand/30 hover:bg-brand-soft/40',
   );
 }

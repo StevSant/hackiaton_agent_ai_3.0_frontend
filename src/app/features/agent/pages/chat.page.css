@@ -1,3 +1,24 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.chat-page {
+  width: 100%;
+}
+
+.chat-page__messages {
+  overscroll-behavior: contain;
+}
+
+.chat-page__footer {
+  margin-top: auto;
+}
+
 .chat-panel__toolbar {
   display: flex;
   align-items: center;

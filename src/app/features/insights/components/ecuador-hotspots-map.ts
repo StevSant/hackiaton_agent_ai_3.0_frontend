@@ -38,7 +38,7 @@ const INCIDENT_DETAIL_MIN_ZOOM = 9;
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
-      class="bg-surface border border-line rounded-lg relative insights-map-container overflow-hidden w-full h-full"
+      class="centinela-panel relative insights-map-container overflow-hidden w-full h-full"
     >
       <div #mapHost class="insights-leaflet-host absolute inset-0 z-0"></div>
 
@@ -50,8 +50,8 @@ const INCIDENT_DETAIL_MIN_ZOOM = 9;
           [attr.aria-expanded]="hintOpen()"
           aria-controls="insights-map-hint"
         >
-          <span class="w-1.5 h-1.5 rounded-full bg-[#8b5cf6] animate-pulse shrink-0"></span>
-          <span class="text-[10.5px] font-mono font-medium text-[#8b5cf6] uppercase tracking-wide">
+          <span class="w-1.5 h-1.5 rounded-full bg-brand animate-pulse shrink-0"></span>
+          <span class="text-[10.5px] font-mono font-medium text-brand uppercase tracking-wide">
             Hotspots IA
           </span>
           <span class="text-ink-4 ml-0.5">

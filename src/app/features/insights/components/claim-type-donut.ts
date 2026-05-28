@@ -15,7 +15,7 @@ interface DonutSlice {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="bg-surface border border-line rounded-lg shadow-1 p-4">
+    <section class="centinela-insight-card">
       <header class="flex items-center justify-between gap-2 mb-3">
         <h3 class="text-[13px] font-semibold text-ink m-0">Riesgo por tipo</h3>
         <span class="text-[11px] text-ink-3">Distribución</span>

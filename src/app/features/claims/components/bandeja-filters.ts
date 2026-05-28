@@ -3,7 +3,6 @@ import {
   Component,
   computed,
   input,
-  model,
   output,
 } from '@angular/core';
 
@@ -27,77 +26,68 @@ export interface BandejaFilterState {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-center gap-2 flex-wrap">
-      <!-- Search -->
-      <div class="flex items-center gap-2 bg-surface border border-line rounded-md px-3 py-1.5 min-w-[200px] text-ink-3 text-[13px] shadow-1">
+      <label class="centinela-field centinela-field--grow">
         <ui-icon name="search" [size]="16" />
         <input
-          type="text"
+          type="search"
           placeholder="Buscar por ID, asegurado, ciudad…"
-          class="flex-1 border-0 outline-0 bg-transparent text-ink min-w-0"
           [value]="state().search"
           (input)="onSearchInput($any($event.target).value)"
         />
-      </div>
+      </label>
 
-      <!-- Ramo -->
-      <select
-        class="rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] text-ink shadow-1 cursor-pointer"
-        [value]="state().ramo"
-        (change)="onRamo($any($event.target).value)"
-      >
-        <option value="">Todos los ramos</option>
-        @for (r of ramos(); track r) {
-          <option [value]="r">{{ r }}</option>
-        }
-      </select>
+      <label class="centinela-field">
+        <select [value]="state().ramo" (change)="onRamo($any($event.target).value)">
+          <option value="">Todos los ramos</option>
+          @for (r of ramos(); track r) {
+            <option [value]="r">{{ r }}</option>
+          }
+        </select>
+      </label>
 
-      <!-- Ciudad -->
-      <select
-        class="rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] text-ink shadow-1 cursor-pointer"
-        [value]="state().ciudad"
-        (change)="onCiudad($any($event.target).value)"
-      >
-        <option value="">Todas las ciudades</option>
-        @for (c of ciudades(); track c) {
-          <option [value]="c">{{ c }}</option>
-        }
-      </select>
+      <label class="centinela-field">
+        <select [value]="state().ciudad" (change)="onCiudad($any($event.target).value)">
+          <option value="">Todas las ciudades</option>
+          @for (c of ciudades(); track c) {
+            <option [value]="c">{{ c }}</option>
+          }
+        </select>
+      </label>
 
-      <!-- Date range -->
-      <select
-        class="rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] text-ink shadow-1 cursor-pointer"
-        [value]="state().datePreset"
-        (change)="onDatePreset($any($event.target).value)"
-      >
-        <option value="todos">Cualquier fecha</option>
-        <option value="7d">Últimos 7 días</option>
-        <option value="30d">Últimos 30 días</option>
-        <option value="custom">Personalizado</option>
-      </select>
+      <label class="centinela-field">
+        <select [value]="state().datePreset" (change)="onDatePreset($any($event.target).value)">
+          <option value="todos">Cualquier fecha</option>
+          <option value="7d">Últimos 7 días</option>
+          <option value="30d">Últimos 30 días</option>
+          <option value="custom">Personalizado</option>
+        </select>
+      </label>
 
       @if (state().datePreset === 'custom') {
-        <input
-          type="date"
-          class="rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] text-ink shadow-1"
-          [value]="state().customFrom"
-          (change)="onCustomFrom($any($event.target).value)"
-        />
+        <label class="centinela-field">
+          <input
+            type="date"
+            [value]="state().customFrom"
+            (change)="onCustomFrom($any($event.target).value)"
+          />
+        </label>
         <span class="text-[12px] text-ink-3">a</span>
-        <input
-          type="date"
-          class="rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] text-ink shadow-1"
-          [value]="state().customTo"
-          (change)="onCustomTo($any($event.target).value)"
-        />
+        <label class="centinela-field">
+          <input
+            type="date"
+            [value]="state().customTo"
+            (change)="onCustomTo($any($event.target).value)"
+          />
+        </label>
       }
 
       @if (hasActiveFilters()) {
         <button
           type="button"
-          class="text-[12.5px] text-ink-3 hover:text-ink flex items-center gap-1 ml-1"
+          class="text-[12.5px] text-brand-ink hover:text-brand flex items-center gap-1 ml-1 font-medium"
           (click)="resetFilters.emit()"
         >
-          <ui-icon name="close" [size]="12" /> Limpiar
+          <ui-icon name="close" [size]="12" /> Limpiar filtros
         </button>
       }
     </div>

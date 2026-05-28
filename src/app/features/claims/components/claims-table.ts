@@ -12,28 +12,28 @@ import type { Claim } from '../models';
   imports: [Avatar, Icon, RiskRing],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="overflow-x-auto">
-      <table class="w-full text-[13px] border-collapse">
+    <div class="centinela-table-wrap">
+      <table class="centinela-table">
         <thead>
-          <tr class="bg-soft">
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line w-16">Riesgo</th>
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Siniestro</th>
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Asegurado</th>
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Cobertura</th>
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Ciudad</th>
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Monto</th>
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Alertas</th>
-            <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Estado</th>
-            <th class="border-b border-line w-9"></th>
+          <tr>
+            <th class="w-16">Riesgo</th>
+            <th>Siniestro</th>
+            <th>Asegurado</th>
+            <th>Cobertura</th>
+            <th>Ciudad</th>
+            <th>Monto</th>
+            <th>Alertas</th>
+            <th>Estado</th>
+            <th class="w-9"></th>
           </tr>
         </thead>
         <tbody>
           @for (c of claims(); track c.id) {
-            <tr class="cursor-pointer hover:bg-soft transition-colors" (click)="open.emit(c.id)">
-              <td class="px-3 py-3 border-b border-line align-middle">
+            <tr (click)="open.emit(c.id)">
+              <td>
                 <ui-risk-ring [score]="c.score" [size]="42" [stroke]="4" />
               </td>
-              <td class="px-3 py-3 border-b border-line align-middle">
+              <td>
                 <div class="flex items-center gap-2">
                   <ui-icon [name]="ramoIcon(c.ramo)" [size]="16" />
                   <div>
@@ -42,7 +42,7 @@ import type { Claim } from '../models';
                   </div>
                 </div>
               </td>
-              <td class="px-3 py-3 border-b border-line align-middle">
+              <td>
                 <div class="flex items-center gap-2">
                   <ui-avatar [name]="c.asegurado" [size]="26" />
                   <div>
@@ -51,10 +51,10 @@ import type { Claim } from '../models';
                   </div>
                 </div>
               </td>
-              <td class="px-3 py-3 border-b border-line align-middle">{{ c.cobertura }}</td>
-              <td class="px-3 py-3 border-b border-line align-middle text-ink-3 text-[12.5px]">{{ c.ciudad }}</td>
-              <td class="px-3 py-3 border-b border-line align-middle tabular-nums font-medium">{{ money(c.monto_reclamado) }}</td>
-              <td class="px-3 py-3 border-b border-line align-middle">
+              <td>{{ c.cobertura }}</td>
+              <td class="text-ink-3 text-[12.5px]">{{ c.ciudad }}</td>
+              <td class="tabular-nums font-medium">{{ money(c.monto_reclamado) }}</td>
+              <td>
                 @if (c.alertas.length > 0) {
                   <div class="flex items-center gap-1">
                     @for (a of topAlerts(c); track a.code) {
@@ -68,9 +68,9 @@ import type { Claim } from '../models';
                   <span class="text-[11.5px] text-ink-3">—</span>
                 }
               </td>
-              <td class="px-3 py-3 border-b border-line align-middle">
+              <td>
                 <div class="flex flex-col items-start gap-1">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line">{{ c.estado }}</span>
+                  <span class="centinela-status-pill">{{ c.estado }}</span>
                   @if (reviewBadge(c); as rb) {
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]" [class]="rb.chip">
                       <ui-icon [name]="rb.icon" [size]="11" />
@@ -79,7 +79,7 @@ import type { Claim } from '../models';
                   }
                 </div>
               </td>
-              <td class="px-3 py-3 border-b border-line align-middle text-ink-4">
+              <td class="text-ink-4">
                 <ui-icon name="chevron_right" [size]="16" />
               </td>
             </tr>
