@@ -2,20 +2,36 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router } from '@angular/router';
 
 import { AseguradosStore } from '@core/state/asegurados.store';
+import { Button } from '@shared/ui/button';
 import { Chip } from '@shared/ui/chip';
+import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
 import { formatMoney } from '@shared/utils';
 import { AseguradosTable } from '../components/asegurados-table';
+import {
+  ASEGURADO_EXPORT_COLUMNS,
+  exportAsegurados,
+  projectAsegurado,
+} from '../utils/export-asegurados';
 
 type MoraFilter = 'todos' | 'mora' | 'al-dia';
 
 @Component({
   selector: 'page-asegurados-list',
   standalone: true,
-  imports: [Chip, Icon, KpiSmall, Pagination, SkeletonTable, AseguradosTable],
+  imports: [
+    Button,
+    Chip,
+    ExportModal,
+    Icon,
+    KpiSmall,
+    Pagination,
+    SkeletonTable,
+    AseguradosTable,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
@@ -25,6 +41,15 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
           Listado de personas aseguradas con su exposición y nivel de alertas acumuladas.
         </p>
       </div>
+      <ui-button
+        variant="primary"
+        class="shrink-0"
+        [disabled]="filtered().length === 0"
+        (click)="exportOpen.set(true)"
+      >
+        <ui-icon name="download" [size]="14" />
+        Exportar reporte
+      </ui-button>
     </div>
 
     <div class="grid grid-cols-4 gap-3 mb-5">
@@ -69,6 +94,18 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
         (pageSizeChange)="onPageSize($event)"
       />
     }
+
+    <ui-export-modal
+      [open]="exportOpen()"
+      title="Exportar asegurados"
+      subtitle="Genera un archivo con los asegurados que coinciden con los filtros actuales."
+      [columns]="aseguradoColumns"
+      [defaultFilename]="exportFilename()"
+      [totalRows]="filtered().length"
+      [previewRows]="previewRows()"
+      (close)="exportOpen.set(false)"
+      (download)="onExport($event)"
+    />
   `,
 })
 export class AseguradosListPage {
@@ -79,6 +116,8 @@ export class AseguradosListPage {
   protected readonly mora = signal<MoraFilter>('todos');
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(25);
+  protected readonly exportOpen = signal<boolean>(false);
+  protected readonly aseguradoColumns = ASEGURADO_EXPORT_COLUMNS;
 
   protected readonly stats = this.store.stats;
 
@@ -105,6 +144,12 @@ export class AseguradosListPage {
     return list.slice(start, start + size);
   });
 
+  protected readonly previewRows = computed(() =>
+    this.filtered().slice(0, 3).map(projectAsegurado),
+  );
+
+  protected readonly exportFilename = computed(() => `centinela-asegurados-${todayStamp()}`);
+
   protected openAsegurado(id: string): void {
     void this.router.navigate(['/asegurados', id]);
   }
@@ -114,5 +159,14 @@ export class AseguradosListPage {
     this.page.set(0);
   }
 
+  protected onExport(req: ExportRequest): void {
+    exportAsegurados(this.filtered(), req);
+  }
+
   protected readonly formatMoney = formatMoney;
+}
+
+function todayStamp(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
