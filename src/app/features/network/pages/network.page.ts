@@ -47,23 +47,29 @@ const GRAPH_MAX_NODES = 15;
       <span class="text-[11.5px] uppercase tracking-wide text-ink-3 mr-1">Ramo</span>
       <button
         type="button"
-        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] border transition-colors"
+        class="inline-flex h-7 items-center gap-1.5 px-2.5 rounded-full text-[12px] leading-none border transition-colors"
         [class]="chipClasses('todos')"
         (click)="setFilter('todos')"
       >
-        Todos
-        <span class="text-[11px] text-ink-3 tabular-nums">{{ stats().total }}</span>
+        <span>Todos</span>
+        <span
+          class="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full px-[5px] text-[10px] font-semibold tabular-nums leading-none"
+          [class]="countBadgeClasses('todos')"
+        >{{ stats().total }}</span>
       </button>
       @for (key of ramoOptions; track key) {
         <button
           type="button"
-          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] border transition-colors"
+          class="inline-flex h-7 items-center gap-1.5 px-2.5 rounded-full text-[12px] leading-none border transition-colors [&_ui-icon_span]:block [&_ui-icon_span]:leading-none"
           [class]="chipClasses(key)"
           (click)="setFilter(key)"
         >
           <ui-icon [name]="ramoIconFor(key)" [size]="13" />
-          {{ ramoLabel(key) }}
-          <span class="text-[11px] text-ink-3 tabular-nums">{{ counts()[key] }}</span>
+          <span>{{ ramoLabel(key) }}</span>
+          <span
+            class="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full px-[5px] text-[10px] font-semibold tabular-nums leading-none"
+            [class]="countBadgeClasses(key)"
+          >{{ counts()[key] }}</span>
         </button>
       }
     </div>
@@ -282,6 +288,12 @@ export class NetworkPage {
     return value === this.filter()
       ? 'bg-brand-soft border-brand text-brand-ink'
       : 'bg-surface border-line text-ink-2 hover:bg-soft';
+  }
+
+  protected countBadgeClasses(value: RamoFilter): string {
+    return value === this.filter()
+      ? 'bg-canvas text-brand-ink ring-1 ring-inset ring-brand/15'
+      : 'bg-soft text-ink-3';
   }
 
   protected tierChipClasses(value: GraphTierFilter): string {
