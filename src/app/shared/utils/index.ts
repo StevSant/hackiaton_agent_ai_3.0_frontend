@@ -20,3 +20,9 @@ export {
   projectProvider,
   PROVIDER_EXPORT_COLUMNS,
 } from './export-providers';
+export {
+  CLAIM_RETURN_TO_QUERY,
+  INSIGHTS_CLAIM_RETURN,
+  insightsClaimReturnQuery,
+  resolveClaimBackNavigation,
+} from './claim-back-navigation';

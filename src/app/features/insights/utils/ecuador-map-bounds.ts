@@ -2,25 +2,22 @@ import * as L from 'leaflet';
 
 import { ECUADOR_MAINLAND_BOUNDS } from '../models/insights.model';
 
-/** Límite de pan — territorio continental completo. */
-export function ecuadorPanBounds(): L.LatLngBounds {
-  return L.latLngBounds(
-    [ECUADOR_MAINLAND_BOUNDS.southWest.latitude, ECUADOR_MAINLAND_BOUNDS.southWest.longitude],
-    [ECUADOR_MAINLAND_BOUNDS.northEast.latitude, ECUADOR_MAINLAND_BOUNDS.northEast.longitude],
-  );
-}
-
 /**
- * Encuadre inicial ajustado a la masa terrestre de Ecuador.
- * - Oeste: -80.1° (costa, excluye océano abierto)
- * - Este: -75.5° (frontera oriental)
- * - Sur: -4.8° (Macará / Zamora)
- * - Norte: 1.3° (San Lorenzo)
+ * Encuadre inicial: Ecuador continental + franja del Pacífico a la izquierda.
+ * En pantallas anchas evita la banda gris sin tiles al oeste de la costa.
  */
 export function ecuadorViewportBounds(): L.LatLngBounds {
   return L.latLngBounds(
-    [-4.8, -80.1],
+    [-4.8, -83.4],
     [1.3, -75.5],
+  );
+}
+
+/** Pan permitido — incluye océano costero para rellenar márgenes laterales. */
+export function ecuadorPanBounds(): L.LatLngBounds {
+  return L.latLngBounds(
+    [ECUADOR_MAINLAND_BOUNDS.southWest.latitude - 0.35, -84.2],
+    [ECUADOR_MAINLAND_BOUNDS.northEast.latitude + 0.35, ECUADOR_MAINLAND_BOUNDS.northEast.longitude + 0.35],
   );
 }
 

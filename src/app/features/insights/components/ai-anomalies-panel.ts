@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { Icon } from '@shared/ui/icon';
+import { insightsClaimReturnQuery } from '@shared/utils';
 import { InsightsStore } from '../services/insights.store';
 import type { AiAnomaly } from '../models';
 
@@ -57,7 +58,7 @@ export class AiAnomaliesPanel {
   protected readonly anomalies = this.store.anomalies;
 
   protected openCase(claimId: string): void {
-    void this.router.navigate(['/claims', claimId]);
+    void this.router.navigate(['/claims', claimId], { queryParams: insightsClaimReturnQuery() });
   }
 
   protected severityLabel(item: AiAnomaly): string {

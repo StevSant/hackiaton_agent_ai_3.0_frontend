@@ -1,12 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
+import { map } from 'rxjs';
 
 import { AuthStore } from '@core/auth/auth.store';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { RiskBadge } from '@shared/ui/risk-badge';
 import { SkeletonCard } from '@shared/ui/skeleton-card';
-import { ramoIcon, ramoLabel } from '@shared/utils';
+import { ramoIcon, ramoLabel, resolveClaimBackNavigation } from '@shared/utils';
 import { AiExplanationCard } from '../components/ai-explanation-card';
 import { AlertsList } from '../components/alerts-list';
 import { AnomalyIndicatorCard } from '../components/anomaly-indicator-card';
@@ -186,7 +188,7 @@ import { ProvidersStore } from '@core/state/providers.store';
       <div class="py-20 text-center text-ink-3">
         Caso no encontrado.
         <div class="mt-2">
-          <button class="underline" (click)="back()">Volver a la bandeja</button>
+          <button class="underline" (click)="back()">{{ backLabel() }}</button>
         </div>
       </div>
     }
@@ -199,6 +201,12 @@ export class ClaimDetailPage {
   private readonly providers = inject(ProvidersStore);
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  private readonly returnTo = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('returnTo'))),
+    { initialValue: null },
+  );
 
   protected readonly ramoIcon = ramoIcon;
   protected readonly ramoLabel = ramoLabel;
@@ -233,13 +241,14 @@ export class ClaimDetailPage {
   protected readonly currentUserId = computed(() => this.auth.user()?.id ?? 'usr_anon');
   protected readonly currentUserName = computed(() => this.auth.user()?.name ?? 'Sin sesión');
 
-  protected readonly backLabel = computed(() =>
-    this.roleCode() === 'antifraude' ? 'Bandeja Antifraude' : 'Bandeja',
+  protected readonly backNavigation = computed(() =>
+    resolveClaimBackNavigation(this.returnTo(), this.roleCode()),
   );
 
+  protected readonly backLabel = computed(() => this.backNavigation().label);
+
   protected back(): void {
-    const route = this.roleCode() === 'antifraude' ? '/antifraude/bandeja' : '/claims';
-    void this.router.navigate([route]);
+    void this.router.navigateByUrl(this.backNavigation().path);
   }
 
   protected askAI(): void {

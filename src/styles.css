@@ -243,7 +243,7 @@ body {
   width: 100%;
   height: 100%;
   min-height: 420px;
-  background: #eef1ec;
+  background: linear-gradient(180deg, #b9d5e8 0%, #8eb8d2 55%, #7aa8c8 100%);
 }
 
 .insights-glass-card {
@@ -257,7 +257,7 @@ body {
 
 /* Leaflet — Ecuador hotspots map */
 .insights-leaflet-host {
-  background: #eef1ec;
+  background: #8eb8d2;
 }
 
 .insights-leaflet-host .leaflet-tile-pane {
@@ -270,8 +270,8 @@ body {
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(249, 249, 249, 0.5) 0%,
-    rgba(249, 249, 249, 0.35) 100%
+    rgba(249, 249, 249, 0.28) 0%,
+    rgba(249, 249, 249, 0.16) 100%
   );
   pointer-events: none;
   z-index: 1;

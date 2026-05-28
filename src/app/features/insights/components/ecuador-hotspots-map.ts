@@ -4,14 +4,18 @@ import {
   Component,
   ElementRef,
   OnDestroy,
+  computed,
   effect,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
+import { Router } from '@angular/router';
 import * as L from 'leaflet';
 
+import { ClaimsStore } from '@core/state/claims.store';
 import { Icon } from '@shared/ui/icon';
+import { formatMoneyShort, insightsClaimReturnQuery, ramoLabel, type RiskTier } from '@shared/utils';
 import { InsightsStore, type IncidentPoint } from '../services/insights.store';
 import type { MapHotspot } from '../models';
 import {
@@ -36,7 +40,7 @@ const TOPO_ATTRIBUTION =
     >
       <div #mapHost class="insights-leaflet-host absolute inset-0 z-0"></div>
 
-      <div class="absolute top-2.5 left-2.5 z-[1000] flex flex-col items-start gap-1.5 max-w-[min(100%,220px)]">
+      <div class="absolute top-2.5 left-2.5 z-[1000] flex flex-col items-start gap-1.5 max-w-[min(100%,240px)]">
         <button
           type="button"
           class="insights-glass-card inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-line shadow-sm text-left hover:bg-surface transition-colors"
@@ -60,11 +64,67 @@ const TOPO_ATTRIBUTION =
           >
             <p class="text-[11px] font-semibold text-ink m-0 leading-tight">Intensidad regional</p>
             <p class="text-[10.5px] text-ink-3 m-0 mt-0.5 leading-snug">
-              {{ store.hotspots().length }} ciudades con actividad. Haz clic en un hotspot para ver detalle.
+              {{ store.hotspots().length }} ciudades con actividad. Pulsa un punto para ver el caso.
             </p>
             <p class="text-[10px] text-ink-4 m-0 mt-1.5 leading-snug border-t border-line pt-1.5">
               Ubicación aproximada — no es el punto exacto del siniestro.
             </p>
+          </div>
+        }
+
+        @if (selectedSummary(); as summary) {
+          <div
+            class="insights-glass-card px-2.5 py-2.5 rounded-md border border-line shadow-sm pointer-events-auto w-[min(100%,240px)]"
+            role="dialog"
+            aria-label="Resumen del siniestro"
+          >
+            <div class="flex items-start justify-between gap-2 mb-1.5">
+              <span class="font-mono text-[10px] text-brand-ink truncate">{{ summary.id }}</span>
+              <button
+                type="button"
+                class="border-0 bg-transparent p-0 cursor-pointer text-ink-3 hover:text-ink shrink-0 grid place-items-center"
+                (click)="clearSelection()"
+                aria-label="Cerrar resumen"
+              >
+                <ui-icon name="close" [size]="14" />
+              </button>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
+              <span class="text-[10px] font-medium px-1.5 py-px rounded-full bg-soft text-ink-2">
+                {{ summary.ramoLabel }}
+              </span>
+              <span class="text-[9px] font-mono px-1.5 py-px rounded-full" [class]="summary.tierClass">
+                {{ summary.tierLabel }}
+              </span>
+              <span class="text-[10px] font-mono text-ink-3 tabular-nums">Score {{ summary.score }}</span>
+            </div>
+            <dl class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[10px] m-0">
+              <dt class="text-ink-3">Sucursal</dt>
+              <dd class="text-ink m-0 truncate">{{ summary.sucursal }}</dd>
+              @if (summary.monto) {
+                <dt class="text-ink-3">Monto</dt>
+                <dd class="text-ink m-0 tabular-nums">{{ summary.monto }}</dd>
+              }
+              @if (summary.fecha) {
+                <dt class="text-ink-3">Ocurrencia</dt>
+                <dd class="text-ink m-0">{{ summary.fecha }}</dd>
+              }
+              @if (summary.asegurado) {
+                <dt class="text-ink-3">Asegurado</dt>
+                <dd class="text-ink m-0 truncate">{{ summary.asegurado }}</dd>
+              }
+            </dl>
+            @if (summary.descripcion) {
+              <p class="text-[10px] text-ink-3 m-0 mt-1.5 leading-snug line-clamp-2">{{ summary.descripcion }}</p>
+            }
+            <button
+              type="button"
+              class="mt-2 inline-flex items-center gap-1 text-[10px] font-medium text-brand-ink hover:underline bg-transparent border-0 p-0 cursor-pointer"
+              (click)="openCase(summary.id)"
+            >
+              Ver detalle del caso
+              <ui-icon name="arrow_forward" [size]="12" />
+            </button>
           </div>
         }
       </div>
@@ -126,6 +186,8 @@ const TOPO_ATTRIBUTION =
 })
 export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
   protected readonly store = inject(InsightsStore);
+  private readonly claimsStore = inject(ClaimsStore);
+  private readonly router = inject(Router);
 
   private readonly mapHost = viewChild.required<ElementRef<HTMLElement>>('mapHost');
 
@@ -135,6 +197,31 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
   private resizeObserver: ResizeObserver | null = null;
 
   protected readonly hintOpen = signal(false);
+  protected readonly selectedIncidentId = signal<string | null>(null);
+
+  protected readonly selectedSummary = computed(() => {
+    const incidentId = this.selectedIncidentId();
+    if (!incidentId) return null;
+
+    const incident = this.store.incidents().find((point) => point.id === incidentId);
+    if (!incident) return null;
+
+    const claim = this.claimsStore.claims().find((row) => row.id === incidentId);
+    const tier = (claim?.nivel ?? incident.tier) as RiskTier;
+
+    return {
+      id: incident.id,
+      sucursal: claim?.sucursal ?? incident.sucursal,
+      score: claim?.score ?? incident.score,
+      ramoLabel: claim ? ramoLabel(claim.ramo) : 'Siniestro',
+      tierLabel: TIER_LABELS[tier],
+      tierClass: TIER_BADGE_CLASSES[tier],
+      monto: claim ? formatMoneyShort(claim.monto_reclamado) : null,
+      fecha: formatIncidentDate(claim?.fecha_ocurrencia ?? incident.fechaOcurrencia),
+      asegurado: claim?.asegurado ?? null,
+      descripcion: claim?.descripcion ?? null,
+    };
+  });
 
   constructor() {
     // Re-render markers whenever the store's hotspots or incidents change.
@@ -179,6 +266,14 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
     this.fitEcuadorViewport();
   }
 
+  protected clearSelection(): void {
+    this.selectedIncidentId.set(null);
+  }
+
+  protected openCase(claimId: string): void {
+    void this.router.navigate(['/claims', claimId], { queryParams: insightsClaimReturnQuery() });
+  }
+
   private initMap(): void {
     const host = this.mapHost().nativeElement;
     const panBounds = ecuadorPanBounds();
@@ -198,8 +293,9 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
     L.tileLayer(TOPO_TILE_URL, {
       attribution: TOPO_ATTRIBUTION,
       opacity: 0.58,
-      bounds: panBounds,
     }).addTo(this.map);
+
+    this.map.on('click', () => this.selectedIncidentId.set(null));
 
     // Seed markers from whatever the store already has; the effect() in
     // the constructor keeps them in sync on subsequent loads.
@@ -308,8 +404,32 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
       { direction: 'top', offset: [0, -4], opacity: 0.92 },
     );
 
+    circle.on('click', (event) => {
+      L.DomEvent.stopPropagation(event);
+      this.selectedIncidentId.set(incident.id);
+    });
+
     this.incidentMarkers.push(circle);
   }
+}
+
+const TIER_LABELS: Record<RiskTier, string> = {
+  rojo: 'Alto',
+  amarillo: 'Medio',
+  verde: 'Bajo',
+};
+
+const TIER_BADGE_CLASSES: Record<RiskTier, string> = {
+  rojo: 'bg-tier-red-soft text-tier-red-ink',
+  amarillo: 'bg-tier-yellow-soft text-tier-yellow-ink',
+  verde: 'bg-tier-green-soft text-tier-green-ink',
+};
+
+function formatIncidentDate(isoDate: string | null | undefined): string | null {
+  if (!isoDate) return null;
+  const [year, month, day] = isoDate.split('-');
+  if (!year || !month || !day) return isoDate;
+  return `${day}/${month}/${year}`;
 }
 
 const INCIDENT_TIER_COLORS: Record<IncidentPoint['tier'], string> = {
