@@ -351,15 +351,41 @@ function generateUuid(): string {
                 </button>
               }
             </div>
-            <div class="chat-suggestions__grid">
-              @for (s of activeSuggestions(); track s) {
-                <button type="button" class="chat-suggestion" (click)="quickSend(s)">
-                  <span class="chat-suggestion__icon" aria-hidden="true">
-                    <agent-eye-icon [size]="15" />
-                  </span>
-                  <span class="chat-suggestion__label">{{ s }}</span>
-                </button>
-              }
+            <div class="chat-suggestions__row">
+              <button
+                type="button"
+                class="chat-suggestions__nav"
+                (click)="scrollSuggestions('prev')"
+                [disabled]="suggestionsAtStart()"
+                aria-label="Ver preguntas anteriores"
+                title="Anterior"
+              >
+                <ui-icon name="chevron_left" [size]="18" />
+              </button>
+              <div
+                #suggestionsTrack
+                class="chat-suggestions__track"
+                (scroll)="updateSuggestionsScrollState()"
+              >
+                @for (s of activeSuggestions(); track s) {
+                  <button type="button" class="chat-suggestion" (click)="quickSend(s)">
+                    <span class="chat-suggestion__icon" aria-hidden="true">
+                      <agent-eye-icon [size]="15" />
+                    </span>
+                    <span class="chat-suggestion__label">{{ s }}</span>
+                  </button>
+                }
+              </div>
+              <button
+                type="button"
+                class="chat-suggestions__nav"
+                (click)="scrollSuggestions('next')"
+                [disabled]="suggestionsAtEnd()"
+                aria-label="Ver más preguntas"
+                title="Siguiente"
+              >
+                <ui-icon name="chevron_right" [size]="18" />
+              </button>
             </div>
           } @else {
             <button
@@ -501,9 +527,12 @@ export class ChatPage implements AfterViewChecked {
   protected readonly showSuggestions = computed(
     () => this.suggestionsOpen() ?? !this.hasUserMessages(),
   );
+  protected readonly suggestionsAtStart = signal(true);
+  protected readonly suggestionsAtEnd = signal(false);
 
   private readonly scrollEl = viewChild<ElementRef<HTMLDivElement>>('scroll');
   private readonly textarea = viewChild<ElementRef<HTMLTextAreaElement>>('ta');
+  private readonly suggestionsTrack = viewChild<ElementRef<HTMLDivElement>>('suggestionsTrack');
 
   constructor() {
     afterNextRender(() => {
@@ -549,6 +578,18 @@ export class ChatPage implements AfterViewChecked {
       this.store.messages();
       this.store.thinking();
       queueMicrotask(() => this.scrollToBottom());
+    });
+
+    effect(() => {
+      this.activeSuggestions();
+      this.showSuggestions();
+      queueMicrotask(() => {
+        requestAnimationFrame(() => {
+          const track = this.suggestionsTrack()?.nativeElement;
+          if (track) track.scrollLeft = 0;
+          this.updateSuggestionsScrollState();
+        });
+      });
     });
   }
 
@@ -626,6 +667,34 @@ export class ChatPage implements AfterViewChecked {
   protected quickSend(text: string): void {
     const convId = this.activeConversationId() ?? undefined;
     void this.store.ask(text, convId);
+  }
+
+  protected scrollSuggestions(direction: 'prev' | 'next'): void {
+    const track = this.suggestionsTrack()?.nativeElement;
+    if (!track) return;
+
+    const scrollStep = Math.max(track.clientWidth * 0.72, 220);
+    track.scrollBy({
+      left: direction === 'next' ? scrollStep : -scrollStep,
+      behavior: 'smooth',
+    });
+
+    window.setTimeout(() => this.updateSuggestionsScrollState(), 280);
+  }
+
+  protected updateSuggestionsScrollState(): void {
+    const track = this.suggestionsTrack()?.nativeElement;
+    if (!track) {
+      this.suggestionsAtStart.set(true);
+      this.suggestionsAtEnd.set(true);
+      return;
+    }
+
+    const edgeTolerance = 4;
+    this.suggestionsAtStart.set(track.scrollLeft <= edgeTolerance);
+    this.suggestionsAtEnd.set(
+      track.scrollLeft + track.clientWidth >= track.scrollWidth - edgeTolerance,
+    );
   }
 
   protected onTtsToggle(id: string): void {
