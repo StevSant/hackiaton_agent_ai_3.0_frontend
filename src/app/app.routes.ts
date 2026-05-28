@@ -1,11 +1,20 @@
-import { inject } from '@angular/core';
-import { Router, type Routes } from '@angular/router';
+import type { Routes } from '@angular/router';
 
 import { authGuard } from '@core/auth/auth.guard';
-import { AuthStore } from '@core/auth/auth.store';
 import { roleGuard } from '@core/auth/role.guard';
 
 export const routes: Routes = [
+  {
+    path: '',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('@features/landing/pages/landing.page').then((m) => m.LandingPage),
+  },
+  {
+    path: 'landing',
+    pathMatch: 'full',
+    redirectTo: '',
+  },
   {
     path: 'auth',
     loadComponent: () => import('@layouts/auth-shell').then((m) => m.AuthShell),
@@ -16,15 +25,6 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('@layouts/app-shell').then((m) => m.AppShell),
     children: [
-      {
-        path: '',
-        pathMatch: 'full',
-        // Role-aware default landing. Routes get evaluated again after login.
-        redirectTo: () => {
-          const auth = inject(AuthStore);
-          return auth.user()?.roleCode === 'antifraude' ? 'antifraude/bandeja' : 'claims';
-        },
-      },
       {
         path: 'claims',
         loadChildren: () => import('@features/claims/claims.routes').then((m) => m.routes),
