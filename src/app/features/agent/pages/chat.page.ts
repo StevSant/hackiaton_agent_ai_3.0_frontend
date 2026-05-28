@@ -73,32 +73,40 @@ function generateUuid(): string {
           <ui-icon name="history" [size]="18" />
         </button>
 
-        <button
-          type="button"
-          class="chat-panel__tool-btn"
-          [class.text-brand-ink]="uiPrefs.showCharts()"
-          (click)="uiPrefs.toggleCharts()"
-          [attr.aria-label]="uiPrefs.showCharts() ? 'Ocultar gráficos generados' : 'Mostrar gráficos generados'"
-          [attr.title]="uiPrefs.showCharts() ? 'Ocultar gráficos generados' : 'Mostrar gráficos generados'"
-        >
-          <ui-icon [name]="uiPrefs.showCharts() ? 'insert_chart' : 'bar_chart_off'" [size]="18" />
-        </button>
+        <div class="chat-panel__toolbar-actions">
+          <button
+            type="button"
+            class="chat-panel__tool-btn"
+            [class.text-brand-ink]="uiPrefs.showCharts()"
+            (click)="uiPrefs.toggleCharts()"
+            [attr.aria-label]="uiPrefs.showCharts() ? 'Ocultar gráficos generados' : 'Mostrar gráficos generados'"
+            [attr.title]="uiPrefs.showCharts() ? 'Ocultar gráficos generados' : 'Mostrar gráficos generados'"
+          >
+            <ui-icon [name]="uiPrefs.showCharts() ? 'insert_chart' : 'bar_chart_off'" [size]="18" />
+          </button>
 
-        <button
-          type="button"
-          class="chat-panel__tool-btn chat-panel__tool-btn--primary"
-          (click)="newChat()"
-          aria-label="Nueva conversación"
-          title="Nueva conversación"
-        >
-          <ui-icon name="add" [size]="20" [weight]="600" />
-        </button>
+          <button
+            type="button"
+            class="chat-panel__tool-btn chat-panel__tool-btn--primary"
+            (click)="newChat()"
+            aria-label="Nueva conversación"
+            title="Nueva conversación"
+          >
+            <ui-icon name="add" [size]="20" [weight]="600" />
+          </button>
+        </div>
       </header>
 
       <div
         #scroll
         class="flex-1 min-h-0 overflow-y-auto scroll-pretty px-4 pt-3 pb-3 flex flex-col gap-4"
       >
+        <!-- Spacer pushes the message stack to the bottom when content is short.
+             When overflow kicks in, this collapses to 0 and the scroll behaves
+             normally — same trick WhatsApp / ChatGPT use to make sparse
+             conversations feel anchored to the composer. -->
+        <div class="flex-1 min-h-0" aria-hidden="true"></div>
+
         @for (m of store.messages(); track m.id; let last = $last) {
           <agent-chat-message
             [message]="m"

@@ -1,11 +1,17 @@
 .chat-panel__toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in oklch, var(--bg-soft) 55%, var(--bg-elev));
+}
+
+.chat-panel__toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .chat-panel__tool-btn {
@@ -52,9 +58,10 @@
   line-height: 1;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 767px) {
   .chat-panel__toolbar {
-    padding: 8px 10px;
+    /* Extra left padding so the floating shell hamburger (40px wide @ left-3) doesn't overlap the history button. */
+    padding: 8px 10px 8px 60px;
   }
 }
 
@@ -342,9 +349,21 @@
 .chat-suggestion__label {
   display: block;
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+@media (max-width: 640px) {
+  .chat-suggestions__grid {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chat-suggestion {
+    width: 100%;
+    border-radius: 14px;
+  }
 }
 
 .chat-suggestion:hover {
