@@ -257,24 +257,20 @@ body {
 
 /* Leaflet — Ecuador hotspots map */
 .insights-leaflet-host {
-  background: #8eb8d2;
+  background: #d4e4ef;
 }
 
-.insights-leaflet-host .leaflet-tile-pane {
-  filter: saturate(0.28) brightness(1.18) contrast(0.72);
+.insights-leaflet-host .leaflet-container {
+  background: #d4e4ef;
 }
 
-.insights-leaflet-host .leaflet-tile-pane::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(249, 249, 249, 0.28) 0%,
-    rgba(249, 249, 249, 0.16) 100%
-  );
-  pointer-events: none;
-  z-index: 1;
+.insights-leaflet-host .insights-topo-tile-layer img.leaflet-tile {
+  filter: saturate(0.32) brightness(1.12) contrast(0.78);
+  opacity: 0.72;
+}
+
+.insights-leaflet-host .insights-topo-tile-layer img.leaflet-tile-loaded {
+  opacity: 0.72;
 }
 
 .insights-leaflet-host .leaflet-marker-pane {

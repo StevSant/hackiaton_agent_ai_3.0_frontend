@@ -28,6 +28,8 @@ import { buildHotspotMarkerHtml, buildHotspotPopupHtml } from '../utils/map-hots
 const TOPO_TILE_URL = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
 const TOPO_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, SRTM | Map style: &copy; OpenTopoMap';
+/** Below this zoom only city hotspots are shown; at/above it, individual cases appear. */
+const INCIDENT_DETAIL_MIN_ZOOM = 9;
 
 @Component({
   selector: 'insights-ecuador-map',
@@ -64,7 +66,7 @@ const TOPO_ATTRIBUTION =
           >
             <p class="text-[11px] font-semibold text-ink m-0 leading-tight">Intensidad regional</p>
             <p class="text-[10.5px] text-ink-3 m-0 mt-0.5 leading-snug">
-              {{ store.hotspots().length }} ciudades con actividad. Pulsa un punto para ver el caso.
+              {{ store.hotspots().length }} ciudades con actividad. Acerca el mapa para ver cada caso.
             </p>
             <p class="text-[10px] text-ink-4 m-0 mt-1.5 leading-snug border-t border-line pt-1.5">
               Ubicación aproximada — no es el punto exacto del siniestro.
@@ -192,9 +194,10 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
   private readonly mapHost = viewChild.required<ElementRef<HTMLElement>>('mapHost');
 
   private map: L.Map | null = null;
-  private readonly markers: L.Marker[] = [];
-  private readonly incidentMarkers: L.CircleMarker[] = [];
+  private hotspotLayer: L.LayerGroup | null = null;
+  private incidentLayer: L.LayerGroup | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private initialViewportFitDone = false;
 
   protected readonly hintOpen = signal(false);
   protected readonly selectedIncidentId = signal<string | null>(null);
@@ -245,13 +248,13 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
     this.resizeObserver = null;
     this.map?.remove();
     this.map = null;
-    this.markers.length = 0;
-    this.incidentMarkers.length = 0;
+    this.hotspotLayer = null;
+    this.incidentLayer = null;
   }
 
   protected toggleHint(): void {
     this.hintOpen.update((open) => !open);
-    setTimeout(() => this.map?.invalidateSize(), 0);
+    setTimeout(() => this.map?.invalidateSize({ animate: false }), 0);
   }
 
   protected zoomIn(): void {
@@ -292,19 +295,28 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
 
     L.tileLayer(TOPO_TILE_URL, {
       attribution: TOPO_ATTRIBUTION,
-      opacity: 0.58,
+      opacity: 1,
+      keepBuffer: 3,
+      updateWhenIdle: true,
+      className: 'insights-topo-tile-layer',
     }).addTo(this.map);
 
     this.map.on('click', () => this.selectedIncidentId.set(null));
+    this.map.on('zoomend', () => this.syncLayerVisibility());
+
+    this.hotspotLayer = L.layerGroup().addTo(this.map);
+    this.incidentLayer = L.layerGroup();
 
     // Seed markers from whatever the store already has; the effect() in
     // the constructor keeps them in sync on subsequent loads.
     this.renderMarkers(this.store.hotspots());
     this.renderIncidents(this.store.incidents());
+    this.syncLayerVisibility();
 
     requestAnimationFrame(() => {
       this.map?.invalidateSize({ animate: false });
       this.fitEcuadorViewport();
+      this.initialViewportFitDone = true;
     });
   }
 
@@ -315,8 +327,9 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
     this.resizeObserver = new ResizeObserver(() => {
       if (!this.map) return;
       this.map.invalidateSize({ animate: false });
+      if (!this.initialViewportFitDone) return;
       if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => this.fitEcuadorViewport(), 120);
+      resizeTimer = setTimeout(() => this.map?.invalidateSize({ animate: false }), 120);
     });
 
     this.resizeObserver.observe(host);
@@ -331,27 +344,39 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
     this.map.fitBounds(viewBounds, {
       paddingTopLeft: topLeft,
       paddingBottomRight: bottomRight,
-      maxZoom: 9,
+      maxZoom: 8,
       animate: false,
     });
-
-    this.map.setMinZoom(this.map.getZoom());
   }
 
-  private renderMarkers(hotspots: readonly MapHotspot[]): void {
-    if (!this.map) return;
+  private syncLayerVisibility(): void {
+    if (!this.map || !this.hotspotLayer || !this.incidentLayer) return;
 
-    for (const m of this.markers) m.remove();
-    this.markers.length = 0;
+    const showIncidents = this.map.getZoom() >= INCIDENT_DETAIL_MIN_ZOOM;
 
-    for (const hotspot of hotspots) {
-      this.addHotspotMarker(hotspot);
+    if (showIncidents) {
+      if (this.map.hasLayer(this.hotspotLayer)) this.hotspotLayer.remove();
+      if (!this.map.hasLayer(this.incidentLayer)) this.incidentLayer.addTo(this.map);
+    } else {
+      if (this.map.hasLayer(this.incidentLayer)) this.incidentLayer.remove();
+      if (!this.map.hasLayer(this.hotspotLayer)) this.hotspotLayer.addTo(this.map);
+      this.selectedIncidentId.set(null);
     }
   }
 
-  private addHotspotMarker(hotspot: MapHotspot): void {
-    if (!this.map) return;
+  private renderMarkers(hotspots: readonly MapHotspot[]): void {
+    if (!this.hotspotLayer) return;
 
+    this.hotspotLayer.clearLayers();
+
+    for (const hotspot of hotspots) {
+      this.hotspotLayer.addLayer(this.createHotspotMarker(hotspot));
+    }
+
+    this.syncLayerVisibility();
+  }
+
+  private createHotspotMarker(hotspot: MapHotspot): L.Marker {
     const iconSize = hotspot.risk === 'high' ? 52 : 40;
     const icon = L.divIcon({
       className: 'insights-hotspot-leaflet-icon',
@@ -360,7 +385,7 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
       iconAnchor: [iconSize / 2, iconSize / 2],
     });
 
-    const marker = L.marker([hotspot.latitude, hotspot.longitude], { icon }).addTo(this.map);
+    const marker = L.marker([hotspot.latitude, hotspot.longitude], { icon });
 
     marker.bindPopup(buildHotspotPopupHtml(hotspot), {
       className: 'insights-hotspot-leaflet-popup',
@@ -372,44 +397,42 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
     marker.on('mouseout', () => marker.closePopup());
     marker.on('click', () => marker.openPopup());
 
-    this.markers.push(marker);
+    return marker;
   }
 
   private renderIncidents(incidents: readonly IncidentPoint[]): void {
-    if (!this.map) return;
+    if (!this.incidentLayer) return;
 
-    for (const m of this.incidentMarkers) m.remove();
-    this.incidentMarkers.length = 0;
+    this.incidentLayer.clearLayers();
 
     for (const incident of incidents) {
-      this.addIncidentMarker(incident);
+      this.incidentLayer.addLayer(this.createIncidentMarker(incident));
     }
+
+    this.syncLayerVisibility();
   }
 
-  private addIncidentMarker(incident: IncidentPoint): void {
-    if (!this.map) return;
-
+  private createIncidentMarker(incident: IncidentPoint): L.CircleMarker {
     const color = INCIDENT_TIER_COLORS[incident.tier];
-    const circle = L.circleMarker([incident.latitude, incident.longitude], {
+    const marker = L.circleMarker([incident.latitude, incident.longitude], {
       radius: incident.tier === 'rojo' ? 6 : 5,
       color,
       weight: 1,
       fillColor: color,
       fillOpacity: 0.55,
-      pane: 'markerPane',
-    }).addTo(this.map);
+    });
 
-    circle.bindTooltip(
+    marker.bindTooltip(
       `<strong>${incident.id}</strong><br>${incident.sucursal} · score ${incident.score}`,
       { direction: 'top', offset: [0, -4], opacity: 0.92 },
     );
 
-    circle.on('click', (event) => {
+    marker.on('click', (event) => {
       L.DomEvent.stopPropagation(event);
       this.selectedIncidentId.set(incident.id);
     });
 
-    this.incidentMarkers.push(circle);
+    return marker;
   }
 }
 

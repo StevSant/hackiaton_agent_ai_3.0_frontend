@@ -1,0 +1,15 @@
+{
+  "name": "Centinela",
+  "short_name": "Centinela",
+  "description": "Inteligencia antifraude activa para Aseguradora del Sur",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "theme_color": "#05070d",
+  "background_color": "#05070d",
+  "display": "standalone"
+}
