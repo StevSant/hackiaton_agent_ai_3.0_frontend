@@ -1,12 +1,26 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import {
+  AfterViewChecked,
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { DocumentsApi } from '@core/api/clients/documents.api';
-import { ImportsApi, type ImportResultDto } from '@core/api/clients/imports.api';
+import { ImportsApi } from '@core/api/clients/imports.api';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
+import { Spinner } from '@shared/ui/spinner';
+import { RiskBadge } from '@shared/ui/risk-badge';
 import { ClaimsStore } from '@core/state/claims.store';
+import { UploadStreamStore } from '../services/upload-stream.store';
+import { UploadCaseCard } from '../components/upload-case-card';
 
 /** Paquete demo vehicular (backend: data/sample_documents/SIN-2026-08412/). */
 const DEMO_VEHICLE_DOCUMENTS: readonly { file: string; tipo: string }[] = [
@@ -26,36 +40,22 @@ const DEMO_VEHICLE_DOCUMENTS: readonly { file: string; tipo: string }[] = [
 @Component({
   selector: 'page-uploads',
   standalone: true,
-  imports: [Button, Icon, RouterLink],
+  imports: [Button, Icon, Spinner, RiskBadge, RouterLink, UploadCaseCard],
+  providers: [UploadStreamStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="mx-auto max-w-4xl px-6 py-8">
       <div class="mb-8">
         <h1 class="text-[26px] font-semibold tracking-tight m-0">Importar casos</h1>
         <p class="mt-2 text-[13.5px] text-ink-3 m-0">
-          Paso 1 importa los casos (CSV/JSON). Paso 2 adjunta PDFs — <strong class="text-ink-2 font-medium">opcional</strong>,
-          pero recomendado para demos con respaldo documental.
+          Paso 1 importa los casos (CSV, JSON, Excel, PDF o Word) con análisis en tiempo real —
+          los PDF y Word se procesan con IA para extraer los campos del siniestro. Paso 2 adjunta PDFs —
+          <strong class="text-ink-2 font-medium">opcional</strong>, pero recomendado para demos con respaldo documental.
         </p>
       </div>
 
-      <div class="mb-5 rounded-lg border border-line bg-soft px-4 py-3 text-[13px] text-ink-2 leading-relaxed">
-        <p class="m-0 mb-2 font-medium text-ink">¿Cuántos documentos debo subir?</p>
-        <ul class="m-0 pl-4 space-y-1">
-          <li>
-            <strong>Importación CSV:</strong> no necesitas subir ninguno — el sistema crea
-            <strong>2 documentos base</strong> por caso (cédula y matrícula) ya marcados como entregados.
-          </li>
-          <li>
-            <strong>Demo vehicular completo:</strong> sube los <strong>11 PDFs</strong> del paquete
-            <code class="text-[12px]">SIN-2026-08412</code> (carpeta en el repo backend).
-          </li>
-          <li>
-            <strong>Otros casos:</strong> sube solo los PDFs que quieras respaldar; el tipo se infiere del nombre del archivo.
-          </li>
-        </ul>
-      </div>
-
       <div class="grid gap-5">
+        <!-- ─── Paso 1: archivo de casos ─── -->
         <div class="bg-surface border border-line rounded-lg shadow-1 p-5">
           <div class="flex items-start justify-between gap-4 mb-4">
             <div>
@@ -72,49 +72,160 @@ const DEMO_VEHICLE_DOCUMENTS: readonly { file: string; tipo: string }[] = [
 
           <label
             class="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line bg-soft px-6 py-10 cursor-pointer hover:bg-hover transition-colors"
+            [class.opacity-50]="stream.status() === 'streaming'"
           >
             <ui-icon name="upload_file" [size]="28" />
             <span class="text-[13px] font-medium">
-              {{ selectedClaimsFile()?.name ?? 'Seleccionar CSV o JSON' }}
+              {{ selectedClaimsFile()?.name ?? 'Seleccionar CSV, JSON, Excel, PDF o Word' }}
             </span>
-            <span class="text-[12px] text-ink-3">Máximo 50 MB</span>
+            <span class="text-[12px] text-ink-3">
+              PDF y Word se procesan con IA · máximo 50 MB
+            </span>
             <input
               type="file"
               class="hidden"
-              accept=".csv,.json,text/csv,application/json"
+              accept=".csv,.json,.xlsx,.pdf,.docx,text/csv,application/json,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              [disabled]="stream.status() === 'streaming'"
               (change)="onClaimsFileSelected($event)"
             />
           </label>
 
-          <div class="mt-4 flex items-center gap-3">
+          <div class="mt-4 flex items-center gap-3 flex-wrap">
             <ui-button
               variant="primary"
-              [disabled]="!selectedClaimsFile() || importing()"
+              [disabled]="!selectedClaimsFile() || stream.status() === 'streaming'"
               (click)="importClaims()"
             >
-              <ui-icon name="cloud_upload" [size]="14" />
-              {{ importing() ? 'Importando…' : 'Importar casos' }}
+              @if (stream.status() === 'streaming') {
+                <ui-spinner [size]="14" />
+                Importando…
+              } @else {
+                <ui-icon name="cloud_upload" [size]="14" />
+                Importar casos
+              }
             </ui-button>
-            @if (importResult(); as result) {
-              <span class="text-[13px] text-tier-green-ink">
-                {{ result.imported }} importados · {{ result.skipped }} omitidos
+
+            @if (stream.status() === 'streaming' && stream.totalRows() > 0) {
+              <span class="text-[13px] text-ink-2">
+                {{ stream.processedRows() }} / {{ stream.totalRows() }} casos procesados
+              </span>
+            }
+
+            @if (stream.status() === 'error') {
+              <span class="text-[13px] text-tier-red-ink">
+                {{ stream.streamError() ?? 'Error al importar.' }}
               </span>
             }
           </div>
 
-          @if (importResult()?.errors?.length) {
-            <div class="mt-4 rounded-md border border-tier-red-soft bg-tier-red-soft px-4 py-3">
-              <p class="text-[12.5px] font-medium text-tier-red-ink m-0 mb-2">Errores por fila</p>
-              <ul class="m-0 pl-4 text-[12.5px] text-tier-red-ink space-y-1">
-                @for (err of importResult()!.errors; track err) {
-                  <li>{{ err }}</li>
-                }
-              </ul>
+          <!-- ─── Global progress bar ─── -->
+          @if (stream.status() === 'streaming' && stream.totalRows() > 0) {
+            <div class="mt-4">
+              <div class="h-1.5 rounded-full bg-soft overflow-hidden">
+                <div
+                  class="h-full bg-brand rounded-full transition-all duration-300"
+                  [style.width]="progressWidth()"
+                ></div>
+              </div>
             </div>
+          }
+
+          <!-- ─── Completed banner ─── -->
+          @if (stream.status() === 'completed' && stream.summary(); as s) {
+            <div class="mt-4 rounded-md border border-tier-green-soft bg-tier-green-soft px-4 py-3 flex items-center gap-2">
+              <ui-icon name="check_circle" [size]="16" class="text-tier-green-ink flex-shrink-0" />
+              <span class="text-[13px] text-tier-green-ink font-medium">
+                Importación completa · {{ s.imported }} importados · {{ s.skipped }} omitidos
+              </span>
+            </div>
+            @if (s.errors.length > 0) {
+              <div class="mt-2 rounded-md border border-tier-red-soft bg-tier-red-soft px-4 py-3">
+                <p class="text-[12.5px] font-medium text-tier-red-ink m-0 mb-1">Errores durante la importación</p>
+                <ul class="m-0 pl-4 text-[12px] text-tier-red-ink space-y-0.5">
+                  @for (err of s.errors; track err) {
+                    <li>{{ err }}</li>
+                  }
+                </ul>
+              </div>
+            }
           }
         </div>
 
-        @if (importedClaimIds().length) {
+        <!-- ─── Live case cards ─── -->
+        @if (stream.cases().length > 0) {
+          <div>
+            <h2 class="text-[14px] font-semibold m-0 mb-3 text-ink-2">
+              Procesando casos en tiempo real
+            </h2>
+            <div
+              #caseList
+              class="space-y-2 max-h-[520px] overflow-y-auto pr-1"
+              (scroll)="onCaseListScroll($event)"
+            >
+              @for (c of stream.cases(); track c.claim_id) {
+                <upload-case-card [case]="c" />
+              }
+            </div>
+          </div>
+        }
+
+        <!-- ─── Final actions panel ─── -->
+        @if (stream.status() === 'completed' && completedCaseIds().length > 0) {
+          <div class="bg-surface border border-line rounded-lg shadow-1 p-5">
+            <h2 class="text-[15px] font-semibold m-0 mb-4">¿Qué hacemos ahora?</h2>
+
+            <div class="flex flex-wrap gap-3 mb-5">
+              <ui-button variant="primary" [routerLink]="['/claims']">
+                <ui-icon name="inbox" [size]="14" />
+                Ir a Bandeja
+              </ui-button>
+              @if (completedCaseIds()[0]) {
+                <ui-button variant="secondary" [routerLink]="['/agent']" [queryParams]="{ case: completedCaseIds()[0] }">
+                  <ui-icon name="smart_toy" [size]="14" />
+                  Iniciar chat con el primero
+                </ui-button>
+              }
+            </div>
+
+            <!-- Mini-table of results -->
+            <div class="overflow-x-auto rounded-md border border-line">
+              <table class="w-full text-[12.5px] border-collapse">
+                <thead>
+                  <tr class="bg-soft text-ink-3 text-left">
+                    <th class="px-3 py-2 font-medium">Caso</th>
+                    <th class="px-3 py-2 font-medium text-right">Score</th>
+                    <th class="px-3 py-2 font-medium">Riesgo</th>
+                    <th class="px-3 py-2 font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (c of completedCases(); track c.claim_id) {
+                    <tr class="border-t border-line hover:bg-hover transition-colors">
+                      <td class="px-3 py-2 font-mono text-[11.5px]">{{ c.claim_id }}</td>
+                      <td class="px-3 py-2 text-right font-medium">{{ c.final_score }}</td>
+                      <td class="px-3 py-2">
+                        <ui-risk-badge [nivel]="c.final_tier" [withDot]="true" />
+                      </td>
+                      <td class="px-3 py-2">
+                        <a
+                          class="text-brand hover:underline flex items-center gap-0.5"
+                          [routerLink]="['/agent']"
+                          [queryParams]="{ case: c.claim_id }"
+                        >
+                          <ui-icon name="smart_toy" [size]="12" />
+                          Preguntar a la IA
+                        </a>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+
+        <!-- ─── Paso 2: documentos (solo si hay casos importados) ─── -->
+        @if (completedCaseIds().length > 0) {
           <div class="bg-surface border border-line rounded-lg shadow-1 p-5">
             <h2 class="text-[15px] font-semibold m-0 mb-1">2. Documentos del caso (opcional)</h2>
             <p class="text-[13px] text-ink-3 mt-0 mb-4">
@@ -178,7 +289,7 @@ const DEMO_VEHICLE_DOCUMENTS: readonly { file: string; tipo: string }[] = [
                 [value]="selectedClaimId()"
                 (change)="onClaimChange($event)"
               >
-                @for (claimId of importedClaimIds(); track claimId) {
+                @for (claimId of completedCaseIds(); track claimId) {
                   <option [value]="claimId">{{ claimId }}</option>
                 }
               </select>
@@ -245,16 +356,16 @@ const DEMO_VEHICLE_DOCUMENTS: readonly { file: string; tipo: string }[] = [
     </section>
   `,
 })
-export class UploadsPage {
+export class UploadsPage implements AfterViewChecked {
+  @ViewChild('caseList') private caseListEl?: ElementRef<HTMLElement>;
+
+  protected readonly stream = inject(UploadStreamStore);
   private readonly importsApi = inject(ImportsApi);
   private readonly documentsApi = inject(DocumentsApi);
   private readonly claims = inject(ClaimsStore);
 
   protected readonly selectedClaimsFile = signal<File | null>(null);
-  protected readonly importing = signal(false);
   protected readonly downloading = signal(false);
-  protected readonly importResult = signal<ImportResultDto | null>(null);
-  protected readonly importedClaimIds = signal<string[]>([]);
   protected readonly selectedClaimId = signal('');
   protected readonly selectedDocumentFiles = signal<File[]>([]);
   protected readonly uploadingDocs = signal(false);
@@ -262,6 +373,19 @@ export class UploadsPage {
   protected readonly uploadSuccessCount = signal(0);
 
   protected readonly demoVehicleDocuments = DEMO_VEHICLE_DOCUMENTS;
+
+  protected readonly completedCases = computed(() =>
+    this.stream.cases().filter((c) => c.status === 'completed'),
+  );
+  protected readonly completedCaseIds = computed(() =>
+    this.completedCases().map((c) => c.claim_id),
+  );
+
+  protected readonly progressWidth = computed(() => {
+    const total = this.stream.totalRows();
+    if (!total) return '0%';
+    return `${Math.round((this.stream.processedRows() / total) * 100)}%`;
+  });
 
   protected readonly selectedClaim = computed(() => {
     const claimId = this.selectedClaimId();
@@ -273,17 +397,34 @@ export class UploadsPage {
     const claim = this.selectedClaim();
     if (!claim) return null;
     const docs = claim.documentos ?? [];
-    const complete = docs.filter((doc) => !doc.falta).length;
-    const pending = docs.filter((doc) => doc.falta).length;
     return {
       total: docs.length,
-      complete,
-      pending,
+      complete: docs.filter((d) => !d.falta).length,
+      pending: docs.filter((d) => d.falta).length,
       uploadedFiles: this.uploadSuccessCount(),
     };
   });
 
+  private _lastCaseCount = 0;
+  private _userScrolled = false;
+
   constructor() {
+    // Auto-select first completed case for doc upload
+    effect(() => {
+      const ids = this.completedCaseIds();
+      if (ids.length > 0 && !this.selectedClaimId()) {
+        this.selectedClaimId.set(ids[0]!);
+        void this.claims.reloadDetail(ids[0]!);
+      }
+    });
+
+    // Reload claims list once import completes so the triage table is up to date
+    effect(() => {
+      if (this.stream.status() === 'completed') {
+        void this.claims.loadList();
+      }
+    });
+
     effect(() => {
       const claimId = this.selectedClaimId();
       if (!claimId) return;
@@ -291,13 +432,33 @@ export class UploadsPage {
     });
   }
 
-  protected readonly hasImportedClaims = computed(() => this.importedClaimIds().length > 0);
+  ngAfterViewChecked(): void {
+    const cases = this.stream.cases();
+    if (cases.length !== this._lastCaseCount) {
+      this._lastCaseCount = cases.length;
+      if (!this._userScrolled) {
+        this._scrollToBottom();
+      }
+    }
+  }
+
+  private _scrollToBottom(): void {
+    const el = this.caseListEl?.nativeElement;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  protected onCaseListScroll(event: Event): void {
+    const el = event.target as HTMLElement;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    this._userScrolled = distFromBottom > 60;
+  }
 
   protected onClaimsFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
     this.selectedClaimsFile.set(file);
-    this.importResult.set(null);
+    this.stream.reset();
   }
 
   protected onDocumentsSelected(event: Event): void {
@@ -328,25 +489,12 @@ export class UploadsPage {
     }
   }
 
-  protected async importClaims(): Promise<void> {
+  protected importClaims(): void {
     const file = this.selectedClaimsFile();
-    if (!file || this.importing()) return;
-    this.importing.set(true);
-    this.importResult.set(null);
-    this.uploadErrors.set([]);
-    this.uploadSuccessCount.set(0);
-    try {
-      const result = await firstValueFrom(this.importsApi.importClaims(file));
-      this.importResult.set(result);
-      this.importedClaimIds.set(result.claim_ids);
-      if (result.claim_ids.length) {
-        this.selectedClaimId.set(result.claim_ids[0] ?? '');
-        await this.claims.reloadDetail(result.claim_ids[0] ?? '');
-      }
-      await this.claims.loadList();
-    } finally {
-      this.importing.set(false);
-    }
+    if (!file || this.stream.status() === 'streaming') return;
+    this._userScrolled = false;
+    this._lastCaseCount = 0;
+    this.stream.startImport(file);
   }
 
   protected async uploadDocuments(): Promise<void> {
