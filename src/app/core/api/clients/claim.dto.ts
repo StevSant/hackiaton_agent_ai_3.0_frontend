@@ -116,6 +116,7 @@ export interface ClaimSummaryDto {
   ramo: string;
   cobertura: string;
   asegurado: string;
+  asegurado_id?: string | null;
   ciudad: string;
   fecha_ocurrencia: string;
   monto_reclamado: number;

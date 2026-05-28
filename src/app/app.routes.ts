@@ -54,6 +54,11 @@ export const routes: Routes = [
           import('@features/providers/providers.routes').then((m) => m.routes),
       },
       {
+        path: 'asegurados',
+        loadChildren: () =>
+          import('@features/asegurados/asegurados.routes').then((m) => m.routes),
+      },
+      {
         path: 'alerts',
         loadChildren: () => import('@features/alerts/alerts.routes').then((m) => m.routes),
       },

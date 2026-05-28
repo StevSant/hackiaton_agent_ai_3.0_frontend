@@ -230,7 +230,7 @@ function summaryToClaim(row: ClaimSummaryDto): Claim {
     ramo: row.ramo,
     cobertura: row.cobertura,
     asegurado: row.asegurado,
-    asegurado_id: '',
+    asegurado_id: row.asegurado_id ?? '',
     poliza: '',
     ciudad: row.ciudad,
     fecha_ocurrencia: row.fecha_ocurrencia,

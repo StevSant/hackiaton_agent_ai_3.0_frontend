@@ -6,6 +6,7 @@ import { Icon } from '@shared/ui/icon';
 import { RoleBadge } from '@shared/ui/role-badge';
 import { ThemeStore } from '@core/theme/theme.store';
 import { AuthStore } from '@core/auth/auth.store';
+import { AseguradosStore } from '@core/state/asegurados.store';
 import { ClaimsStore } from '@core/state/claims.store';
 import { ProvidersStore } from '@core/state/providers.store';
 
@@ -129,6 +130,7 @@ export class SidebarNav {
   private readonly router = inject(Router);
   private readonly claims = inject(ClaimsStore);
   private readonly providers = inject(ProvidersStore);
+  private readonly asegurados = inject(AseguradosStore);
 
   protected readonly initials = computed(() => this.auth.user()?.initials ?? '··');
   protected readonly displayName = computed(() => this.auth.user()?.name ?? 'Sin sesión');
@@ -156,6 +158,7 @@ export class SidebarNav {
         { link: '/antifraude/investigacion', label: 'Investigación', icon: 'travel_explore', count: this.claims.claims().length },
         { link: '/insights', label: 'Insights IA', icon: 'insights' },
         { link: '/providers', label: 'Proveedores', icon: 'storefront', count: this.providers.providers().length },
+        { link: '/asegurados', label: 'Asegurados', icon: 'group', count: this.asegurados.asegurados().length },
         { link: '/network', label: 'Red de relaciones', icon: 'hub' },
         { link: '/agent', label: 'Centinela IA', icon: 'visibility', badge: 'Nuevo' },
         { link: '/uploads', label: 'Importar casos', icon: 'cloud_upload' },
@@ -170,6 +173,7 @@ export class SidebarNav {
       { link: '/claims', label: 'Bandeja', icon: 'dashboard', count: myActive },
       { link: '/insights', label: 'Insights IA', icon: 'insights' },
       { link: '/providers', label: 'Proveedores', icon: 'storefront', count: this.providers.providers().length },
+      { link: '/asegurados', label: 'Asegurados', icon: 'group', count: this.asegurados.asegurados().length },
       { link: '/agent', label: 'Centinela IA', icon: 'visibility', badge: 'Nuevo' },
       { link: '/uploads', label: 'Importar casos', icon: 'cloud_upload' },
     ];

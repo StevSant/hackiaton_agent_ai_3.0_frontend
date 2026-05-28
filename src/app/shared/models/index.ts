@@ -12,4 +12,5 @@ export type { FactorContribution } from './factor-contribution.model';
 export type { SimilarClaim } from './similar-claim.model';
 export type { TrendPoint } from './trend-point.model';
 export type { Provider } from './provider.model';
+export type { Asegurado } from './asegurado.model';
 export { ALERT_CATALOG, type AlertCatalogEntry } from './alert-catalog';
