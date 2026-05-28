@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
 
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
@@ -8,6 +8,7 @@ import { ClaimTypeDonut } from '../components/claim-type-donut';
 import { EcuadorHotspotsMap } from '../components/ecuador-hotspots-map';
 import { FraudTendencyChart } from '../components/fraud-tendency-chart';
 import { QuarterlyOutlookCard } from '../components/quarterly-outlook-card';
+import { InsightsStore } from '../services/insights.store';
 import { exportInsightsCsv } from '../utils/export-insights';
 
 @Component({
@@ -46,15 +47,20 @@ import { exportInsightsCsv } from '../utils/export-insights';
         class="insights-sidebar w-full lg:w-[292px] shrink-0 flex flex-col gap-2 min-h-0"
       >
         <insights-fraud-tendency class="shrink-0" />
-        <insights-ai-anomalies class="flex-1 min-h-[160px] max-h-[280px] flex" />
+        <insights-ai-anomalies class="shrink-0" />
         <insights-claim-type-donut class="shrink-0" />
         <insights-quarterly-outlook class="shrink-0" />
       </aside>
     </div>
   `,
 })
-export class InsightsPage {
+export class InsightsPage implements OnInit {
   private readonly claims = inject(ClaimsStore);
+  private readonly insights = inject(InsightsStore);
+
+  ngOnInit(): void {
+    void this.insights.load();
+  }
 
   protected onExport(): void {
     exportInsightsCsv(this.claims.claims());

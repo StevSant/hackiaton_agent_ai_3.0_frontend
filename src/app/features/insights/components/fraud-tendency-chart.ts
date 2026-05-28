@@ -40,7 +40,10 @@ interface FraudBar {
               [style.background]="'var(--brand)'"
               [style.opacity]="bar.opacity"
             ></div>
-            <span class="text-[10.5px] font-medium text-ink-2 truncate w-full text-center leading-none">
+            <span
+              class="text-[10px] font-medium text-ink-2 w-full text-center leading-tight"
+              [title]="bar.region"
+            >
               {{ bar.region }}
             </span>
           </div>
