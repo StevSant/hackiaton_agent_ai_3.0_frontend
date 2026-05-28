@@ -48,13 +48,8 @@ export class AseguradosApi {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.backendUrl}${environment.apiPrefix}`;
 
-  // `fresh` busts the 30s server Cache-Control so a post-mutation reload sees
-  // the new state immediately (the GET sets `Cache-Control: max-age=30`).
-  listAsegurados(opts?: { fresh?: boolean }): Observable<AseguradoDto[]> {
-    const url = opts?.fresh
-      ? `${this.base}/asegurados?ts=${Date.now()}`
-      : `${this.base}/asegurados`;
-    return this.http.get<AseguradoDto[]>(url);
+  listAsegurados(): Observable<AseguradoDto[]> {
+    return this.http.get<AseguradoDto[]>(`${this.base}/asegurados`);
   }
 
   createAsegurado(body: AseguradoCreate): Observable<AseguradoDto> {

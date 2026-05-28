@@ -42,13 +42,8 @@ export class NetworkApi {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.backendUrl}${environment.apiPrefix}`;
 
-  // `fresh` busts the 30s server Cache-Control so a post-mutation reload sees
-  // the new state immediately (the GET sets `Cache-Control: max-age=30`).
-  listProviders(opts?: { fresh?: boolean }): Observable<ProviderDto[]> {
-    const url = opts?.fresh
-      ? `${this.base}/network/providers?ts=${Date.now()}`
-      : `${this.base}/network/providers`;
-    return this.http.get<ProviderDto[]>(url);
+  listProviders(): Observable<ProviderDto[]> {
+    return this.http.get<ProviderDto[]>(`${this.base}/network/providers`);
   }
 
   createProvider(body: ProviderCreate): Observable<ProviderDto> {

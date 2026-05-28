@@ -75,12 +75,12 @@ export class AseguradosStore {
     });
   }
 
-  async loadList(fresh = false): Promise<void> {
+  async loadList(): Promise<void> {
     if (this._loading()) return;
     this._loading.set(true);
     this._error.set(null);
     try {
-      const dtos = await firstValueFrom(this.api.listAsegurados({ fresh }));
+      const dtos = await firstValueFrom(this.api.listAsegurados());
       this._asegurados.set(dtos.map(dtoToAsegurado));
     } catch (err) {
       this._error.set(err instanceof AppError ? err : new AppError('unknown', String(err)));
@@ -92,23 +92,22 @@ export class AseguradosStore {
   async create(body: AseguradoCreate): Promise<Asegurado> {
     const dto = await firstValueFrom(this.api.createAsegurado(body));
     const created = dtoToAsegurado(dto);
-    this._asegurados.update((list) => [created, ...list]); // optimistic
-    await this.loadList(true); // reconcile aggregates (cache-busted)
+    // Prepend the confirmed row so the analyst immediately sees what they added.
+    this._asegurados.update((list) => [created, ...list]);
     return created;
   }
 
   async update(id: string, body: AseguradoUpdate): Promise<void> {
     await firstValueFrom(this.api.updateAsegurado(id, body));
+    // Merge the edited fields; aggregates are unchanged by an edit.
     this._asegurados.update((list) =>
       list.map((a) => (a.id === id ? applyAseguradoUpdate(a, body) : a)),
     );
-    await this.loadList(true);
   }
 
   async remove(id: string): Promise<void> {
     await firstValueFrom(this.api.deleteAsegurado(id));
-    this._asegurados.update((list) => list.filter((a) => a.id !== id)); // optimistic
-    await this.loadList(true);
+    this._asegurados.update((list) => list.filter((a) => a.id !== id));
   }
 
   findById(id: string): Asegurado | undefined {

@@ -71,12 +71,12 @@ export class ProvidersStore {
     });
   }
 
-  async loadList(fresh = false): Promise<void> {
+  async loadList(): Promise<void> {
     if (this._loading()) return;
     this._loading.set(true);
     this._error.set(null);
     try {
-      const dtos = await firstValueFrom(this.api.listProviders({ fresh }));
+      const dtos = await firstValueFrom(this.api.listProviders());
       this._providers.set(dtos.map(dtoToProvider));
     } catch (err) {
       this._error.set(err instanceof AppError ? err : new AppError('unknown', String(err)));
@@ -88,23 +88,22 @@ export class ProvidersStore {
   async create(body: ProviderCreate): Promise<Provider> {
     const dto = await firstValueFrom(this.api.createProvider(body));
     const created = dtoToProvider(dto);
-    this._providers.update((list) => [created, ...list]); // optimistic
-    await this.loadList(true); // reconcile aggregates (cache-busted)
+    // Prepend the confirmed row so the analyst immediately sees what they added.
+    this._providers.update((list) => [created, ...list]);
     return created;
   }
 
   async update(id: string, body: ProviderUpdate): Promise<void> {
     await firstValueFrom(this.api.updateProvider(id, body));
+    // Merge the edited descriptive fields; aggregates are unchanged by an edit.
     this._providers.update((list) =>
       list.map((p) => (p.id === id ? applyProviderUpdate(p, body) : p)),
     );
-    await this.loadList(true);
   }
 
   async remove(id: string): Promise<void> {
     await firstValueFrom(this.api.deleteProvider(id));
-    this._providers.update((list) => list.filter((p) => p.id !== id)); // optimistic
-    await this.loadList(true);
+    this._providers.update((list) => list.filter((p) => p.id !== id));
   }
 
   findById(id: string): Provider | undefined {
