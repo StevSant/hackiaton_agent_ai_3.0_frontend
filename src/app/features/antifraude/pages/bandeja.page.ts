@@ -182,7 +182,14 @@ export class BandejaPage {
 
   constructor() {
     effect(() => {
-      if (this.tab() === 'historico' && this.historicoRows().length === 0 && !this.store.historicoLoading()) {
+      // Lazy-load the historico tab on first activation only.
+      // Without the `historicoLoaded` gate the effect would re-fire after every
+      // load attempt that returned zero rows — looping the GET indefinitely.
+      if (
+        this.tab() === 'historico' &&
+        !this.store.historicoLoaded() &&
+        !this.store.historicoLoading()
+      ) {
         void this.store.loadHistorico();
       }
     });

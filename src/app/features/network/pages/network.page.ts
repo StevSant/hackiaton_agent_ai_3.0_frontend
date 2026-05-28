@@ -1,13 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 
 import { Button } from '@shared/ui/button';
+import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import {
+  PROVIDER_EXPORT_COLUMNS,
   RAMOS,
   RAMO_KEYS,
+  exportProviders,
   formatMoneyShort,
   normalizeRamoKey,
+  projectProvider,
   ramoLabel,
   type RamoKey,
 } from '@shared/utils';
@@ -27,7 +31,15 @@ const GRAPH_MAX_NODES = 15;
 @Component({
   selector: 'page-network',
   standalone: true,
-  imports: [Button, Icon, KpiSmall, NetworkGraph, ProviderRanking, RamoDistributionCard],
+  imports: [
+    Button,
+    ExportModal,
+    Icon,
+    KpiSmall,
+    NetworkGraph,
+    ProviderRanking,
+    RamoDistributionCard,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-start justify-between gap-4 py-2 pb-5">
@@ -37,7 +49,12 @@ const GRAPH_MAX_NODES = 15;
           Ranking de proveedores por concentración de alertas, montos y patrones cruzados.
         </p>
       </div>
-      <ui-button variant="secondary" class="shrink-0">
+      <ui-button
+        variant="secondary"
+        class="shrink-0"
+        [disabled]="filteredProviders().length === 0"
+        (click)="exportOpen.set(true)"
+      >
         <ui-icon name="download" [size]="14" />
         Exportar ranking
       </ui-button>
@@ -125,6 +142,18 @@ const GRAPH_MAX_NODES = 15;
     } @else {
       <network-provider-ranking [providers]="filteredProviders()" />
     }
+
+    <ui-export-modal
+      [open]="exportOpen()"
+      title="Exportar ranking de proveedores"
+      subtitle="Genera un archivo con los proveedores que coinciden con el ramo seleccionado."
+      [columns]="providerColumns"
+      [defaultFilename]="exportFilename()"
+      [totalRows]="filteredProviders().length"
+      [previewRows]="previewRows()"
+      (close)="exportOpen.set(false)"
+      (download)="onExport($event)"
+    />
   `,
 })
 export class NetworkPage {
@@ -135,6 +164,8 @@ export class NetworkPage {
   protected readonly filter = signal<RamoFilter>('todos');
   protected readonly graphTier = signal<GraphTierFilter>('amarillo_rojo');
   protected readonly viewMode = signal<GraphViewMode>('ring');
+  protected readonly exportOpen = signal<boolean>(false);
+  protected readonly providerColumns = PROVIDER_EXPORT_COLUMNS;
   protected readonly ramoOptions: readonly RamoKey[] = RAMO_KEYS;
   protected readonly GRAPH_MAX_NODES = GRAPH_MAX_NODES;
   protected readonly graphTierOptions: ReadonlyArray<{ value: GraphTierFilter; label: string }> = [
@@ -182,6 +213,15 @@ export class NetworkPage {
   });
 
   protected readonly totalMonto = computed(() => formatMoneyShort(this.filteredStats().monto));
+
+  protected readonly previewRows = computed(() =>
+    this.filteredProviders().slice(0, 3).map(projectProvider),
+  );
+
+  protected readonly exportFilename = computed(() => {
+    const scope = this.filter() === 'todos' ? 'todos' : this.filter();
+    return `centinela-proveedores-${scope}-${todayStamp()}`;
+  });
 
   /** Providers filtered by both ramo (top-level) and tier (graph-only). */
   protected readonly tierFilteredProviders = computed<Provider[]>(() => {
@@ -295,6 +335,15 @@ export class NetworkPage {
       ? 'bg-brand-soft border-brand text-brand-ink'
       : 'bg-surface border-line text-ink-2 hover:bg-soft';
   }
+
+  protected onExport(req: ExportRequest): void {
+    exportProviders(this.filteredProviders(), req);
+  }
+}
+
+function todayStamp(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function alertRatio(p: Provider): number {

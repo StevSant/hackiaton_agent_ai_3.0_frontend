@@ -2,38 +2,34 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router } from '@angular/router';
 
 import { Button } from '@shared/ui/button';
+import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
 import { Icon } from '@shared/ui/icon';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
 import { RAMOS, reviewStatusLabel, type RamoKey, type RiskTier } from '@shared/utils';
 import type { Claim } from '@shared/models';
 import { InvestigacionTable } from '../components/investigacion-table';
+import { SavedFiltersModal } from '../components/saved-filters-modal';
+import { CLAIM_EXPORT_COLUMNS, exportClaims, projectClaim } from '../utils/export-claims';
+import {
+  EMPTY_INVESTIGATION_FILTERS,
+  type InvestigationCategoryFilter,
+  type InvestigationFilters,
+  type InvestigationStatusFilter,
+  type InvestigationTierFilter,
+} from '../utils/investigation-filters';
 import { ClaimsStore } from '@core/state/claims.store';
 
-type StatusFilter = 'todos' | 'pendiente' | 'escalado' | 'en_revision' | 'dictaminado' | 'revisado_sin_escalar';
-type TierFilter = 'todos' | RiskTier;
-type CategoryFilter = 'todos' | RamoKey;
-
-interface InvestigationFilters {
-  tier: TierFilter;
-  ramo: CategoryFilter;
-  city: string;
-  dateFrom: string;
-  status: StatusFilter;
-}
+type StatusFilter = InvestigationStatusFilter;
+type TierFilter = InvestigationTierFilter;
+type CategoryFilter = InvestigationCategoryFilter;
 
 interface ActiveFilterTag {
   key: keyof InvestigationFilters;
   label: string;
 }
 
-const EMPTY_FILTERS: InvestigationFilters = {
-  tier: 'todos',
-  ramo: 'todos',
-  city: '',
-  dateFrom: '',
-  status: 'todos',
-};
+const EMPTY_FILTERS = EMPTY_INVESTIGATION_FILTERS;
 
 const TIER_LABELS: Record<RiskTier, string> = {
   rojo: 'Alto',
@@ -52,7 +48,15 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
 @Component({
   selector: 'page-antifraude-investigacion',
   standalone: true,
-  imports: [Button, Icon, Pagination, SkeletonTable, InvestigacionTable],
+  imports: [
+    Button,
+    ExportModal,
+    Icon,
+    InvestigacionTable,
+    Pagination,
+    SavedFiltersModal,
+    SkeletonTable,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-start justify-between gap-4 py-2 pb-5">
@@ -63,11 +67,15 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
         </p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
-        <ui-button variant="secondary">
+        <ui-button variant="secondary" (click)="savedFiltersOpen.set(true)">
           <ui-icon name="tune" [size]="15" />
           Filtros guardados
         </ui-button>
-        <ui-button variant="primary">
+        <ui-button
+          variant="primary"
+          [disabled]="filtered().length === 0"
+          (click)="exportOpen.set(true)"
+        >
           <ui-icon name="download" [size]="15" />
           Exportar reporte
         </ui-button>
@@ -222,6 +230,25 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
         />
       }
     </div>
+
+    <ui-export-modal
+      [open]="exportOpen()"
+      title="Exportar siniestros"
+      subtitle="Genera un archivo con los siniestros que coinciden con los filtros actuales."
+      [columns]="claimColumns"
+      [defaultFilename]="exportFilename()"
+      [totalRows]="filtered().length"
+      [previewRows]="previewRows()"
+      (close)="exportOpen.set(false)"
+      (download)="onExport($event)"
+    />
+
+    <antifraude-saved-filters-modal
+      [open]="savedFiltersOpen()"
+      [currentFilters]="filters()"
+      (close)="savedFiltersOpen.set(false)"
+      (load)="onLoadSavedFilter($event)"
+    />
   `,
 })
 export class InvestigacionPage {
@@ -235,6 +262,9 @@ export class InvestigacionPage {
   protected readonly filters = signal<InvestigationFilters>({ ...EMPTY_FILTERS });
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(10);
+  protected readonly exportOpen = signal<boolean>(false);
+  protected readonly savedFiltersOpen = signal<boolean>(false);
+  protected readonly claimColumns = CLAIM_EXPORT_COLUMNS;
 
   protected readonly ramoFilters = (Object.keys(RAMOS) as RamoKey[]).map((key) => ({
     key,
@@ -279,6 +309,10 @@ export class InvestigacionPage {
     return list.slice(start, start + this.pageSize());
   });
 
+  protected readonly previewRows = computed(() => this.filtered().slice(0, 3).map(projectClaim));
+
+  protected readonly exportFilename = computed(() => `centinela-siniestros-${todayStamp()}`);
+
   protected patchFilter<K extends keyof InvestigationFilters>(key: K, value: InvestigationFilters[K]): void {
     this.filters.update((current) => ({ ...current, [key]: value }));
     this.page.set(0);
@@ -304,6 +338,15 @@ export class InvestigacionPage {
     void this.router.navigate(['/claims', id]);
   }
 
+  protected onExport(req: ExportRequest): void {
+    exportClaims(this.filtered(), req);
+  }
+
+  protected onLoadSavedFilter(filters: InvestigationFilters): void {
+    this.filters.set({ ...EMPTY_FILTERS, ...filters });
+    this.page.set(0);
+  }
+
   protected readonly reviewStatusLabel = reviewStatusLabel;
 
   private matchesFilters(claim: Claim, filters: InvestigationFilters): boolean {
@@ -324,4 +367,9 @@ function formatFilterDate(isoDate: string): string {
   const [year, month, day] = isoDate.split('-');
   if (!year || !month || !day) return isoDate;
   return `${day}/${month}/${year}`;
+}
+
+function todayStamp(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }

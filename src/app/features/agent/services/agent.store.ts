@@ -169,10 +169,12 @@ export class AgentStore {
     }
   }
 
-  /** User accepted to view the chart offered for a message. */
-  acceptChart(messageId: string): void {
+  /** Toggle visibility of the chart attached to a message. */
+  toggleChart(messageId: string): void {
     this._messages.update((messages) =>
-      messages.map((msg) => (msg.id === messageId ? { ...msg, chartAccepted: true } : msg)),
+      messages.map((msg) =>
+        msg.id === messageId ? { ...msg, chartAccepted: !(msg.chartAccepted === true) } : msg,
+      ),
     );
   }
 

@@ -109,7 +109,7 @@ function generateUuid(): string {
             [ttsState]="tts.state()"
             (openCase)="openCase($event)"
             (ttsToggle)="onTtsToggle($event)"
-            (acceptChart)="store.acceptChart($event)"
+            (toggleChart)="store.toggleChart($event)"
           />
         }
         @if (store.thinking()) {

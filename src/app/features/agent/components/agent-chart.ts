@@ -312,7 +312,13 @@ export class AgentChart implements OnDestroy {
         }
         if (label) this.openCase.emit(label);
       });
-      this.observer = new ResizeObserver(() => this.chart?.resize());
+      // Defer resize to next frame so the resize call can't synchronously
+      // trigger the layout that retriggers the observer — otherwise the
+      // browser logs "ResizeObserver loop completed with undelivered
+      // notifications" which Angular's global error listener picks up.
+      this.observer = new ResizeObserver(() => {
+        requestAnimationFrame(() => this.chart?.resize());
+      });
       this.observer.observe(this.host().nativeElement);
     });
     effect(() => {

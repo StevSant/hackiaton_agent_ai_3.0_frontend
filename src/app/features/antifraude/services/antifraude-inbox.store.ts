@@ -30,12 +30,14 @@ export class AntifraudeInboxStore {
   private readonly _historico = signal<ClaimSummaryDto[]>([]);
   private readonly _loading = signal<boolean>(false);
   private readonly _historicoLoading = signal<boolean>(false);
+  private readonly _historicoLoaded = signal<boolean>(false);
   private readonly _error = signal<AppError | null>(null);
 
   readonly items = this._items.asReadonly();
   readonly historico = this._historico.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly historicoLoading = this._historicoLoading.asReadonly();
+  readonly historicoLoaded = this._historicoLoaded.asReadonly();
   readonly error = this._error.asReadonly();
 
   readonly kpis = computed(() => {
@@ -61,6 +63,7 @@ export class AntifraudeInboxStore {
       } else {
         this._items.set([]);
         this._historico.set([]);
+        this._historicoLoaded.set(false);
         this._error.set(null);
       }
     });
@@ -113,6 +116,7 @@ export class AntifraudeInboxStore {
         page += 1;
       }
       this._historico.set(items);
+      this._historicoLoaded.set(true);
     } catch (error) {
       this._error.set(toAppError(error));
     } finally {

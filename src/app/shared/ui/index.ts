@@ -12,6 +12,12 @@ export { KpiSmall } from './kpi-small';
 export { Chip } from './chip';
 export { Button } from './button';
 export { Modal } from './modal';
+export {
+  ExportModal,
+  type ExportColumnOption,
+  type ExportFormat,
+  type ExportRequest,
+} from './export-modal';
 export { Pagination } from './pagination';
 export { RoleBadge } from './role-badge';
 export { SegmentedTabs, type SegmentedTab } from './segmented-tabs';

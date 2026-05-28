@@ -2,12 +2,19 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router } from '@angular/router';
 
 import { ProvidersStore } from '@core/state/providers.store';
+import { Button } from '@shared/ui/button';
 import { Chip } from '@shared/ui/chip';
+import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { formatMoney } from '@shared/utils';
+import {
+  PROVIDER_EXPORT_COLUMNS,
+  exportProviders,
+  formatMoney,
+  projectProvider,
+} from '@shared/utils';
 import { ProvidersTable } from '../components/providers-table';
 
 type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
@@ -15,7 +22,16 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
 @Component({
   selector: 'page-providers-list',
   standalone: true,
-  imports: [Chip, Icon, KpiSmall, Pagination, SkeletonTable, ProvidersTable],
+  imports: [
+    Button,
+    Chip,
+    ExportModal,
+    Icon,
+    KpiSmall,
+    Pagination,
+    SkeletonTable,
+    ProvidersTable,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
@@ -25,6 +41,15 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
           Listado de talleres, clínicas y beneficiarios asociados a los siniestros.
         </p>
       </div>
+      <ui-button
+        variant="primary"
+        class="shrink-0"
+        [disabled]="filtered().length === 0"
+        (click)="exportOpen.set(true)"
+      >
+        <ui-icon name="download" [size]="14" />
+        Exportar reporte
+      </ui-button>
     </div>
 
     <div class="grid grid-cols-4 gap-3 mb-5">
@@ -68,6 +93,18 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
         (pageSizeChange)="onPageSize($event)"
       />
     }
+
+    <ui-export-modal
+      [open]="exportOpen()"
+      title="Exportar proveedores"
+      subtitle="Genera un archivo con los proveedores que coinciden con los filtros actuales."
+      [columns]="providerColumns"
+      [defaultFilename]="exportFilename()"
+      [totalRows]="filtered().length"
+      [previewRows]="previewRows()"
+      (close)="exportOpen.set(false)"
+      (download)="onExport($event)"
+    />
   `,
 })
 export class ProvidersListPage {
@@ -78,6 +115,8 @@ export class ProvidersListPage {
   protected readonly restrictive = signal<RestrictiveFilter>('todos');
   protected readonly page = signal<number>(1);
   protected readonly pageSize = signal<number>(20);
+  protected readonly exportOpen = signal<boolean>(false);
+  protected readonly providerColumns = PROVIDER_EXPORT_COLUMNS;
 
   protected readonly stats = this.store.stats;
 
@@ -104,6 +143,12 @@ export class ProvidersListPage {
     return list.slice(start, start + size);
   });
 
+  protected readonly previewRows = computed(() =>
+    this.filtered().slice(0, 3).map(projectProvider),
+  );
+
+  protected readonly exportFilename = computed(() => `centinela-proveedores-${todayStamp()}`);
+
   protected openProvider(id: string): void {
     void this.router.navigate(['/providers', id]);
   }
@@ -113,5 +158,14 @@ export class ProvidersListPage {
     this.page.set(1);
   }
 
+  protected onExport(req: ExportRequest): void {
+    exportProviders(this.filtered(), req);
+  }
+
   protected readonly formatMoney = formatMoney;
+}
+
+function todayStamp(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }

@@ -11,7 +11,7 @@ import { SidebarNav } from './sidebar-nav';
   imports: [RouterOutlet, SidebarNav],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="h-screen grid grid-cols-[232px_1fr] bg-canvas text-ink">
+    <div class="h-screen grid grid-cols-[232px_1fr] grid-rows-1 overflow-hidden bg-canvas text-ink">
       <app-sidebar-nav />
       @if (fullBleed()) {
         <main class="bg-canvas min-h-0 overflow-hidden">
