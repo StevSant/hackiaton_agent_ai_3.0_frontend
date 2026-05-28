@@ -60,6 +60,74 @@ type AgentStreamEvent =
   | ToolResultEvent
   | ChartEvent;
 
+// Shape of the transparency_metadata JSONB column persisted by the backend.
+interface StoredScratchpadEntry {
+  thought?: string;
+  step?: number;
+}
+
+interface StoredToolCall {
+  call_id: string;
+  tool: string;
+  args: unknown;
+  result: unknown;
+}
+
+interface TransparencyMetadata {
+  steps?: StoredScratchpadEntry[];
+  tool_calls?: StoredToolCall[];
+  citations?: { claim_id: string }[];
+}
+
+/**
+ * Reconstruct an AgentStep[] from the persisted transparency_metadata so that
+ * loading a past conversation renders the same transparency cards that appeared
+ * during the live SSE stream.
+ *
+ * The metadata stores scratchpad entries (agent reasoning steps) and tool calls
+ * separately. We reconstruct in the natural interleaved order:
+ *  1. One agent_step card per scratchpad entry (reasoning thought).
+ *  2. One tool_call card per tool call, with its result folded into `detail`.
+ *  3. A final compose agent_step card (mirrors the live stream's compose event).
+ *
+ * Returns [] when metadata is missing or empty (user messages, legacy messages).
+ */
+function buildStepsFromMetadata(meta: TransparencyMetadata | null | undefined): AgentStep[] {
+  if (!meta) return [];
+  const steps: AgentStep[] = [];
+
+  for (const entry of meta.steps ?? []) {
+    const thought = typeof entry.thought === 'string' ? entry.thought.trim() : undefined;
+    steps.push({
+      kind: 'agent_step',
+      label: nodeLabel('react_step'),
+      detail: thought || undefined,
+    });
+  }
+
+  for (const tc of meta.tool_calls ?? []) {
+    const argDetail = summarizeArgs(tc.args);
+    const resultDetail = summarizeResult(tc.result);
+    const detail =
+      argDetail && resultDetail
+        ? `${argDetail}\n→ ${resultDetail}`
+        : (argDetail ?? resultDetail);
+    steps.push({
+      kind: 'tool_call',
+      label: tc.tool,
+      detail,
+      callId: tc.call_id,
+    });
+  }
+
+  // The compose step is always the final node — mirror the live stream.
+  if (steps.length > 0) {
+    steps.push({ kind: 'agent_step', label: nodeLabel('compose') });
+  }
+
+  return steps;
+}
+
 const NODE_LABEL: Record<string, string> = {
   react_step: 'Razonamiento',
   compose: 'Componiendo respuesta',
@@ -152,16 +220,20 @@ export class AgentStore {
       this._contextClaimId.set(detail.context_claim_id ?? null);
       this._messages.set(
         detail.messages.map((m) => {
-          // chart_payload only exists on persisted assistant messages and is
-          // typed only after `pnpm gen:api` picks up the new backend schema.
-          // Read it defensively so this works pre-regen too.
-          const stored = (m as unknown as { chart_payload?: ChartPayload | null }).chart_payload;
-          const chart = stored ?? undefined;
+          // chart_payload and transparency_metadata only exist on persisted
+          // assistant messages and are typed only after `pnpm gen:api` picks up
+          // the new backend schema. Read both defensively.
+          const raw = m as unknown as {
+            chart_payload?: ChartPayload | null;
+            transparency_metadata?: TransparencyMetadata | null;
+          };
+          const chart = raw.chart_payload ?? undefined;
+          const steps = buildStepsFromMetadata(raw.transparency_metadata);
           return {
             id: m.id,
             role: m.role,
             content: m.content,
-            steps: [],
+            steps,
             chart,
             // Already-rendered charts skip the "Ver como gráfico" affordance.
             chartAccepted: chart !== undefined ? true : undefined,

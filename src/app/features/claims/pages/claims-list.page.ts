@@ -1,5 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthStore } from '@core/auth/auth.store';
 import { Chip } from '@shared/ui/chip';
@@ -9,6 +15,7 @@ import { Pagination } from '@shared/ui/pagination';
 import { SegmentedTabs, type SegmentedTab } from '@shared/ui/segmented-tabs';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
 import { ClaimsTable } from '../components/claims-table';
+import { BandejaFilters, type BandejaFilterState } from '../components/bandeja-filters';
 import { ClaimsStore } from '@core/state/claims.store';
 import type { Claim } from '@shared/models';
 import type { RiskTier } from '@shared/utils';
@@ -16,10 +23,19 @@ import type { RiskTier } from '@shared/utils';
 type TabKey = 'activos' | 'historico';
 type TierFilter = 'todos' | RiskTier | 'rebotados';
 
+const DEFAULT_FILTER_STATE: BandejaFilterState = {
+  search: '',
+  ramo: '',
+  ciudad: '',
+  datePreset: 'todos',
+  customFrom: '',
+  customTo: '',
+};
+
 @Component({
   selector: 'page-claims-list',
   standalone: true,
-  imports: [Chip, Icon, KpiSmall, Pagination, SegmentedTabs, SkeletonTable, ClaimsTable],
+  imports: [Chip, Icon, KpiSmall, Pagination, SegmentedTabs, SkeletonTable, ClaimsTable, BandejaFilters],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-end justify-between gap-6 py-2 pb-6">
@@ -35,19 +51,6 @@ type TierFilter = 'todos' | RiskTier | 'rebotados';
             <span class="ml-1.5 text-tier-yellow-ink">·  {{ kpis().rebotados }} caso{{ kpis().rebotados > 1 ? 's' : '' }} rebotado{{ kpis().rebotados > 1 ? 's' : '' }} de Antifraude.</span>
           }
         </p>
-      </div>
-      <div class="flex items-center gap-2">
-        <div class="flex items-center gap-2 bg-surface border border-line rounded-md px-3 py-1.5 w-[280px] text-ink-3 text-[13px] shadow-1">
-          <ui-icon name="search" [size]="16" />
-          <input
-            type="text"
-            placeholder="Buscar por ID, asegurado, ciudad…"
-            class="flex-1 border-0 outline-0 bg-transparent text-ink min-w-0"
-            [value]="search()"
-            (input)="onSearch($any($event.target).value)"
-          />
-          <kbd class="text-[10.5px] text-ink-4 border border-line px-1.5 py-px rounded bg-canvas font-sans">⌘K</kbd>
-        </div>
       </div>
     </div>
 
@@ -84,6 +87,18 @@ type TierFilter = 'todos' | RiskTier | 'rebotados';
           </ui-chip>
         </div>
       </div>
+
+      <!-- Filter bar -->
+      <div class="px-5 py-3 border-b border-line">
+        <claims-bandeja-filters
+          [state]="filterState()"
+          [ramos]="availableRamos()"
+          [ciudades]="availableCiudades()"
+          (stateChange)="onFilterChange($event)"
+          (resetFilters)="resetFilters()"
+        />
+      </div>
+
       @if (store.loading() && store.claims().length === 0) {
         <ui-skeleton-table [rows]="8" [cols]="6" />
       } @else if (filtered().length === 0) {
@@ -111,12 +126,18 @@ export class ClaimsListPage {
   protected readonly store = inject(ClaimsStore);
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly tab = signal<TabKey>('activos');
   protected readonly tierFilter = signal<TierFilter>('todos');
-  protected readonly search = signal<string>('');
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(10);
+
+  // Seed search from ?q= URL param (e.g. after importing multiple cases)
+  protected readonly filterState = signal<BandejaFilterState>({
+    ...DEFAULT_FILTER_STATE,
+    search: this.route.snapshot.queryParamMap.get('q') ?? '',
+  });
 
   protected readonly greeting = computed(() => {
     const name = this.auth.user()?.name?.split(' ')[0] ?? 'Analista';
@@ -147,11 +168,38 @@ export class ClaimsListPage {
     return { pendientes, escalados, rebotados };
   });
 
+  protected readonly availableRamos = computed<string[]>(() => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const c of this.store.claims()) {
+      if (c.ramo && !seen.has(c.ramo)) {
+        seen.add(c.ramo);
+        result.push(c.ramo);
+      }
+    }
+    return result.sort();
+  });
+
+  protected readonly availableCiudades = computed<string[]>(() => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const c of this.store.claims()) {
+      if (c.ciudad && !seen.has(c.ciudad)) {
+        seen.add(c.ciudad);
+        result.push(c.ciudad);
+      }
+    }
+    return result.sort();
+  });
+
   protected readonly filtered = computed<Claim[]>(() => {
     const list = this.store.claims();
     const t = this.tab();
     const tier = this.tierFilter();
-    const q = this.search().toLowerCase().trim();
+    const fs = this.filterState();
+    const q = fs.search.toLowerCase().trim();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     const baseSet = list.filter(t === 'activos' ? isActiveForAnalista : isHistoricForAnalista);
 
@@ -162,11 +210,36 @@ export class ClaimsListPage {
         } else if (tier !== 'todos' && c.nivel !== tier) {
           return false;
         }
+        if (fs.ramo && c.ramo !== fs.ramo) return false;
+        if (fs.ciudad && c.ciudad !== fs.ciudad) return false;
+        if (fs.datePreset !== 'todos') {
+          const reportDate = new Date(c.fecha_reporte || c.fecha_ocurrencia);
+          if (!isNaN(reportDate.getTime())) {
+            if (fs.datePreset === '7d') {
+              const cutoff = new Date(today);
+              cutoff.setDate(cutoff.getDate() - 7);
+              if (reportDate < cutoff) return false;
+            } else if (fs.datePreset === '30d') {
+              const cutoff = new Date(today);
+              cutoff.setDate(cutoff.getDate() - 30);
+              if (reportDate < cutoff) return false;
+            } else if (fs.datePreset === 'custom') {
+              if (fs.customFrom) {
+                const from = new Date(fs.customFrom);
+                if (!isNaN(from.getTime()) && reportDate < from) return false;
+              }
+              if (fs.customTo) {
+                const to = new Date(fs.customTo);
+                to.setHours(23, 59, 59, 999);
+                if (!isNaN(to.getTime()) && reportDate > to) return false;
+              }
+            }
+          }
+        }
         if (q) {
           return (
             c.id.toLowerCase().includes(q) ||
             c.asegurado.toLowerCase().includes(q) ||
-            c.cobertura.toLowerCase().includes(q) ||
             c.ciudad.toLowerCase().includes(q)
           );
         }
@@ -187,11 +260,6 @@ export class ClaimsListPage {
     this.page.set(0);
   }
 
-  protected onSearch(value: string): void {
-    this.search.set(value);
-    this.page.set(0);
-  }
-
   protected onPageSize(n: number): void {
     this.pageSize.set(n);
     this.page.set(0);
@@ -199,6 +267,16 @@ export class ClaimsListPage {
 
   protected setTier(t: TierFilter): void {
     this.tierFilter.set(t);
+    this.page.set(0);
+  }
+
+  protected onFilterChange(patch: Partial<BandejaFilterState>): void {
+    this.filterState.update((s) => ({ ...s, ...patch }));
+    this.page.set(0);
+  }
+
+  protected resetFilters(): void {
+    this.filterState.set({ ...DEFAULT_FILTER_STATE });
     this.page.set(0);
   }
 

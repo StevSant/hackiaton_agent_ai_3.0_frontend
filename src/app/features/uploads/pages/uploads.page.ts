@@ -9,7 +9,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { DocumentsApi } from '@core/api/clients/documents.api';
@@ -175,7 +175,7 @@ const DEMO_VEHICLE_DOCUMENTS: readonly { file: string; tipo: string }[] = [
             <h2 class="text-[15px] font-semibold m-0 mb-4">¿Qué hacemos ahora?</h2>
 
             <div class="flex flex-wrap gap-3 mb-5">
-              <ui-button variant="primary" [routerLink]="['/claims']">
+              <ui-button variant="primary" (click)="goToBandeja()">
                 <ui-icon name="inbox" [size]="14" />
                 Ir a Bandeja
               </ui-button>
@@ -363,6 +363,7 @@ export class UploadsPage implements AfterViewChecked {
   private readonly importsApi = inject(ImportsApi);
   private readonly documentsApi = inject(DocumentsApi);
   private readonly claims = inject(ClaimsStore);
+  private readonly router = inject(Router);
 
   protected readonly selectedClaimsFile = signal<File | null>(null);
   protected readonly downloading = signal(false);
@@ -495,6 +496,19 @@ export class UploadsPage implements AfterViewChecked {
     this._userScrolled = false;
     this._lastCaseCount = 0;
     this.stream.startImport(file);
+  }
+
+  protected goToBandeja(): void {
+    const ids = this.completedCaseIds();
+    if (ids.length === 1) {
+      // Single case imported → land on that case's detail page
+      void this.router.navigate(['/claims', ids[0]]);
+    } else if (ids.length > 1) {
+      // Multiple cases → go to list with search pre-filled to the first id prefix
+      void this.router.navigate(['/claims'], { queryParams: { q: ids[0]?.slice(0, 10) } });
+    } else {
+      void this.router.navigate(['/claims']);
+    }
   }
 
   protected async uploadDocuments(): Promise<void> {
