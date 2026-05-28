@@ -18,7 +18,7 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
     <div class="w-full flex gap-3 items-start" [class.justify-end]="isUser()">
       @if (!isUser()) {
         <div
-          class="w-10 h-10 rounded-full grid place-items-center shrink-0 font-semibold text-[12px] text-white"
+          class="w-8 h-8 sm:w-10 sm:h-10 rounded-full grid place-items-center shrink-0 font-semibold text-[12px] text-white"
           [style.background]="avatarBg()"
         >
           <agent-eye-icon [size]="18" [tracking]="tracking()" />
@@ -32,7 +32,7 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
           {{ message().content }}
         </div>
         <div
-          class="w-10 h-10 rounded-full grid place-items-center shrink-0 font-semibold text-[12px] text-white"
+          class="w-8 h-8 sm:w-10 sm:h-10 rounded-full grid place-items-center shrink-0 font-semibold text-[12px] text-white"
           [style.background]="avatarBg()"
         >
           LV
@@ -95,7 +95,13 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
       .chat-message__bubble {
         flex: 1;
         min-width: 0;
-        max-width: min(720px, calc(100% - 3.25rem));
+        max-width: min(720px, calc(100% - 2.75rem));
+      }
+
+      @media (min-width: 640px) {
+        .chat-message__bubble {
+          max-width: min(720px, calc(100% - 3.25rem));
+        }
       }
 
       .chat-message__bubble--user {

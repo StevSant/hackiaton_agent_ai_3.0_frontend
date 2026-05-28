@@ -58,9 +58,10 @@
   line-height: 1;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 767px) {
   .chat-panel__toolbar {
-    padding: 8px 10px;
+    /* Extra left padding so the floating shell hamburger (40px wide @ left-3) doesn't overlap the history button. */
+    padding: 8px 10px 8px 60px;
   }
 }
 
