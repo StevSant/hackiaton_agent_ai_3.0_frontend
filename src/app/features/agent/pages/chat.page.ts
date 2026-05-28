@@ -73,26 +73,28 @@ function generateUuid(): string {
           <ui-icon name="history" [size]="18" />
         </button>
 
-        <button
-          type="button"
-          class="chat-panel__tool-btn"
-          [class.text-brand-ink]="uiPrefs.showCharts()"
-          (click)="uiPrefs.toggleCharts()"
-          [attr.aria-label]="uiPrefs.showCharts() ? 'Ocultar gráficos generados' : 'Mostrar gráficos generados'"
-          [attr.title]="uiPrefs.showCharts() ? 'Ocultar gráficos generados' : 'Mostrar gráficos generados'"
-        >
-          <ui-icon [name]="uiPrefs.showCharts() ? 'insert_chart' : 'bar_chart_off'" [size]="18" />
-        </button>
+        <div class="chat-panel__toolbar-actions">
+          <button
+            type="button"
+            class="chat-panel__tool-btn"
+            [class.text-brand-ink]="uiPrefs.showCharts()"
+            (click)="uiPrefs.toggleCharts()"
+            [attr.aria-label]="uiPrefs.showCharts() ? 'Ocultar gráficos generados' : 'Mostrar gráficos generados'"
+            [attr.title]="uiPrefs.showCharts() ? 'Ocultar gráficos generados' : 'Mostrar gráficos generados'"
+          >
+            <ui-icon [name]="uiPrefs.showCharts() ? 'insert_chart' : 'bar_chart_off'" [size]="18" />
+          </button>
 
-        <button
-          type="button"
-          class="chat-panel__tool-btn chat-panel__tool-btn--primary"
-          (click)="newChat()"
-          aria-label="Nueva conversación"
-          title="Nueva conversación"
-        >
-          <ui-icon name="add" [size]="20" [weight]="600" />
-        </button>
+          <button
+            type="button"
+            class="chat-panel__tool-btn chat-panel__tool-btn--primary"
+            (click)="newChat()"
+            aria-label="Nueva conversación"
+            title="Nueva conversación"
+          >
+            <ui-icon name="add" [size]="20" [weight]="600" />
+          </button>
+        </div>
       </header>
 
       <div
