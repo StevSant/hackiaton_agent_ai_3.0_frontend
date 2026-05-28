@@ -97,6 +97,10 @@ import { ProvidersStore } from '@core/state/providers.store';
         </div>
         <div class="flex flex-col items-end gap-2">
           <div class="flex gap-2">
+            <ui-button [disabled]="reanalyzing()" (click)="reanalyze()">
+              <ui-icon name="autorenew" [size]="14" />
+              {{ reanalyzing() ? 'Re-analizando…' : 'Re-analizar caso' }}
+            </ui-button>
             <ui-button (click)="askAI()">
               <ui-icon name="auto_awesome" [size]="14" />
               Preguntar a la IA
@@ -214,6 +218,7 @@ export class ClaimDetailPage {
   protected readonly ruleOpen = signal(false);
   protected readonly activeAlert = signal<ClaimAlert | null>(null);
   protected readonly dictamenOpen = signal(false);
+  protected readonly reanalyzing = signal(false);
 
   protected readonly claim = computed(() => this.claims.findById(this.id()));
   protected readonly detailLoaded = computed(() =>
@@ -276,6 +281,16 @@ export class ClaimDetailPage {
         : null;
     if (note === null) return;
     await this.claims.close(this.id(), note.trim() || undefined);
+  }
+
+  protected async reanalyze(): Promise<void> {
+    if (this.reanalyzing()) return;
+    this.reanalyzing.set(true);
+    try {
+      await this.claims.rescore(this.id());
+    } finally {
+      this.reanalyzing.set(false);
+    }
   }
 
   protected async onEscalate(): Promise<void> {

@@ -217,6 +217,18 @@ export class ClaimsStore {
     return this._claims().find((c) => c.id === id);
   }
 
+  /**
+   * Re-run the genuine, relationship-driven scoring pipeline for one claim and
+   * refresh the cached detail with the fresh score / tier / alertas the backend
+   * returns. Marks the id as detail-loaded so the explainability accordions
+   * render the recomputed data immediately (no second round-trip needed).
+   */
+  async rescore(id: string): Promise<void> {
+    const dto = await firstValueFrom(this.api.rescore(id));
+    this.upsert(dtoToClaim(dto));
+    this._detailLoadedIds.update((s) => (s.has(id) ? s : new Set([...s, id])));
+  }
+
   async escalate(id: string, note?: string): Promise<void> {
     const dto = await firstValueFrom(this.api.escalate(id, note));
     this.upsert(dtoToClaim(dto));

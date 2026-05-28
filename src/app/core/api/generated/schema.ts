@@ -1782,7 +1782,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClaimRiskScore"];
+                    "application/json": components["schemas"]["ClaimDetail"];
                 };
             };
             /** @description Validation Error */
