@@ -30,6 +30,9 @@ import { AgentStore } from '../services/agent.store';
 import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
 import { ConversationsStore } from '../services/conversations.store';
 import { VoiceRecorderService } from '../services/voice-recorder.service';
+import { CASE_CHAT_SUGGESTIONS } from '../utils/case-context-message';
+import { ClaimsStore } from '@core/state/claims.store';
+import { formatMoneyShort, ramoLabel, riskTierLabel } from '@shared/utils';
 
 const SUGGESTIONS = [
   '¿Cuáles son los 5 siniestros con mayor riesgo?',
@@ -97,6 +100,33 @@ function generateUuid(): string {
         </div>
       </header>
 
+      @if (contextClaim(); as claim) {
+        <div class="chat-case-context shrink-0">
+          <div class="chat-case-context__copy">
+            <span class="chat-case-context__eyebrow">Contexto del caso</span>
+            <div class="chat-case-context__title-row">
+              <span class="chat-case-context__id">{{ claim.id }}</span>
+              <span class="chat-case-context__meta">{{ ramoLabel(claim.ramo) }} · score {{ claim.score }}</span>
+            </div>
+            <p class="chat-case-context__subtitle">{{ claim.cobertura }} · {{ claim.asegurado }}</p>
+            <p class="chat-case-context__risk">{{ riskTierLabel(claim.nivel) }} · {{ formatMoneyShort(claim.monto_reclamado) }}</p>
+          </div>
+          <div class="chat-case-context__actions">
+            <button type="button" class="chat-case-context__link" (click)="openCase(claim.id)">
+              Ver caso
+            </button>
+            <button
+              type="button"
+              class="chat-case-context__clear"
+              (click)="clearCaseContext()"
+              aria-label="Quitar contexto del caso"
+            >
+              <ui-icon name="close" [size]="14" />
+            </button>
+          </div>
+        </div>
+      }
+
       <div
         #scroll
         class="flex-1 min-h-0 overflow-y-auto scroll-pretty px-4 pt-3 pb-3 flex flex-col gap-4"
@@ -123,13 +153,13 @@ function generateUuid(): string {
         @if (store.thinking()) {
           <div class="w-full flex gap-3 items-start">
             <div
-              class="w-10 h-10 rounded-full grid place-items-center shrink-0"
+              class="w-11 h-11 sm:w-12 sm:h-12 rounded-full grid place-items-center shrink-0"
               style="background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);"
             >
-              <agent-eye-icon [size]="18" [tracking]="store.isResponding()" />
+              <agent-eye-icon [size]="24" [tracking]="store.isResponding()" />
             </div>
             <div
-              class="text-[13.5px] px-3.5 py-3.5 rounded-2xl border border-line bg-surface min-w-0 max-w-[min(720px,calc(100%-3.25rem))]"
+              class="text-[13.5px] px-3.5 py-3.5 rounded-2xl border border-line bg-surface min-w-0 max-w-[min(720px,calc(100%-3.75rem))]"
             >
               <span class="dots"><span></span><span></span><span></span></span>
             </div>
@@ -251,7 +281,7 @@ function generateUuid(): string {
               }
             </div>
             <div class="chat-suggestions__grid">
-              @for (s of suggestions; track s) {
+              @for (s of activeSuggestions(); track s) {
                 <button type="button" class="chat-suggestion" (click)="quickSend(s)">
                   <span class="chat-suggestion__icon" aria-hidden="true">
                     <agent-eye-icon [size]="15" />
@@ -333,6 +363,7 @@ function generateUuid(): string {
 export class ChatPage implements AfterViewChecked {
   protected readonly store = inject(AgentStore);
   protected readonly conversations = inject(ConversationsStore);
+  protected readonly claims = inject(ClaimsStore);
   protected readonly voice = inject(VoiceRecorderService);
   protected readonly uiPrefs = inject(ChatUiPrefsStore);
   private readonly providers = inject(ProvidersStore);
@@ -342,7 +373,16 @@ export class ChatPage implements AfterViewChecked {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly suggestions = SUGGESTIONS;
+  protected readonly formatMoneyShort = formatMoneyShort;
+  protected readonly ramoLabel = ramoLabel;
+  protected readonly riskTierLabel = riskTierLabel;
+  protected readonly activeSuggestions = computed(() =>
+    this.contextClaim() ? [...CASE_CHAT_SUGGESTIONS] : SUGGESTIONS,
+  );
+  protected readonly contextClaim = computed(() => {
+    const claimId = this.store.contextClaimId();
+    return claimId ? (this.claims.findById(claimId) ?? null) : null;
+  });
   protected readonly input = signal<string>('');
   protected readonly activeConversationId = signal<string | null>(null);
   protected readonly renameModalOpen = signal<boolean>(false);
@@ -371,27 +411,25 @@ export class ChatPage implements AfterViewChecked {
 
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const convId = params.get('conversation');
+      const caseId = params.get('case');
+
       if (convId) {
         if (convId !== this.activeConversationId()) {
           this.suggestionsOpen.set(null);
         }
         this.activeConversationId.set(convId);
-        void this.store.loadConversation(convId);
-      } else {
-        const list = this.conversations.list();
-        if (list.length > 0) {
-          void this.router.navigate([], {
-            queryParams: { conversation: list[0].id },
-            replaceUrl: true,
-          });
-        } else {
-          const newId = generateUuid();
-          void this.router.navigate([], {
-            queryParams: { conversation: newId },
-            replaceUrl: true,
-          });
-        }
+        void this.bootstrapConversation(convId, caseId);
+        return;
       }
+
+      const newId = generateUuid();
+      void this.router.navigate([], {
+        queryParams: {
+          conversation: newId,
+          ...(caseId ? { case: caseId } : {}),
+        },
+        replaceUrl: true,
+      });
     });
 
     effect(() => {
@@ -487,6 +525,7 @@ export class ChatPage implements AfterViewChecked {
     this.input.set('');
     this.voiceError.set(null);
     this.suggestionsOpen.set(null);
+    this.store.setContextClaimId(null);
     const id = generateUuid();
     this.activeConversationId.set(id);
     this.store.startNewConversation(id);
@@ -545,6 +584,14 @@ export class ChatPage implements AfterViewChecked {
     }
   }
 
+  protected clearCaseContext(): void {
+    this.store.setContextClaimId(null);
+    void this.router.navigate([], {
+      queryParams: { conversation: this.activeConversationId() },
+      replaceUrl: true,
+    });
+  }
+
   protected openCase(idOrLabel: string): void {
     // Claim chips emit raw IDs (SIN-…, IMP-…, CL-…) — route to the case page.
     if (/^(SIN|IMP|CL)-/i.test(idOrLabel)) {
@@ -557,6 +604,34 @@ export class ChatPage implements AfterViewChecked {
       .find((p) => p.nombre.toLowerCase() === idOrLabel.toLowerCase());
     if (match) {
       void this.router.navigate(['/providers', match.id]);
+    }
+  }
+
+  private async bootstrapConversation(convId: string, caseId: string | null): Promise<void> {
+    if (caseId) {
+      this.store.setContextClaimId(caseId);
+    } else {
+      this.store.setContextClaimId(null);
+    }
+
+    await this.store.loadConversation(convId);
+
+    const resolvedCaseId = caseId ?? this.store.contextClaimId();
+    if (resolvedCaseId) {
+      this.store.setContextClaimId(resolvedCaseId);
+      await this.claims.loadDetail(resolvedCaseId);
+    }
+
+    const claim = resolvedCaseId ? this.claims.findById(resolvedCaseId) : null;
+    const hasUserMessages = this.store.messages().some((message) => message.role === 'user');
+
+    if (this.store.messages().length === 0) {
+      this.store.startNewConversation(convId, claim);
+      return;
+    }
+
+    if (resolvedCaseId && claim && !hasUserMessages) {
+      this.store.startNewConversation(convId, claim);
     }
   }
 

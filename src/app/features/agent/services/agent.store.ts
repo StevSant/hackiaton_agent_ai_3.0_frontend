@@ -7,9 +7,14 @@ import { AppError } from '@core/errors/app-error';
 import { SseClient } from '@core/realtime/sse.client';
 import type { AgentMessage, AgentStep, ChartPayload } from '../models';
 import { ConversationsStore } from './conversations.store';
+import { buildCaseWelcomeMessage } from '../utils/case-context-message';
+import type { Claim } from '@shared/models';
 
 let nextId = 0;
 const newId = (): string => `m_${Date.now()}_${++nextId}`;
+
+const DEFAULT_WELCOME =
+  'Hola, soy Centinela IA. Puedo ayudarte a explorar tu bandeja: rankings, patrones, casos atípicos y resúmenes ejecutivos. ¿En qué te puedo ayudar?';
 
 interface TokenEvent {
   type: 'token';
@@ -104,20 +109,38 @@ export class AgentStore {
   private readonly _thinking = signal<boolean>(false);
   private readonly _responding = signal<boolean>(false);
   private readonly _conversationId = signal<string | null>(null);
+  private readonly _contextClaimId = signal<string | null>(null);
 
   readonly messages = this._messages.asReadonly();
   readonly thinking = this._thinking.asReadonly();
   readonly isResponding = this._responding.asReadonly();
   readonly conversationId = this._conversationId.asReadonly();
+  readonly contextClaimId = this._contextClaimId.asReadonly();
 
-  startNewConversation(id: string): void {
+  setContextClaimId(claimId: string | null): void {
+    this._contextClaimId.set(claimId);
+  }
+
+  startNewConversation(id: string, claim?: Claim | null): void {
     this._conversationId.set(id);
+    if (claim) {
+      this._contextClaimId.set(claim.id);
+      this._messages.set([
+        {
+          id: newId(),
+          role: 'assistant',
+          content: buildCaseWelcomeMessage(claim),
+        },
+      ]);
+      return;
+    }
+
+    this._contextClaimId.set(null);
     this._messages.set([
       {
-        id: `m_${Date.now()}_new`,
+        id: newId(),
         role: 'assistant',
-        content:
-          'Hola, soy Centinela IA. Puedo ayudarte a explorar tu bandeja: rankings, patrones, casos atípicos y resúmenes ejecutivos. ¿En qué te puedo ayudar?',
+        content: DEFAULT_WELCOME,
       },
     ]);
   }
@@ -126,6 +149,7 @@ export class AgentStore {
     try {
       const detail = await firstValueFrom(this.conversationsApi.get(id));
       this._conversationId.set(id);
+      this._contextClaimId.set(detail.context_claim_id ?? null);
       this._messages.set(
         detail.messages.map((m) => {
           // chart_payload only exists on persisted assistant messages and is
@@ -149,14 +173,14 @@ export class AgentStore {
           {
             id: newId(),
             role: 'assistant',
-            content:
-              'Hola, soy Centinela IA. Puedo ayudarte a explorar tu bandeja: rankings, patrones, casos atípicos y resúmenes ejecutivos. ¿En qué te puedo ayudar?',
+            content: DEFAULT_WELCOME,
           },
         ]);
       }
     } catch (err) {
       if (err instanceof AppError && err.status === 404) {
-        this.startNewConversation(id);
+        this._conversationId.set(id);
+        this._messages.set([]);
         return;
       }
       this._messages.set([
@@ -258,7 +282,7 @@ export class AgentStore {
         body: {
           message: trimmed,
           conversation_id: this._conversationId(),
-          context_claim_id: null,
+          context_claim_id: this._contextClaimId(),
         },
       })
       .subscribe({

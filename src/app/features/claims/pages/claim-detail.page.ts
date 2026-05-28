@@ -252,7 +252,13 @@ export class ClaimDetailPage {
   }
 
   protected askAI(): void {
-    void this.router.navigate(['/agent'], { queryParams: { case: this.id() } });
+    const conversationId =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `c_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    void this.router.navigate(['/agent'], {
+      queryParams: { case: this.id(), conversation: conversationId },
+    });
   }
 
   protected openRule(alert: ClaimAlert): void {
