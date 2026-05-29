@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
 import { Button } from '@shared/ui/button';
 import { ExportButton } from '@shared/ui/export-button';
 import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
@@ -8,7 +9,7 @@ import { FilterBar, type FilterControl, type FilterValue } from '@shared/ui/filt
 import { Icon } from '@shared/ui/icon';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { byTriagePriority, RAMOS, reviewStatusLabel, type RamoKey, type RiskTier } from '@shared/utils';
+import { bindListKeyboardNav, byTriagePriority, RAMOS, reviewStatusLabel, type RamoKey, type RiskTier } from '@shared/utils';
 import type { Claim } from '@shared/models';
 import { InvestigacionTable } from '../components/investigacion-table';
 import { SavedFiltersModal } from '../components/saved-filters-modal';
@@ -97,7 +98,11 @@ const EMPTY_FILTERS = EMPTY_INVESTIGATION_FILTERS;
           }
         </div>
       } @else {
-        <investigacion-table [claims]="paged()" (open)="openCase($event)" />
+        <investigacion-table
+          [claims]="paged()"
+          [focusedId]="focusedRowId()"
+          (open)="openCase($event)"
+        />
         <ui-pagination
           variant="numbered"
           noun="siniestros"
@@ -133,6 +138,8 @@ const EMPTY_FILTERS = EMPTY_INVESTIGATION_FILTERS;
 export class InvestigacionPage {
   protected readonly store = inject(ClaimsStore);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected reload(): void {
     void this.store.loadList();
@@ -141,6 +148,7 @@ export class InvestigacionPage {
   protected readonly filters = signal<InvestigationFilters>({ ...EMPTY_FILTERS });
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(10);
+  protected readonly listFocusIndex = signal(-1);
   protected readonly exportOpen = signal<boolean>(false);
   protected readonly savedFiltersOpen = signal<boolean>(false);
   protected readonly claimColumns = CLAIM_EXPORT_COLUMNS;
@@ -248,6 +256,21 @@ export class InvestigacionPage {
     const start = this.page() * this.pageSize();
     return list.slice(start, start + this.pageSize());
   });
+
+  protected readonly focusedRowId = computed(() => {
+    const rows = this.paged();
+    const index = this.listFocusIndex();
+    return index >= 0 && index < rows.length ? rows[index].id : null;
+  });
+
+  constructor() {
+    bindListKeyboardNav(this.destroyRef, this.shortcuts, {
+      scopeTitle: 'Investigación',
+      rows: () => this.paged(),
+      focusedIndex: this.listFocusIndex,
+      onOpen: (id) => this.openCase(id),
+    });
+  }
 
   protected readonly previewRows = computed(() => this.filtered().slice(0, 3).map(projectClaim));
 

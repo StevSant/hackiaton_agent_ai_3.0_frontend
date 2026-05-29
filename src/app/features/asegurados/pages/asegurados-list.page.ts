@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import {
   type AseguradoCreate,
   type AseguradoUpdate,
 } from '@core/api/clients/asegurados.api';
+import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
 import { AseguradosStore } from '@core/state/asegurados.store';
 import type { Asegurado } from '@shared/models';
 import { Button } from '@shared/ui/button';
@@ -15,7 +16,7 @@ import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { formatMoney } from '@shared/utils';
+import { formatMoney, bindListKeyboardNav } from '@shared/utils';
 import {
   AseguradoFormModal,
   type AseguradoFormValue,
@@ -86,6 +87,7 @@ import {
     } @else {
       <asegurados-table
         [asegurados]="paged()"
+        [focusedId]="focusedRowId()"
         (open)="openAsegurado($event)"
         (edit)="openEdit($event)"
         (remove)="onDelete($event)"
@@ -124,6 +126,8 @@ import {
 export class AseguradosListPage {
   protected readonly store = inject(AseguradosStore);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly filters = signal<FilterValue>({
     search: '',
@@ -175,6 +179,7 @@ export class AseguradosListPage {
 
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(25);
+  protected readonly listFocusIndex = signal(-1);
   protected readonly exportOpen = signal<boolean>(false);
   protected readonly aseguradoColumns = ASEGURADO_EXPORT_COLUMNS;
 
@@ -185,6 +190,13 @@ export class AseguradosListPage {
   protected readonly stats = this.store.stats;
 
   constructor() {
+    bindListKeyboardNav(this.destroyRef, this.shortcuts, {
+      scopeTitle: 'Asegurados',
+      rows: () => this.paged(),
+      focusedIndex: this.listFocusIndex,
+      onOpen: (id) => this.openAsegurado(id),
+    });
+
     effect(() => {
       this.filters(); // track
       this.page.set(0);
@@ -217,6 +229,12 @@ export class AseguradosListPage {
     const size = this.pageSize();
     const start = this.page() * size;
     return list.slice(start, start + size);
+  });
+
+  protected readonly focusedRowId = computed(() => {
+    const rows = this.paged();
+    const index = this.listFocusIndex();
+    return index >= 0 && index < rows.length ? rows[index].id : null;
   });
 
   protected readonly previewRows = computed(() =>

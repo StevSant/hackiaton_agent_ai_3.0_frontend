@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import {
   type ProviderCreate,
   type ProviderUpdate,
 } from '@core/api/clients/network.api';
+import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
 import { ProvidersStore } from '@core/state/providers.store';
 import type { Provider } from '@shared/models';
 import { Button } from '@shared/ui/button';
@@ -17,6 +18,7 @@ import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
 import {
   PROVIDER_EXPORT_COLUMNS,
+  bindListKeyboardNav,
   exportProviders,
   formatMoney,
   projectProvider,
@@ -83,6 +85,7 @@ import { ProvidersTable } from '../components/providers-table';
     } @else {
       <providers-table
         [providers]="paged()"
+        [focusedId]="focusedRowId()"
         (open)="openProvider($event)"
         (edit)="openEdit($event)"
         (remove)="onDelete($event)"
@@ -120,6 +123,8 @@ import { ProvidersTable } from '../components/providers-table';
 export class ProvidersListPage {
   protected readonly store = inject(ProvidersStore);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly filters = signal<FilterValue>({
     search: '',
@@ -170,6 +175,7 @@ export class ProvidersListPage {
 
   protected readonly page = signal<number>(1);
   protected readonly pageSize = signal<number>(20);
+  protected readonly listFocusIndex = signal(-1);
   protected readonly exportOpen = signal<boolean>(false);
   protected readonly providerColumns = PROVIDER_EXPORT_COLUMNS;
 
@@ -201,6 +207,13 @@ export class ProvidersListPage {
   });
 
   constructor() {
+    bindListKeyboardNav(this.destroyRef, this.shortcuts, {
+      scopeTitle: 'Proveedores',
+      rows: () => this.paged(),
+      focusedIndex: this.listFocusIndex,
+      onOpen: (id) => this.openProvider(id),
+    });
+
     effect(() => {
       this.filters(); // track
       this.page.set(1);
@@ -212,6 +225,12 @@ export class ProvidersListPage {
     const size = this.pageSize();
     const start = (this.page() - 1) * size;
     return list.slice(start, start + size);
+  });
+
+  protected readonly focusedRowId = computed(() => {
+    const rows = this.paged();
+    const index = this.listFocusIndex();
+    return index >= 0 && index < rows.length ? rows[index].id : null;
   });
 
   protected readonly previewRows = computed(() =>

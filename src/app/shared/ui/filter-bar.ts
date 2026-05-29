@@ -46,6 +46,7 @@ export type FilterValue = Record<string, string>;
                 <ui-icon name="search" [size]="16" />
                 <input
                   type="search"
+                  data-keyboard-search
                   [placeholder]="c.placeholder ?? 'Buscar…'"
                   [value]="currentValue(c)"
                   (input)="onSearch(c.key, $any($event.target).value)"

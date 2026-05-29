@@ -35,6 +35,8 @@ import type { Claim } from '@shared/models';
         <tbody>
           @for (claim of claims(); track claim.id) {
             <tr
+              [attr.data-keyboard-row]="claim.id"
+              [class.centinela-table-row--focused]="focusedId() === claim.id"
               class="border-b border-line hover:bg-soft/60 transition-colors cursor-pointer"
               (click)="open.emit(claim.id)"
             >
@@ -110,6 +112,7 @@ import type { Claim } from '@shared/models';
 })
 export class InvestigacionTable {
   readonly claims = input.required<readonly Claim[]>();
+  readonly focusedId = input<string | null>(null);
   readonly open = output<string>();
 
   protected readonly money = formatMoney;

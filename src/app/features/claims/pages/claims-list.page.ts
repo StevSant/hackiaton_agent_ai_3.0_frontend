@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   signal,
@@ -9,6 +10,7 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthStore } from '@core/auth/auth.store';
+import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { PageHeader } from '@shared/ui/page-header';
@@ -19,7 +21,7 @@ import { FilterBar, type FilterControl, type FilterValue } from '@shared/ui/filt
 import { ClaimsTable } from '../components/claims-table';
 import { ClaimsStore } from '@core/state/claims.store';
 import type { Claim } from '@shared/models';
-import { byTriagePriority, type RiskTier } from '@shared/utils';
+import { bindListKeyboardNav, byTriagePriority, type RiskTier } from '@shared/utils';
 
 type TabKey = 'activos' | 'historico';
 type TierFilter = 'todos' | RiskTier | 'rebotados';
@@ -87,7 +89,7 @@ type DateRangePreset = 'todos' | '7d' | '30d' | 'custom';
           </div>
         } @else {
           <div class="centinela-panel__scroll">
-            <claims-table [claims]="paged()" (open)="openCase($event)" />
+            <claims-table [claims]="paged()" [focusedId]="focusedRowId()" (open)="openCase($event)" />
           </div>
           <ui-pagination
             [page]="page()"
@@ -106,10 +108,13 @@ export class ClaimsListPage {
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly tab = signal<TabKey>('activos');
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(10);
+  protected readonly listFocusIndex = signal(-1);
 
   // Seed search from ?q= URL param (e.g. after importing multiple cases)
   protected readonly filters = signal<FilterValue>({
@@ -123,6 +128,13 @@ export class ClaimsListPage {
   });
 
   constructor() {
+    bindListKeyboardNav(this.destroyRef, this.shortcuts, {
+      scopeTitle: 'Bandeja de siniestros',
+      rows: () => this.paged(),
+      focusedIndex: this.listFocusIndex,
+      onOpen: (id) => this.openCase(id),
+    });
+
     // Reset to the first page whenever the filter set changes, so a narrowed
     // result set never leaves the user stranded on a now-empty page.
     effect(() => {
@@ -315,6 +327,12 @@ export class ClaimsListPage {
     const list = this.filtered();
     const start = this.page() * this.pageSize();
     return list.slice(start, start + this.pageSize());
+  });
+
+  protected readonly focusedRowId = computed(() => {
+    const rows = this.paged();
+    const index = this.listFocusIndex();
+    return index >= 0 && index < rows.length ? rows[index].id : null;
   });
 
   protected onTab(key: string): void {

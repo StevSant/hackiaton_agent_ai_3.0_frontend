@@ -28,6 +28,8 @@ import { Icon } from '@shared/ui/icon';
           <tbody>
             @for (a of asegurados(); track a.id) {
               <tr
+                [attr.data-keyboard-row]="a.id"
+                [class.centinela-table-row--focused]="focusedId() === a.id"
                 class="border-b border-line last:border-b-0 hover:bg-hover cursor-pointer"
                 (click)="open.emit(a.id)"
               >
@@ -97,6 +99,7 @@ import { Icon } from '@shared/ui/icon';
 })
 export class AseguradosTable {
   readonly asegurados = input.required<Asegurado[]>();
+  readonly focusedId = input<string | null>(null);
   readonly open = output<string>();
   readonly edit = output<Asegurado>();
   readonly remove = output<Asegurado>();

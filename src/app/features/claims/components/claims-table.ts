@@ -29,7 +29,11 @@ import type { Claim } from '../models';
         </thead>
         <tbody>
           @for (c of claims(); track c.id) {
-            <tr (click)="open.emit(c.id)">
+            <tr
+              [attr.data-keyboard-row]="c.id"
+              [class.centinela-table-row--focused]="focusedId() === c.id"
+              (click)="open.emit(c.id)"
+            >
               <td>
                 <ui-risk-ring [score]="c.score" [size]="42" [stroke]="4" />
               </td>
@@ -91,6 +95,7 @@ import type { Claim } from '../models';
 })
 export class ClaimsTable {
   readonly claims = input.required<readonly Claim[]>();
+  readonly focusedId = input<string | null>(null);
   readonly open = output<string>();
 
   protected readonly money = formatMoney;
