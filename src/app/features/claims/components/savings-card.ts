@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 
+import { Icon } from '@shared/ui/icon';
 import type { SavingsEstimate } from '@shared/models';
 import { formatMoney } from '@shared/utils/format-money';
 import { SavingsBreakdown } from './savings-breakdown';
@@ -7,28 +8,46 @@ import { SavingsBreakdown } from './savings-breakdown';
 @Component({
   selector: 'claim-savings-card',
   standalone: true,
-  imports: [SavingsBreakdown],
+  imports: [SavingsBreakdown, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (estimate(); as est) {
-      <div class="bg-surface border border-line rounded-lg px-5 py-4 shadow-1 flex flex-col gap-3">
-        <div class="text-[11px] text-ink-3 uppercase tracking-wider font-medium">
-          Estimación de ahorro potencial
+      <div class="bg-surface border border-line rounded-lg px-5 py-4 shadow-1 flex flex-col gap-3.5">
+        <div class="flex items-center gap-2">
+          <span class="grid place-items-center w-7 h-7 rounded-md bg-tier-green-soft text-tier-green-ink shrink-0">
+            <ui-icon name="savings" [size]="16" />
+          </span>
+          <div class="text-[11px] text-ink-3 uppercase tracking-wider font-medium">
+            Estimación de ahorro potencial
+          </div>
         </div>
 
-        <!-- Headline figures — always visible -->
-        <div class="grid grid-cols-2 gap-4">
-          <div class="flex flex-col gap-0.5">
-            <span class="text-[11px] text-ink-3">Valor en riesgo</span>
-            <span class="font-serif text-[22px] leading-none tabular-nums text-tier-red-ink">
+        <!-- Headline figures — two tinted stat tiles, exposure → potential saving -->
+        <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-stretch gap-3">
+          <div class="rounded-lg border border-tier-red-ink/15 bg-tier-red-soft/40 px-3.5 py-3 flex flex-col gap-1">
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-tier-red-ink">
+              <ui-icon name="warning" [size]="13" />
+              Valor en riesgo
+            </span>
+            <span class="font-serif text-[24px] leading-none tabular-nums text-tier-red-ink">
               {{ formatMoney(est.valor_en_riesgo) }}
             </span>
+            <span class="text-[10.5px] text-ink-3">Exposición que aún se puede evitar pagar</span>
           </div>
-          <div class="flex flex-col gap-0.5">
-            <span class="text-[11px] text-ink-3">Ahorro potencial estimado</span>
-            <span class="font-serif text-[22px] leading-none tabular-nums text-tier-green-ink">
+
+          <div class="hidden sm:grid place-items-center text-ink-4" aria-hidden="true">
+            <ui-icon name="arrow_forward" [size]="18" />
+          </div>
+
+          <div class="rounded-lg border border-tier-green-ink/25 bg-tier-green-soft/50 px-3.5 py-3 flex flex-col gap-1">
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-tier-green-ink">
+              <ui-icon name="trending_down" [size]="13" />
+              Ahorro potencial estimado
+            </span>
+            <span class="font-serif text-[26px] font-medium leading-none tabular-nums text-tier-green-ink">
               {{ formatMoney(est.ahorro_potencial_estimado) }}
             </span>
+            <span class="text-[10.5px] text-ink-3">Si la revisión confirma la sospecha</span>
           </div>
         </div>
 
@@ -66,11 +85,13 @@ import { SavingsBreakdown } from './savings-breakdown';
 
         <!-- Ethics disclaimer -->
         <p
-          class="text-[11px] text-ink-3 m-0 leading-relaxed"
-          title="Estimación basada en señales de riesgo, sujeta a revisión humana. No representa posible fraude confirmado."
+          class="flex items-start gap-1.5 text-[11px] text-ink-3 m-0 leading-relaxed pt-2.5 border-t border-line"
         >
-          Estimación basada en señales de riesgo, sujeta a revisión humana. No representa posible
-          fraude confirmado.
+          <ui-icon name="info" [size]="13" class="mt-0.5 shrink-0" />
+          <span>
+            Estimación basada en señales de riesgo, sujeta a revisión humana. No representa posible
+            fraude confirmado.
+          </span>
         </p>
       </div>
     } @else {
