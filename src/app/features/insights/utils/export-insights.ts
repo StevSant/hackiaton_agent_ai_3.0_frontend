@@ -1,4 +1,4 @@
-import type { Claim } from '@features/claims/models';
+import type { Claim } from '@shared/models';
 
 /**
  * Export an insights snapshot (KPIs + per-tier counts + per-ramo counts +

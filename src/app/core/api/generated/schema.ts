@@ -97,6 +97,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/document/docx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agent Document Docx
+         * @description Convert markdown content to a .docx file and return it as a download.
+         *
+         *     The frontend calls this after receiving a `document` SSE event from `/ask`
+         *     to let the analyst download the agent-generated Word document.
+         */
+        post: operations["agent_document_docx_api_v1_agent_document_docx_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/ask": {
         parameters: {
             query?: never;
@@ -354,6 +377,48 @@ export interface paths {
         patch: operations["patch_claim_route_api_v1_claims__claim_id__patch"];
         trace?: never;
     };
+    "/api/v1/claims/{claim_id}/report.docx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Claim Report Docx
+         * @description Generate and download a Word report (.docx) for a single claim.
+         */
+        get: operations["download_claim_report_docx_api_v1_claims__claim_id__report_docx_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/{claim_id}/resumen/improve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Improve Claim Resumen Route
+         * @description Use the LLM to improve/regenerate the case summary.
+         *
+         *     Does NOT persist — the frontend calls PATCH /resumen to save after review.
+         */
+        post: operations["improve_claim_resumen_route_api_v1_claims__claim_id__resumen_improve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/claims/{claim_id}/rescore": {
         parameters: {
             query?: never;
@@ -396,6 +461,23 @@ export interface paths {
          * @description Persist an analyst-edited case summary override on a claim.
          */
         patch: operations["patch_claim_resumen_route_api_v1_claims__claim_id__resumen_patch"];
+        trace?: never;
+    };
+    "/api/v1/claims/{claim_id}/panel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Claim Panel */
+        post: operations["claim_panel_api_v1_claims__claim_id__panel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/antifraude/inbox": {
@@ -937,10 +1019,6 @@ export interface components {
         /**
          * ClaimAlert
          * @description UI projection of a `RuleActivation`, rendered as a chip in the breakdown.
-         *
-         *     `detalle` is the rule's generic description; `evidence` carries the
-         *     per-claim variables that made *this* rule fire (e.g. {"demora_denuncia_horas": 56}).
-         *     The detail dialog renders `evidence` as the "en este caso" explanation.
          */
         ClaimAlert: {
             /** Code */
@@ -954,10 +1032,6 @@ export interface components {
             severidad: "high" | "med" | "low";
             /** Detalle */
             detalle: string;
-            /** Evidence */
-            evidence?: {
-                [key: string]: unknown;
-            };
         };
         /**
          * ClaimDetail
@@ -1285,6 +1359,13 @@ export interface components {
              * @description Justificación mínima de 20 caracteres
              */
             justificacion: string;
+        };
+        /** DocxRequest */
+        DocxRequest: {
+            /** Titulo */
+            titulo: string;
+            /** Contenido Markdown */
+            contenido_markdown: string;
         };
         /** EscalateRequest */
         EscalateRequest: {
@@ -1749,6 +1830,16 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** _ImproveResumenRequest */
+        _ImproveResumenRequest: {
+            /** Instrucciones */
+            instrucciones?: string | null;
+        };
+        /** _ImproveResumenResponse */
+        _ImproveResumenResponse: {
+            /** Resumen */
+            resumen: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -1899,6 +1990,39 @@ export interface operations {
             };
         };
     };
+    agent_document_docx_api_v1_agent_document_docx_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocxRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     agent_ask_api_v1_agent_ask_post: {
         parameters: {
             query?: never;
@@ -1936,6 +2060,9 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string | null;
+                context_claim_id?: string | null;
+                context_provider_id?: string | null;
+                context_asegurado_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -2437,6 +2564,72 @@ export interface operations {
             };
         };
     };
+    download_claim_report_docx_api_v1_claims__claim_id__report_docx_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    improve_claim_resumen_route_api_v1_claims__claim_id__resumen_improve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_ImproveResumenRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ImproveResumenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rescore_claim_route_api_v1_claims__claim_id__rescore_post: {
         parameters: {
             query?: never;
@@ -2490,6 +2683,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClaimDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    claim_panel_api_v1_claims__claim_id__panel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

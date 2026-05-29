@@ -15,6 +15,7 @@ export {
 export { formatDateTime } from './format-datetime';
 export { reviewStatusLabel, reviewStatusBadgeClass } from './review-status';
 export { markdownToPlainText } from './speech-text';
+export { aiExplanation, suggestedAction } from './ai-explanation';
 export { downloadExport } from './download-export';
 export {
   exportProviders,

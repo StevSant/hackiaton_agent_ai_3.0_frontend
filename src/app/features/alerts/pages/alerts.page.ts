@@ -10,7 +10,7 @@ import { SkeletonTable } from '@shared/ui/skeleton-table';
 import { NewRuleModal } from '../components/new-rule-modal';
 import { RuleHistoryModal } from '../components/rule-history-modal';
 import { RuleRow } from '../components/rule-row';
-import { RulesStore } from '../services/rules.store';
+import { RulesStore } from '@core/state/rules.store';
 import type { RiskTier } from '@shared/utils';
 
 type Filter = 'todas' | RiskTier;

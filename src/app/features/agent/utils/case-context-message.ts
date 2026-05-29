@@ -1,6 +1,5 @@
-import { aiExplanation } from '@features/claims/utils/ai-explanation';
 import type { Claim } from '@shared/models';
-import { ramoLabel, riskTierLabel } from '@shared/utils';
+import { aiExplanation, ramoLabel, riskTierLabel } from '@shared/utils';
 
 export function buildCaseWelcomeMessage(claim: Claim): string {
   const explanation = aiExplanation(claim);
