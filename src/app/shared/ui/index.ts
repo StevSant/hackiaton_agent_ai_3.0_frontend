@@ -17,7 +17,12 @@ export {
   type ExportColumnOption,
   type ExportFormat,
   type ExportRequest,
+  type ExportRangeOption,
+  type ExportExtraToggle,
 } from './export-modal';
+export { ExportButton } from './export-button';
+export { FilterBar, type FilterControl, type FilterOption, type FilterValue } from './filter-bar';
+export { ActiveFilterTags, type FilterTag } from './active-filter-tags';
 export { Pagination } from './pagination';
 export { RoleBadge } from './role-badge';
 export { SegmentedTabs, type SegmentedTab } from './segmented-tabs';
