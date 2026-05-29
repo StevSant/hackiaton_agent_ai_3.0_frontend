@@ -409,6 +409,7 @@ export class ClaimDetailPage {
         : null;
     if (note === null) return;
     await this.claims.close(this.id(), note.trim() || undefined);
+    await this.claims.reloadDetail(this.id());
   }
 
   protected async reanalyze(): Promise<void> {
@@ -423,10 +424,12 @@ export class ClaimDetailPage {
 
   protected async onEscalate(): Promise<void> {
     await this.claims.escalate(this.id(), 'Escalado desde la bandeja.');
+    await this.claims.reloadDetail(this.id());
   }
 
   protected async onTake(): Promise<void> {
     await this.claims.take(this.id());
+    await this.claims.reloadDetail(this.id());
   }
 
   protected async onDictamen(payload: {
@@ -435,6 +438,7 @@ export class ClaimDetailPage {
   }): Promise<void> {
     this.dictamenOpen.set(false);
     await this.claims.dictamen(this.id(), payload.outcome, payload.justificacion);
+    await this.claims.reloadDetail(this.id());
   }
 
   protected async exportPdf(): Promise<void> {

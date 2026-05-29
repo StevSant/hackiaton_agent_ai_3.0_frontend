@@ -306,6 +306,12 @@ export class ClaimsStore {
       const prev = next[idx];
       next[idx] = {
         ...claim,
+        // Never let a stale read roll the review backwards. Supabase's
+        // transaction pooler can return read-after-write-stale data, so a GET
+        // fired right after an escalate/take/dictamen may still report the old
+        // status. Keep whichever review is further along the workflow (bounces,
+        // which legitimately move back to pendiente, are allowed via bounce_count).
+        review: mergeReview(prev.review, claim.review),
         alertas: claim.alertas?.length ? claim.alertas : (prev.alertas ?? []),
         timeline: claim.timeline?.length ? claim.timeline : (prev.timeline ?? []),
         documentos: claim.documentos?.length ? claim.documentos : (prev.documentos ?? []),
@@ -347,6 +353,31 @@ function summaryToClaim(row: ClaimSummaryDto): Claim {
     panel_discrepa: row.panel_discrepa ?? false,
     panel_falso_positivo: row.panel_falso_positivo ?? false,
   };
+}
+
+// Workflow progression rank — higher = further along. Terminal states share 3.
+const _REVIEW_RANK: Record<string, number> = {
+  pendiente: 0,
+  escalado: 1,
+  en_revision: 2,
+  dictaminado: 3,
+  revisado_sin_escalar: 3,
+};
+
+/**
+ * Pick the review to keep when an upsert brings a new one. Guards against
+ * read-after-write-stale reads rolling the workflow backwards: if the incoming
+ * review is at an EARLIER stage than the one we already have AND no new bounce
+ * happened, keep the existing (further-along) review. A bounce (dictamen →
+ * pendiente) legitimately moves back and is detected by a higher bounce_count.
+ */
+function mergeReview(prev: ClaimReview | undefined, incoming: ClaimReview): ClaimReview {
+  if (!prev) return incoming;
+  const prevRank = _REVIEW_RANK[prev.status] ?? 0;
+  const incRank = _REVIEW_RANK[incoming.status] ?? 0;
+  const isBounce = (incoming.bounce_count ?? 0) > (prev.bounce_count ?? 0);
+  if (incRank < prevRank && !isBounce) return prev;
+  return incoming;
 }
 
 function dtoToClaim(dto: ClaimDto): Claim {
