@@ -224,7 +224,6 @@ export class BandejaPage {
 
   constructor() {
     bindListKeyboardNav(this.destroyRef, this.shortcuts, {
-      scopeTitle: 'Bandeja Antifraude',
       rows: () => this.listRows(),
       focusedIndex: this.listFocusIndex,
       onOpen: (id) => this.openCase(id),

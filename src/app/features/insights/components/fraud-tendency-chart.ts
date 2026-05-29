@@ -1,80 +1,67 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { Router } from '@angular/router';
 
 import { Icon } from '@shared/ui/icon';
-import { InsightsStore } from '../services/insights.store';
 
-interface FraudBar {
-  region: string;
-  value: number;
-  heightPct: number;
-  opacity: number;
-}
+import { InsightsEchart } from './insights-echart';
+import { InsightsStore } from '../services/insights.store';
+import { citySlugEncode } from '../utils/city-insights';
+import { buildRegionalFraudBarOption } from '../utils/city-chart-options';
+
+const CHART_CITY_LIMIT = 8;
 
 @Component({
   selector: 'insights-fraud-tendency',
   standalone: true,
-  imports: [Icon],
+  imports: [Icon, InsightsEchart],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="centinela-insight-card">
-      <header class="flex justify-between items-start gap-2 mb-3.5">
+    <section class="centinela-insight-card insights-fraud-tendency-card">
+      <header class="insights-fraud-tendency-card__head">
         <div class="min-w-0">
           <h3 class="text-[13px] font-semibold text-ink m-0">Tendencia de fraude</h3>
-          <p class="text-[11.5px] text-ink-3 m-0 mt-0.5">Concentración por región</p>
+          <p class="text-[11px] text-ink-3 m-0 mt-0.5">
+            Top {{ CHART_CITY_LIMIT }} por alertas · clic en barra
+          </p>
         </div>
-        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-soft text-ink-3 border border-line shrink-0">
+        <span class="insights-fraud-tendency-card__badge">
           <ui-icon name="calendar_today" [size]="11" />
           12 meses
         </span>
       </header>
 
-      <div class="flex items-end justify-between h-24 gap-1">
-        @for (bar of bars(); track bar.region) {
-          <div class="flex flex-col items-center flex-1 gap-1 h-full justify-end min-w-0">
-            <span class="font-mono text-[10px] text-ink-3 tabular-nums leading-none">
-              {{ bar.value }}
-            </span>
-            <div
-              class="w-full rounded-t-sm transition-all duration-700 ease-out"
-              [style.height.%]="bar.heightPct"
-              [style.background]="'var(--brand)'"
-              [style.opacity]="bar.opacity"
-            ></div>
-          </div>
-        }
-      </div>
-      <div class="flex justify-between gap-1 mt-1.5">
-        @for (bar of bars(); track bar.region) {
-          <div class="flex-1 min-w-0 text-center px-0.5">
-            <span
-              class="block text-[9px] font-medium text-ink-2 leading-snug truncate"
-              [title]="bar.region"
-            >
-              {{ regionLabel(bar.region) }}
-            </span>
-          </div>
-        }
-      </div>
+      @if (bars().length === 0) {
+        <p class="text-[11px] text-ink-3 m-0 py-4 text-center">Sin datos regionales.</p>
+      } @else {
+        <insights-echart
+          class="insights-fraud-tendency-card__chart"
+          [option]="chartOption()"
+          height="112px"
+          (barClick)="openRegionCases($event)"
+        />
+      }
     </section>
   `,
 })
 export class FraudTendencyChart {
-  private readonly store = inject(InsightsStore);
+  protected readonly CHART_CITY_LIMIT = CHART_CITY_LIMIT;
 
-  protected readonly bars = computed<FraudBar[]>(() => {
+  private readonly store = inject(InsightsStore);
+  private readonly router = inject(Router);
+
+  protected readonly bars = computed(() => {
     const points = this.store.regionalFraud();
-    if (!points.length) return [];
-    const max = Math.max(...points.map((p) => p.value), 1);
-    return points.map((p, idx) => ({
-      region: p.region,
-      value: p.value,
-      heightPct: (p.value / max) * 100,
-      opacity: Math.max(1 - idx * 0.18, 0.25),
+    return points.slice(0, CHART_CITY_LIMIT).map((point) => ({
+      region: point.region,
+      value: point.value,
+      label: REGION_CHART_LABELS[point.region] ?? point.region,
     }));
   });
 
-  protected regionLabel(region: string): string {
-    return REGION_CHART_LABELS[region] ?? region;
+  protected readonly chartOption = computed(() => buildRegionalFraudBarOption(this.bars()));
+
+  protected openRegionCases(region: string): void {
+    void this.router.navigate(['/insights', 'ciudad', citySlugEncode(region)]);
   }
 }
 
@@ -83,4 +70,5 @@ const REGION_CHART_LABELS: Readonly<Record<string, string>> = {
   Riobamba: 'Riob.',
   'Santo Domingo': 'Sto. Dom.',
   'Puerto Baquerizo Moreno': 'Galápagos',
+  Portoviejo: 'Portov.',
 };

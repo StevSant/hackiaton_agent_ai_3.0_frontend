@@ -12,7 +12,7 @@ import { Modal } from './modal';
     <ui-modal
       [open]="shortcuts.helpOpen()"
       [title]="'Atajos de teclado'"
-      [subtitle]="shortcuts.helpTitle()"
+      subtitle="Disponibles en toda la aplicación"
       size="md"
       (close)="shortcuts.closeHelp()"
     >

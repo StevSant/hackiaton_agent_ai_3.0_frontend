@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 import type { RoleCode } from '@core/auth/auth-user.model';
-import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import type { ClaimReview } from '@shared/models';
 
@@ -14,78 +13,98 @@ import type { ClaimReview } from '@shared/models';
 @Component({
   selector: 'claim-review-action-bar',
   standalone: true,
-  imports: [Button, Icon],
+  imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'claim-review-action-bar-host' },
   template: `
-    <div class="flex flex-wrap items-center gap-2 justify-end">
-      @switch (variant()) {
-        @case ('analista-can-escalate') {
-          <ui-button (click)="markRevisado.emit()">
-            <ui-icon name="check_circle" [size]="14" />
-            Marcar como revisado
-          </ui-button>
-          <ui-button variant="primary" (click)="escalate.emit()">
-            <ui-icon name="flag" [size]="14" />
-            Escalar a Unidad Antifraude
-          </ui-button>
-        }
-        @case ('analista-can-rescalate') {
-          <ui-button variant="primary" (click)="escalate.emit()">
-            <ui-icon name="restart_alt" [size]="14" />
-            Re-escalar con nueva información
-          </ui-button>
-        }
-        @case ('analista-waiting-take') {
-          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-tier-yellow-ink bg-tier-yellow-soft border border-transparent">
-            <ui-icon name="hourglass_top" [size]="13" />
-            Esperando que la Unidad Antifraude tome el caso
-          </span>
-        }
-        @case ('analista-waiting-dictamen') {
-          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-tier-yellow-ink bg-tier-yellow-soft border border-transparent">
-            <ui-icon name="visibility" [size]="13" />
-            Pendiente de dictamen — {{ review().assigned_to_name || 'la Unidad Antifraude' }} tomó el caso
-          </span>
-        }
-        @case ('antifraude-can-take') {
-          <ui-button (click)="dictaminate.emit()">
-            <ui-icon name="gavel" [size]="14" />
-            Emitir dictamen (atajo)
-          </ui-button>
-          <ui-button variant="primary" (click)="take.emit()">
-            <ui-icon name="how_to_reg" [size]="14" />
-            Tomar caso
-          </ui-button>
-        }
-        @case ('antifraude-can-dictamen') {
-          <ui-button variant="primary" (click)="dictaminate.emit()">
-            <ui-icon name="gavel" [size]="14" />
-            Emitir dictamen
-          </ui-button>
-        }
-        @case ('antifraude-other-owns') {
-          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-ink-3 bg-soft border border-line">
-            <ui-icon name="lock" [size]="13" />
-            En revisión por {{ review().assigned_to_name || 'la Unidad Antifraude' }}
-          </span>
-        }
-        @case ('dictaminado-terminal') {
-          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-ink-2 bg-soft border border-line">
-            <ui-icon name="check_circle" [size]="13" />
-            Caso dictaminado
-          </span>
-        }
-        @case ('cerrado-sin-escalar-terminal') {
-          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-tier-green-ink bg-tier-green-soft border border-transparent">
-            <ui-icon name="check_circle" [size]="13" />
-            Cerrado sin escalación
-          </span>
-        }
-        @default {
-          <!-- nothing for verde / no-context fallback -->
-        }
+    @switch (variant()) {
+      @case ('analista-can-escalate') {
+        <button type="button" class="claim-review-actions__btn" (click)="markRevisado.emit()">
+          <ui-icon name="check_circle" [size]="14" />
+          Marcar revisado
+        </button>
+        <button
+          type="button"
+          class="claim-review-actions__btn claim-review-actions__btn--primary"
+          (click)="escalate.emit()"
+        >
+          <ui-icon name="flag" [size]="14" />
+          Escalar a Antifraude
+        </button>
       }
-    </div>
+      @case ('analista-can-rescalate') {
+        <button
+          type="button"
+          class="claim-review-actions__btn claim-review-actions__btn--primary"
+          (click)="escalate.emit()"
+        >
+          <ui-icon name="restart_alt" [size]="14" />
+          Re-escalar con nueva info
+        </button>
+      }
+      @case ('analista-waiting-take') {
+        <span class="claim-review-actions__status claim-review-actions__status--warn">
+          <ui-icon name="hourglass_top" [size]="14" />
+          Esperando que Antifraude tome el caso
+        </span>
+      }
+      @case ('analista-waiting-dictamen') {
+        <span class="claim-review-actions__status claim-review-actions__status--warn">
+          <ui-icon name="hourglass_top" [size]="14" />
+          Pendiente de dictamen — {{ review().assigned_to_name || 'Unidad Antifraude' }}
+        </span>
+      }
+      @case ('antifraude-can-take') {
+        <button
+          type="button"
+          class="claim-review-actions__btn"
+          title="Emitir dictamen sin asignarte el caso"
+          (click)="dictaminate.emit()"
+        >
+          <ui-icon name="gavel" [size]="14" />
+          Dictamen directo
+        </button>
+        <button
+          type="button"
+          class="claim-review-actions__btn claim-review-actions__btn--primary"
+          (click)="take.emit()"
+        >
+          <ui-icon name="how_to_reg" [size]="14" />
+          Tomar caso
+        </button>
+      }
+      @case ('antifraude-can-dictamen') {
+        <button
+          type="button"
+          class="claim-review-actions__btn claim-review-actions__btn--primary"
+          (click)="dictaminate.emit()"
+        >
+          <ui-icon name="gavel" [size]="14" />
+          Emitir dictamen
+        </button>
+      }
+      @case ('antifraude-other-owns') {
+        <span class="claim-review-actions__status">
+          <ui-icon name="lock" [size]="14" />
+          En revisión por {{ review().assigned_to_name || 'Unidad Antifraude' }}
+        </span>
+      }
+      @case ('dictaminado-terminal') {
+        <span class="claim-review-actions__status">
+          <ui-icon name="check_circle" [size]="14" />
+          Caso dictaminado
+        </span>
+      }
+      @case ('cerrado-sin-escalar-terminal') {
+        <span class="claim-review-actions__status claim-review-actions__status--ok">
+          <ui-icon name="check_circle" [size]="14" />
+          Cerrado sin escalación
+        </span>
+      }
+      @default {
+        <!-- nothing for verde / no-context fallback -->
+      }
+    }
   `,
 })
 export class ReviewActionBar {

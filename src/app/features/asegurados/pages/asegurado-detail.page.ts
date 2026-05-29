@@ -202,7 +202,7 @@ export class AseguradoDetailPage {
       onPrev: () => this.goToAsegurado(this.aseguradoNav().prevId),
       onNext: () => this.goToAsegurado(this.aseguradoNav().nextId),
       onBack: () => this.back(),
-    }, 'Asegurado');
+    });
   }
 
   protected readonly riskPct = computed(() => {

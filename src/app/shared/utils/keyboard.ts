@@ -34,30 +34,13 @@ export interface ShortcutHandler {
 
 export function bindShortcutHandlers(
   destroyRef: DestroyRef,
-  shortcuts: KeyboardShortcutsService,
+  _shortcuts: KeyboardShortcutsService,
   handlers: ShortcutHandler[],
   options?: {
-    scopeTitle?: string;
     when?: () => boolean;
   },
 ): void {
   if (typeof window === 'undefined') return;
-
-  if (options?.scopeTitle) {
-    shortcuts.registerScope(
-      {
-        title: options.scopeTitle,
-        entries: handlers
-          .filter((handler) => !handler.allowInInput)
-          .map((handler) => ({
-            keys: handler.keys,
-            label: handler.label,
-            group: handler.group,
-          })),
-      },
-      destroyRef,
-    );
-  }
 
   const onKeyDown = (event: KeyboardEvent): void => {
     if (options?.when && !options.when()) return;

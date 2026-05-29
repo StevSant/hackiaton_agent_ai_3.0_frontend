@@ -208,7 +208,6 @@ export class ProvidersListPage {
 
   constructor() {
     bindListKeyboardNav(this.destroyRef, this.shortcuts, {
-      scopeTitle: 'Proveedores',
       rows: () => this.paged(),
       focusedIndex: this.listFocusIndex,
       onOpen: (id) => this.openProvider(id),

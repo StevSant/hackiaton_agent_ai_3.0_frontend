@@ -30,6 +30,7 @@ export const ECUADOR_CITY_COORDS: Readonly<Record<string, CityCoords>> = {
   Babahoyo: { latitude: -1.8021, longitude: -79.5343, province: 'Los Ríos' },
   Quevedo: { latitude: -1.021, longitude: -79.4632, province: 'Los Ríos' },
   Latacunga: { latitude: -0.9341, longitude: -78.6151, province: 'Cotopaxi' },
+  Milagro: { latitude: -2.1349, longitude: -79.5872, province: 'Guayas' },
   Tulcán: { latitude: 0.8167, longitude: -77.7167, province: 'Carchi' },
   'Nueva Loja': { latitude: 0.0863, longitude: -76.8842, province: 'Sucumbíos' },
   Tena: { latitude: -0.9933, longitude: -77.8167, province: 'Napo' },

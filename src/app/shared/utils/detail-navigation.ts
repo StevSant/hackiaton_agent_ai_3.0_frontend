@@ -23,7 +23,6 @@ export function bindDetailKeyboardNav(
     onBack?: () => void;
     onAskAi?: () => void;
   },
-  scopeTitle = 'Detalle',
 ): void {
   bindShortcutHandlers(
     destroyRef,
@@ -69,7 +68,6 @@ export function bindDetailKeyboardNav(
           ]
         : []),
     ],
-    { scopeTitle: `Atajos — ${scopeTitle}` },
   );
 }
 

@@ -191,7 +191,6 @@ export class AseguradosListPage {
 
   constructor() {
     bindListKeyboardNav(this.destroyRef, this.shortcuts, {
-      scopeTitle: 'Asegurados',
       rows: () => this.paged(),
       focusedIndex: this.listFocusIndex,
       onOpen: (id) => this.openAsegurado(id),

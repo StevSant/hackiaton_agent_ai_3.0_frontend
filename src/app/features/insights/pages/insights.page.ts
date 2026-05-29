@@ -4,6 +4,7 @@ import { ExportButton } from '@shared/ui/export-button';
 import { PageHeader } from '@shared/ui/page-header';
 import { ClaimsStore } from '@core/state/claims.store';
 import { AiAnomaliesPanel } from '../components/ai-anomalies-panel';
+import { CityNavButton } from '../components/city-nav-button';
 import { ClaimTypeDonut } from '../components/claim-type-donut';
 import { EcuadorHotspotsMap } from '../components/ecuador-hotspots-map';
 import { FraudTendencyChart } from '../components/fraud-tendency-chart';
@@ -17,6 +18,7 @@ import { exportInsightsCsv } from '../utils/export-insights';
   imports: [
     ExportButton,
     PageHeader,
+    CityNavButton,
     EcuadorHotspotsMap,
     AiAnomaliesPanel,
     FraudTendencyChart,
@@ -30,12 +32,10 @@ import { exportInsightsCsv } from '../utils/export-insights';
         <p class="centinela-page-header__desc" ngProjectAs="[description]">
           Dinámica de fraude y exposición al riesgo regional en Ecuador.
         </p>
-        <ui-export-button
-          actions
-          ngProjectAs="[actions]"
-          label="Exportar"
-          (trigger)="onExport()"
-        />
+        <div class="flex items-center gap-2" ngProjectAs="[actions]">
+          <insights-city-nav-button />
+          <ui-export-button label="Exportar" (trigger)="onExport()" />
+        </div>
       </ui-page-header>
 
       <div class="insights-layout flex flex-col lg:flex-row gap-3 min-h-0 flex-1">

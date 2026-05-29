@@ -146,30 +146,29 @@ import { ProvidersStore } from '@core/state/providers.store';
               {{ c.fecha_reporte }}
             </p>
           </div>
-          <div class="centinela-detail-hero__actions">
-            <div class="flex flex-wrap gap-2">
-              <ui-button [disabled]="reanalyzing()" (click)="reanalyze()">
-                <ui-icon name="autorenew" [size]="14" />
-                {{ reanalyzing() ? 'Re-analizando…' : 'Re-analizar caso' }}
-              </ui-button>
-              <ui-button (click)="askAI()">
-                <ui-icon name="auto_awesome" [size]="14" />
-                Preguntar a la IA
-              </ui-button>
-              <ui-button (click)="showOnMap()">
-                <ui-icon name="map" [size]="14" />
-                Mostrar en el mapa
-              </ui-button>
-              <ui-button (click)="exportPdf()">
-                <ui-icon name="download" [size]="14" />
-                PDF
-              </ui-button>
-              <ui-button [disabled]="downloadingDocx()" (click)="downloadDocx()">
-                <ui-icon name="description" [size]="14" />
-                {{ downloadingDocx() ? 'Descargando…' : 'Descargar Word' }}
-              </ui-button>
-            </div>
+          <div class="centinela-detail-hero__toolbar">
+            <ui-button [disabled]="reanalyzing()" (click)="reanalyze()">
+              <ui-icon name="autorenew" [size]="14" />
+              {{ reanalyzing() ? 'Re-analizando…' : 'Re-analizar caso' }}
+            </ui-button>
+            <ui-button (click)="askAI()">
+              <ui-icon name="visibility" [size]="14" />
+              Preguntar a la IA
+            </ui-button>
+            <ui-button (click)="showOnMap()">
+              <ui-icon name="map" [size]="14" />
+              Mostrar en el mapa
+            </ui-button>
+            <ui-button (click)="exportPdf()">
+              <ui-icon name="download" [size]="14" />
+              PDF
+            </ui-button>
+            <ui-button [disabled]="downloadingDocx()" (click)="downloadDocx()">
+              <ui-icon name="description" [size]="14" />
+              {{ downloadingDocx() ? 'Descargando…' : 'Descargar Word' }}
+            </ui-button>
             @if (roleCode(); as r) {
+              <span class="centinela-detail-hero__toolbar-divider" aria-hidden="true"></span>
               <claim-review-action-bar
                 [role]="r"
                 [currentUserId]="currentUserId()"
@@ -309,7 +308,7 @@ export class ClaimDetailPage {
       onNext: () => this.goToCase(this.caseNav().nextId),
       onBack: () => this.back(),
       onAskAi: () => this.askAI(),
-    }, 'Siniestro');
+    });
   }
 
   protected readonly provider = computed(() => {

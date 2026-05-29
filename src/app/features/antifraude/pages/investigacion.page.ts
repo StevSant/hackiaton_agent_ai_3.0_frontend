@@ -265,7 +265,6 @@ export class InvestigacionPage {
 
   constructor() {
     bindListKeyboardNav(this.destroyRef, this.shortcuts, {
-      scopeTitle: 'Investigación',
       rows: () => this.paged(),
       focusedIndex: this.listFocusIndex,
       onOpen: (id) => this.openCase(id),

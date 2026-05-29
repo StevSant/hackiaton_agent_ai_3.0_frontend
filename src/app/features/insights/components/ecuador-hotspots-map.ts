@@ -15,7 +15,8 @@ import * as L from 'leaflet';
 
 import { ClaimsStore } from '@core/state/claims.store';
 import { Icon } from '@shared/ui/icon';
-import { formatMoneyShort, insightsClaimReturnQuery, MAP_CLAIM_QUERY, ramoLabel, type RiskTier } from '@shared/utils';
+import { formatMoneyShort, insightsClaimReturnQuery, MAP_CLAIM_QUERY, ramoIcon, ramoLabel, type RiskTier } from '@shared/utils';
+import { RiskRing } from '@shared/ui/risk-ring';
 import { InsightsStore, type IncidentPoint } from '../services/insights.store';
 import type { MapHotspot } from '../models';
 import {
@@ -43,7 +44,7 @@ const INCIDENT_DETAIL_MIN_ZOOM = 9;
 @Component({
   selector: 'insights-ecuador-map',
   standalone: true,
-  imports: [Icon],
+  imports: [Icon, RiskRing],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
@@ -51,7 +52,7 @@ const INCIDENT_DETAIL_MIN_ZOOM = 9;
     >
       <div #mapHost class="insights-leaflet-host absolute inset-0 z-0"></div>
 
-      <div class="absolute top-2.5 left-2.5 z-[1000] flex flex-col items-start gap-1.5 max-w-[min(100%,240px)]">
+      <div class="absolute top-2.5 left-2.5 z-[1000] flex flex-col items-start gap-1.5 max-w-[min(100%,280px)]">
         <button
           type="button"
           class="insights-glass-card inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-line shadow-sm text-left hover:bg-surface transition-colors"
@@ -85,57 +86,94 @@ const INCIDENT_DETAIL_MIN_ZOOM = 9;
 
         @if (selectedSummary(); as summary) {
           <div
-            class="insights-map-selection-card insights-glass-card px-2.5 py-2.5 rounded-md border border-line shadow-sm pointer-events-auto w-[min(100%,240px)]"
+            class="insights-map-case-card insights-map-case-card--{{ summary.tier }}"
             role="dialog"
             aria-label="Resumen del siniestro"
           >
-            <div class="flex items-start justify-between gap-2 mb-1.5">
-              <span class="font-mono text-[10px] text-brand-ink truncate">{{ summary.id }}</span>
+            <header class="insights-map-case-card__header">
               <button
                 type="button"
-                class="border-0 bg-transparent p-0 cursor-pointer text-ink-3 hover:text-ink shrink-0 grid place-items-center"
+                class="insights-map-case-card__close"
                 (click)="clearSelection()"
                 aria-label="Cerrar resumen"
               >
-                <ui-icon name="close" [size]="14" />
+                <ui-icon name="close" [size]="15" />
               </button>
-            </div>
-            <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
-              <span class="text-[10px] font-medium px-1.5 py-px rounded-full bg-soft text-ink-2">
-                {{ summary.ramoLabel }}
-              </span>
-              <span class="text-[9px] font-mono px-1.5 py-px rounded-full" [class]="summary.tierClass">
-                {{ summary.tierLabel }}
-              </span>
-              <span class="text-[10px] font-mono text-ink-3 tabular-nums">Score {{ summary.score }}</span>
-            </div>
-            <dl class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[10px] m-0">
-              <dt class="text-ink-3">Sucursal</dt>
-              <dd class="text-ink m-0 truncate">{{ summary.sucursal }}</dd>
-              @if (summary.monto) {
-                <dt class="text-ink-3">Monto</dt>
-                <dd class="text-ink m-0 tabular-nums">{{ summary.monto }}</dd>
+
+              <div class="insights-map-case-card__hero">
+                <ui-risk-ring [score]="summary.score" [size]="48" [stroke]="4" />
+                <div class="insights-map-case-card__hero-text min-w-0">
+                  <span class="insights-map-case-card__id">{{ summary.id }}</span>
+                  <span class="insights-map-case-card__tier-badge">{{ summary.tierLabel }}</span>
+                </div>
+              </div>
+            </header>
+
+            <div class="insights-map-case-card__body">
+              <div class="insights-map-case-card__ramo">
+                <span class="insights-map-case-card__ramo-icon">
+                  <ui-icon [name]="summary.ramoIcon" [cacheKey]="summary.id" [size]="14" />
+                </span>
+                <span class="truncate">{{ summary.ramoLabel }}</span>
+              </div>
+
+              <div class="insights-map-case-card__stats">
+                @if (summary.monto) {
+                  <div class="insights-map-case-card__stat">
+                    <ui-icon name="payments" [size]="13" />
+                    <span class="tabular-nums">{{ summary.monto }}</span>
+                  </div>
+                }
+                @if (summary.fecha) {
+                  <div class="insights-map-case-card__stat">
+                    <ui-icon name="event" [size]="13" />
+                    <span>{{ summary.fecha }}</span>
+                  </div>
+                }
+              </div>
+
+              @if (summary.sucursal) {
+                <div class="insights-map-case-card__row">
+                  <ui-icon name="location_on" [size]="13" />
+                  <span class="truncate">{{ summary.sucursal }}</span>
+                </div>
               }
-              @if (summary.fecha) {
-                <dt class="text-ink-3">Ocurrencia</dt>
-                <dd class="text-ink m-0">{{ summary.fecha }}</dd>
-              }
+
               @if (summary.asegurado) {
-                <dt class="text-ink-3">Asegurado</dt>
-                <dd class="text-ink m-0 truncate">{{ summary.asegurado }}</dd>
+                <div class="insights-map-case-card__row">
+                  <ui-icon name="person" [size]="13" />
+                  <span class="truncate">{{ summary.asegurado }}</span>
+                </div>
               }
-            </dl>
-            @if (summary.descripcion) {
-              <p class="text-[10px] text-ink-3 m-0 mt-1.5 leading-snug line-clamp-2">{{ summary.descripcion }}</p>
-            }
-            <button
-              type="button"
-              class="mt-2 inline-flex items-center gap-1 text-[10px] font-medium text-brand-ink hover:underline bg-transparent border-0 p-0 cursor-pointer"
-              (click)="openCase(summary.id)"
-            >
-              Ver detalle del caso
-              <ui-icon name="arrow_forward" [size]="12" />
-            </button>
+
+              @if (summary.alertCodes.length > 0) {
+                <div class="insights-map-case-card__alerts">
+                  @for (code of summary.alertCodes; track code) {
+                    <span class="insights-map-case-card__alert-chip">{{ code }}</span>
+                  }
+                  @if (summary.alertCount > summary.alertCodes.length) {
+                    <span class="insights-map-case-card__alert-more">
+                      +{{ summary.alertCount - summary.alertCodes.length }}
+                    </span>
+                  }
+                </div>
+              }
+
+              @if (summary.descripcion) {
+                <p class="insights-map-case-card__desc">{{ summary.descripcion }}</p>
+              }
+            </div>
+
+            <footer class="insights-map-case-card__footer">
+              <button
+                type="button"
+                class="insights-map-case-card__cta"
+                (click)="openCase(summary.id)"
+              >
+                Ver detalle del caso
+                <ui-icon name="arrow_forward" [size]="14" />
+              </button>
+            </footer>
           </div>
         }
       </div>
@@ -225,15 +263,18 @@ export class EcuadorHotspotsMap implements AfterViewInit, OnDestroy {
 
     return {
       id: incident.id,
-      sucursal: claim?.sucursal ?? incident.sucursal,
+      tier,
+      sucursal: claim?.sucursal ?? incident.sucursal ?? null,
       score: claim?.score ?? incident.score,
       ramoLabel: claim ? ramoLabel(claim.ramo) : 'Siniestro',
+      ramoIcon: claim ? ramoIcon(claim.ramo) : 'report',
       tierLabel: TIER_LABELS[tier],
-      tierClass: TIER_BADGE_CLASSES[tier],
       monto: claim ? formatMoneyShort(claim.monto_reclamado) : null,
       fecha: formatIncidentDate(claim?.fecha_ocurrencia ?? incident.fechaOcurrencia),
       asegurado: claim?.asegurado ?? null,
       descripcion: claim?.descripcion ?? null,
+      alertCodes: (claim?.alertas ?? []).slice(0, 3).map((alert) => alert.code),
+      alertCount: claim?.alertas?.length ?? 0,
     };
   });
 
@@ -549,12 +590,6 @@ const TIER_LABELS: Record<RiskTier, string> = {
   rojo: 'Alto',
   amarillo: 'Medio',
   verde: 'Bajo',
-};
-
-const TIER_BADGE_CLASSES: Record<RiskTier, string> = {
-  rojo: 'bg-tier-red-soft text-tier-red-ink',
-  amarillo: 'bg-tier-yellow-soft text-tier-yellow-ink',
-  verde: 'bg-tier-green-soft text-tier-green-ink',
 };
 
 function formatIncidentDate(isoDate: string | null | undefined): string | null {

@@ -80,6 +80,5 @@ export function bindSectionKeyboardNav(
         run: () => moveSection(1),
       },
     ],
-    { scopeTitle: 'Menú lateral' },
   );
 }

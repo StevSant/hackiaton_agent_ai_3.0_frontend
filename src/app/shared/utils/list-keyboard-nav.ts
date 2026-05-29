@@ -14,7 +14,6 @@ export function bindListKeyboardNav(
   destroyRef: DestroyRef,
   shortcuts: KeyboardShortcutsService,
   options: {
-    scopeTitle: string;
     rows: () => readonly { id: string }[];
     focusedIndex: WritableSignal<number>;
     onOpen: (id: string) => void;
@@ -89,6 +88,5 @@ export function bindListKeyboardNav(
         run: openFocused,
       },
     ],
-    { scopeTitle: options.scopeTitle },
   );
 }

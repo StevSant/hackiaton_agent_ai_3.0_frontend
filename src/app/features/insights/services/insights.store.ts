@@ -113,6 +113,32 @@ export class InsightsStore {
     return b ? b.regional_fraud.map(dtoToRegional) : [];
   });
 
+  /** All mapped cities with claim counts (for navigation / compare pickers). */
+  readonly cityCatalog = computed(() => {
+    const stats = new Map<string, { alerts: number; total: number }>();
+    for (const incident of this.incidents()) {
+      const city = normalizeToCity(incident.sucursal);
+      if (!city) continue;
+      const row = stats.get(city) ?? { alerts: 0, total: 0 };
+      row.total += 1;
+      if (incident.tier !== 'verde') row.alerts += 1;
+      stats.set(city, row);
+    }
+
+    return [...stats.entries()]
+      .sort(
+        (left, right) =>
+          right[1].alerts - left[1].alerts ||
+          right[1].total - left[1].total ||
+          left[0].localeCompare(right[0], 'es'),
+      )
+      .map(([region, row]) => ({
+        region,
+        alerts: row.alerts,
+        total: row.total,
+      }));
+  });
+
   readonly claimTypeSlices = computed<ClaimTypeSlice[]>(() => {
     const b = this._bundle();
     return b ? b.claim_type_slices.map(dtoToSlice) : [];

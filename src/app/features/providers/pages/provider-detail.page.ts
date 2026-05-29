@@ -191,7 +191,7 @@ export class ProviderDetailPage {
       onPrev: () => this.goToProvider(this.providerNav().prevId),
       onNext: () => this.goToProvider(this.providerNav().nextId),
       onBack: () => this.back(),
-    }, 'Proveedor');
+    });
   }
 
   protected readonly riskPct = computed(() => {

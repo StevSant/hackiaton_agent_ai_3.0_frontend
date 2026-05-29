@@ -116,11 +116,11 @@ export class ClaimsListPage {
   protected readonly pageSize = signal<number>(10);
   protected readonly listFocusIndex = signal(-1);
 
-  // Seed search from ?q= URL param (e.g. after importing multiple cases)
+  // Seed filters from URL params (e.g. ?q= after import, ?ciudad= from Insights drill-down)
   protected readonly filters = signal<FilterValue>({
     search: this.route.snapshot.queryParamMap.get('q') ?? '',
     ramo: '',
-    ciudad: '',
+    ciudad: this.route.snapshot.queryParamMap.get('ciudad') ?? '',
     datePreset: 'todos',
     customFrom: '',
     customTo: '',
@@ -129,7 +129,6 @@ export class ClaimsListPage {
 
   constructor() {
     bindListKeyboardNav(this.destroyRef, this.shortcuts, {
-      scopeTitle: 'Bandeja de siniestros',
       rows: () => this.paged(),
       focusedIndex: this.listFocusIndex,
       onOpen: (id) => this.openCase(id),

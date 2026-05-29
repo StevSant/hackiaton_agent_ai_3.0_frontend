@@ -68,17 +68,20 @@ import { SidebarNav } from './sidebar-nav';
 
     <ui-keyboard-shortcuts-help />
 
-    @if (!fullBleed()) {
-      <button
-        type="button"
-        class="centinela-kbd-hint"
-        (click)="shortcuts.openHelp()"
-        aria-label="Ver atajos de teclado"
-      >
-        <kbd class="centinela-kbd-key centinela-kbd-key--inline">?</kbd>
-        <span class="hidden sm:inline">Atajos</span>
-      </button>
-    }
+    <button
+      type="button"
+      class="centinela-kbd-hint"
+      [class.centinela-kbd-hint--fullbleed]="fullBleed()"
+      (click)="shortcuts.openHelp()"
+      aria-label="Ver atajos de teclado"
+      title="Atajos de teclado — pulsa ?"
+    >
+      <span class="centinela-kbd-hint__icon" aria-hidden="true">
+        <ui-icon name="keyboard" [size]="17" />
+      </span>
+      <span class="centinela-kbd-hint__label">Atajos</span>
+      <kbd class="centinela-kbd-hint__badge">?</kbd>
+    </button>
   `,
 })
 export class AppShell {

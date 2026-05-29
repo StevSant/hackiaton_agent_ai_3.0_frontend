@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 
 export interface ShortcutHelpEntry {
   keys: string;
@@ -6,49 +6,26 @@ export interface ShortcutHelpEntry {
   group?: string;
 }
 
-export interface ShortcutScope {
-  id: string;
-  title: string;
-  entries: ShortcutHelpEntry[];
-}
-
-const GLOBAL_ENTRIES: ShortcutHelpEntry[] = [
+/** Catálogo fijo — la ayuda no cambia según la pantalla activa. */
+const APP_SHORTCUT_CATALOG: readonly ShortcutHelpEntry[] = [
   { keys: '?', label: 'Mostrar u ocultar esta ayuda', group: 'General' },
+  { keys: '1', label: 'Subir en el menú lateral', group: 'Menú' },
+  { keys: '2', label: 'Bajar en el menú lateral', group: 'Menú' },
+  { keys: '/', label: 'Enfocar búsqueda', group: 'Lista' },
+  { keys: 'J  ·  ↑', label: 'Subir en la lista', group: 'Lista' },
+  { keys: 'K  ·  ↓', label: 'Bajar en la lista', group: 'Lista' },
+  { keys: 'Enter', label: 'Abrir registro seleccionado', group: 'Lista' },
+  { keys: '←  ·  [', label: 'Registro anterior', group: 'Detalle' },
+  { keys: '→  ·  ]', label: 'Registro siguiente', group: 'Detalle' },
+  { keys: 'B  ·  Esc', label: 'Volver atrás', group: 'Detalle' },
+  { keys: 'A', label: 'Preguntar a la IA', group: 'Detalle' },
 ];
 
 @Injectable({ providedIn: 'root' })
 export class KeyboardShortcutsService {
-  private readonly scopeStack = signal<readonly ShortcutScope[]>([]);
-
   readonly helpOpen = signal(false);
 
-  readonly helpTitle = computed(() => {
-    const stack = this.scopeStack();
-    let pageScope: ShortcutScope | undefined;
-    for (let index = stack.length - 1; index >= 0; index -= 1) {
-      if (stack[index].title !== 'Centinela IA') {
-        pageScope = stack[index];
-        break;
-      }
-    }
-    return pageScope?.title ?? stack[stack.length - 1]?.title ?? 'Centinela IA';
-  });
-
-  readonly helpEntries = computed(() => {
-    const stack = this.scopeStack();
-    const pageEntries = stack.flatMap((scope) => scope.entries);
-    const seen = new Set<string>();
-    const merged: ShortcutHelpEntry[] = [];
-
-    for (const entry of [...GLOBAL_ENTRIES, ...pageEntries]) {
-      const key = `${entry.group ?? ''}|${entry.keys}|${entry.label}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      merged.push(entry);
-    }
-
-    return merged;
-  });
+  readonly helpEntries = computed(() => [...APP_SHORTCUT_CATALOG]);
 
   readonly helpGroups = computed(() => {
     const groups = new Map<string, ShortcutHelpEntry[]>();
@@ -60,21 +37,6 @@ export class KeyboardShortcutsService {
     }
     return [...groups.entries()];
   });
-
-  registerScope(scope: Omit<ShortcutScope, 'id'>, destroyRef: DestroyRef): void {
-    const entry: ShortcutScope = {
-      ...scope,
-      id:
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `scope_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-    };
-
-    this.scopeStack.update((stack) => [...stack, entry]);
-    destroyRef.onDestroy(() => {
-      this.scopeStack.update((stack) => stack.filter((item) => item.id !== entry.id));
-    });
-  }
 
   toggleHelp(): void {
     this.helpOpen.update((open) => !open);
