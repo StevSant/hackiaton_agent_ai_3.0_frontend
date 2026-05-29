@@ -118,7 +118,18 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
             </div>
           }
           @if (!documentPayload() && tablePayload(); as rows) {
-            <agent-table [rows]="rows" (openCase)="openCase.emit($event)" />
+            @if (tableAccepted()) {
+              <agent-table [rows]="rows" (openCase)="openCase.emit($event)" />
+            }
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-ink bg-brand-soft border border-line rounded-lg px-2.5 py-1.5 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              [attr.aria-pressed]="tableAccepted()"
+              (click)="toggleTable.emit(message().id)"
+            >
+              <ui-icon [name]="tableAccepted() ? 'visibility_off' : 'table_chart'" [size]="15" />
+              {{ tableAccepted() ? 'Ocultar tabla' : 'Ver tabla' }}
+            </button>
           }
         </div>
       }
@@ -156,6 +167,7 @@ export class ChatMessage {
   readonly openCase = output<string>();
   readonly ttsToggle = output<string>();
   readonly toggleChart = output<string>();
+  readonly toggleTable = output<string>();
   /** Opens the artifact side panel — payload is { titulo, contenidoMarkdown }. */
   readonly openCanvas = output<{ titulo: string; contenidoMarkdown: string }>();
   /** CHANGE 2 — bubbles the rendered chart's PNG data URL up to the page → store. */
@@ -171,6 +183,8 @@ export class ChatMessage {
   protected readonly chartAccepted = computed(() => this.message().chartAccepted === true);
   protected readonly chartPending = computed(() => this.message().chartPending === true);
   protected readonly tablePayload = computed(() => this.message().tablePayload ?? null);
+  // Tables are shown by default; only an explicit toggle to false hides them.
+  protected readonly tableAccepted = computed(() => this.message().tableAccepted !== false);
   protected readonly documentPayload = computed(() => this.message().documentPayload ?? null);
 
   protected readonly listenIcon = computed(() => {
