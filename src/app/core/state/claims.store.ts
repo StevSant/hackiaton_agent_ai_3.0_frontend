@@ -223,6 +223,22 @@ export class ClaimsStore {
    * returns. Marks the id as detail-loaded so the explainability accordions
    * render the recomputed data immediately (no second round-trip needed).
    */
+  /**
+   * Run (or fetch cached) NLP analysis of the claim narrative — entity
+   * extraction, coherence (FS-09), and a short summary. The backend caches the
+   * result, so a second call is a cheap no-op. Best-effort: failures are
+   * swallowed so the detail page still renders without the NLP card.
+   */
+  async analyzeNarrative(id: string): Promise<void> {
+    try {
+      const dto = await firstValueFrom(this.api.analyzeNarrative(id));
+      this.upsert(dtoToClaim(dto));
+      this._detailLoadedIds.update((s) => (s.has(id) ? s : new Set([...s, id])));
+    } catch {
+      // NLP is an enrichment — never block the detail view on its failure.
+    }
+  }
+
   async rescore(id: string): Promise<void> {
     const dto = await firstValueFrom(this.api.rescore(id));
     this.upsert(dtoToClaim(dto));
@@ -360,6 +376,7 @@ function dtoToClaim(dto: ClaimDto): Claim {
     anomaly_score: dto.anomaly_score ?? null,
     nearest_normal_claim_id: dto.nearest_normal_claim_id ?? null,
     similar: dto.similar ?? [],
+    narrative_analysis: dto.narrative_analysis ?? null,
   };
 }
 

@@ -14,6 +14,8 @@ export type {
   ReviewStatus,
   DictamenOutcome,
   FactorContribution,
+  NarrativeAnalysis,
+  ExtractedEntities,
   SimilarClaim,
   AlertCatalogEntry,
 } from '@shared/models';

@@ -97,6 +97,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/document/improve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agent Document Improve
+         * @description Improve an existing agent-generated document via LLM.
+         *
+         *     Accepts the current titulo + contenido_markdown and optional analyst instrucciones.
+         *     Returns the improved {titulo, contenido_markdown} without going through the chat
+         *     agent loop — avoids hitting the /ask query length cap.
+         */
+        post: operations["agent_document_improve_api_v1_agent_document_improve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/document/docx": {
         parameters: {
             query?: never;
@@ -443,6 +467,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/claims/{claim_id}/narrative-analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Claim Narrative Route
+         * @description Run (or return cached) NLP analysis of the claim narrative.
+         *
+         *     Extracts entities, judges narrative coherence (the genuine source for FS-09),
+         *     and writes a short summary. Cached in ``claim_scores`` — a second call returns
+         *     the cached result without hitting the LLM. When the feature is disabled the
+         *     claim is returned unchanged.
+         */
+        post: operations["analyze_claim_narrative_route_api_v1_claims__claim_id__narrative_analysis_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/claims/{claim_id}/resumen": {
         parameters: {
             query?: never;
@@ -600,6 +649,23 @@ export interface paths {
         put?: never;
         /** Create Provider Route */
         post: operations["create_provider_route_api_v1_network_providers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/network/relations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Network Relations Route */
+        get: operations["network_relations_route_api_v1_network_relations_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -777,6 +843,7 @@ export interface components {
             context_provider_id?: string | null;
             /** Context Asegurado Id */
             context_asegurado_id?: string | null;
+            document_context?: components["schemas"]["DocumentContext"] | null;
             /**
              * History
              * @default []
@@ -1101,6 +1168,7 @@ export interface components {
             anomaly_score?: number | null;
             /** Nearest Normal Claim Id */
             nearest_normal_claim_id?: string | null;
+            narrative_analysis?: components["schemas"]["NarrativeAnalysis"] | null;
             /**
              * Posible Falso Positivo
              * @default false
@@ -1360,12 +1428,28 @@ export interface components {
              */
             justificacion: string;
         };
+        /**
+         * DocumentContext
+         * @description A document the analyst is editing in the canvas, attached to a chat turn.
+         *
+         *     Rides in its own field (NOT in `query`/`message`) so the full markdown can be
+         *     large without hitting the 4000-char chat cap. When present, the agent improves
+         *     THIS document via `crear_documento` instead of inventing one from scratch.
+         */
+        DocumentContext: {
+            /** Titulo */
+            titulo: string;
+            /** Contenido Markdown */
+            contenido_markdown: string;
+        };
         /** DocxRequest */
         DocxRequest: {
             /** Titulo */
             titulo: string;
             /** Contenido Markdown */
             contenido_markdown: string;
+            /** Chart Image Base64 */
+            chart_image_base64?: string | null;
         };
         /** EscalateRequest */
         EscalateRequest: {
@@ -1374,6 +1458,24 @@ export interface components {
              * @description Nota opcional para el equipo antifraude
              */
             note?: string | null;
+        };
+        /**
+         * ExtractedEntities
+         * @description Structured entities lifted from the narrative (empty lists when none).
+         */
+        ExtractedEntities: {
+            /** Personas */
+            personas?: string[];
+            /** Lugares */
+            lugares?: string[];
+            /** Fechas */
+            fechas?: string[];
+            /** Vehiculos */
+            vehiculos?: string[];
+            /** Terceros */
+            terceros?: string[];
+            /** Montos */
+            montos?: string[];
         };
         /**
          * FactorContribution
@@ -1440,6 +1542,28 @@ export interface components {
             errors: string[];
             /** Claim Ids */
             claim_ids?: string[];
+        };
+        /** ImproveDocumentRequest */
+        ImproveDocumentRequest: {
+            /** Titulo */
+            titulo: string;
+            /** Contenido Markdown */
+            contenido_markdown: string;
+            /** Instrucciones */
+            instrucciones?: string | null;
+        };
+        /** ImprovedDocument */
+        ImprovedDocument: {
+            /**
+             * Titulo
+             * @description Título del documento mejorado
+             */
+            titulo: string;
+            /**
+             * Contenido Markdown
+             * @description Contenido mejorado en Markdown
+             */
+            contenido_markdown: string;
         };
         /**
          * InboxRow
@@ -1558,6 +1682,93 @@ export interface components {
             transparency_metadata?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * NarrativeAnalysis
+         * @description Full NLP read of the claim narrative: entities + coherence + summary.
+         */
+        NarrativeAnalysis: {
+            entidades?: components["schemas"]["ExtractedEntities"];
+            /**
+             * Narrativa Ilogica
+             * @default false
+             */
+            narrativa_ilogica: boolean;
+            /** Incoherencias */
+            incoherencias?: string[];
+            /**
+             * Resumen Narrativa
+             * @default
+             */
+            resumen_narrativa: string;
+        };
+        /**
+         * NetworkEdge
+         * @description A provider↔insured link built from the claims they share.
+         *
+         *     A repeated pair (high `casos_compartidos`) is the core collusion signal —
+         *     the same provider servicing the same insured across many claims.
+         */
+        NetworkEdge: {
+            /** Proveedor Id */
+            proveedor_id: string;
+            /** Asegurado Id */
+            asegurado_id: string;
+            /** Casos Compartidos */
+            casos_compartidos: number;
+            /** Alertas */
+            alertas: number;
+            /** Monto */
+            monto: number;
+        };
+        /**
+         * NetworkNode
+         * @description A node in the relationship graph — a provider or an insured.
+         */
+        NetworkNode: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "proveedor" | "asegurado";
+            /** Ciudad */
+            ciudad: string;
+            /** Casos */
+            casos: number;
+            /** Alertas */
+            alertas: number;
+            /** Monto */
+            monto: number;
+            /**
+             * Lista Restrictiva
+             * @default false
+             */
+            lista_restrictiva: boolean;
+            /**
+             * Ramos
+             * @default []
+             */
+            ramos: string[];
+        };
+        /**
+         * NetworkRelations
+         * @description Bipartite relationship graph: provider + insured nodes joined by claims.
+         */
+        NetworkRelations: {
+            /**
+             * Nodes
+             * @default []
+             */
+            nodes: components["schemas"]["NetworkNode"][];
+            /**
+             * Edges
+             * @default []
+             */
+            edges: components["schemas"]["NetworkEdge"][];
         };
         /** Page[ClaimSummary] */
         Page_ClaimSummary_: {
@@ -1977,6 +2188,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    agent_document_improve_api_v1_agent_document_improve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImproveDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImprovedDocument"];
                 };
             };
             /** @description Validation Error */
@@ -2661,6 +2905,39 @@ export interface operations {
             };
         };
     };
+    analyze_claim_narrative_route_api_v1_claims__claim_id__narrative_analysis_post: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     patch_claim_resumen_route_api_v1_claims__claim_id__resumen_patch: {
         parameters: {
             query?: never;
@@ -2943,6 +3220,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    network_relations_route_api_v1_network_relations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkRelations"];
                 };
             };
         };

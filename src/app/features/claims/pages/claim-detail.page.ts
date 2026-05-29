@@ -18,6 +18,7 @@ import { DictamenFormModal } from '../components/dictamen-form-modal';
 import { DocumentsCard } from '../components/documents-card';
 import { EscalationStickyBanner } from '../components/escalation-sticky-banner';
 import { MlFactorsCard } from '../components/ml-factors-card';
+import { NarrativeAnalysisCard } from '../components/narrative-analysis-card';
 import { ProviderSummaryCard } from '../components/provider-summary-card';
 import { RecommendationCard } from '../components/recommendation-card';
 import { RevisadoCard } from '../components/revisado-card';
@@ -49,6 +50,7 @@ import { ProvidersStore } from '@core/state/providers.store';
     DocumentsCard,
     EscalationStickyBanner,
     MlFactorsCard,
+    NarrativeAnalysisCard,
     ProviderSummaryCard,
     RecommendationCard,
     RevisadoCard,
@@ -150,6 +152,7 @@ import { ProvidersStore } from '@core/state/providers.store';
             <claim-alerts-list [alerts]="c.alertas" />
             <claim-ml-factors-card [claim]="c" />
             <claim-anomaly-indicator-card [claim]="c" />
+            <claim-narrative-analysis-card [claim]="c" />
             <claim-similar-narratives-card [claim]="c" />
             <claim-timeline-card [events]="c.timeline" />
             <claim-documents-card
@@ -236,12 +239,20 @@ export class ClaimDetailPage {
   constructor() {
     // Load the full detail (alertas, documentos, factores ML, similar) whenever
     // the route id changes. The summary cached in the list only carries enough
-    // to render the table row.
+    // to render the table row. After it lands, trigger the NLP narrative
+    // analysis once if the backend hasn't cached it yet.
     effect(() => {
       const id = this.id();
       if (!id) return;
-      void this.claims.loadDetail(id);
+      void this.loadAndAnalyze(id);
     });
+  }
+
+  private async loadAndAnalyze(id: string): Promise<void> {
+    const claim = await this.claims.loadDetail(id);
+    if (claim && !claim.narrative_analysis) {
+      void this.claims.analyzeNarrative(id);
+    }
   }
 
   protected readonly provider = computed(() => {

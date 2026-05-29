@@ -5,6 +5,7 @@ import type { ClaimReview } from './claim-review.model';
 import type { ClaimTimelineEvent } from './claim-timeline-event.model';
 import type { ClaimVehicle } from './claim-vehicle.model';
 import type { FactorContribution } from './factor-contribution.model';
+import type { NarrativeAnalysis } from './narrative-analysis.model';
 import type { SimilarClaim } from './similar-claim.model';
 
 export interface Claim {
@@ -39,4 +40,7 @@ export interface Claim {
   anomaly_score?: number | null;
   nearest_normal_claim_id?: string | null;
   similar?: SimilarClaim[];
+  // NLP read of the narrative (entities + coherence + summary). Null until the
+  // analyzer has run for this claim; the detail page triggers it on first open.
+  narrative_analysis?: NarrativeAnalysis | null;
 }
