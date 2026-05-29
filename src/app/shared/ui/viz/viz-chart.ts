@@ -14,6 +14,7 @@ import {
 import type { ECharts, EChartsOption } from 'echarts';
 
 import { Icon } from '@shared/ui/icon';
+import { claimHref, handleEntityLinkClick, isClaimRef } from '@shared/utils';
 import { loadECharts } from './echarts-loader';
 import type { ChartVisual, VizChartType } from './visual.model';
 import {
@@ -46,8 +47,6 @@ const TYPE_LABEL: Record<VizChartType, string> = {
   dotplot: 'Distribución',
 };
 
-const CLAIM_ID_RE = /^(SIN|IMP|CL)-/i;
-
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -57,14 +56,29 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function isClaimId(label: string): boolean {
-  return CLAIM_ID_RE.test(label);
+/**
+ * Best entity reference for a data point: a claim id found in the point's
+ * meta (timeline charts label points by DATE, the claim id lives in meta),
+ * then the aligned citation, then the raw label (provider/asegurado names
+ * are resolved by the page).
+ */
+function resolveCaseRef(payload: ChartVisual['data'], idx: number): string {
+  if (idx < 0) return '';
+  const meta = payload.meta?.[idx];
+  if (meta) {
+    const fromMeta = Object.values(meta).find((v) => isClaimRef(v));
+    if (fromMeta) return fromMeta;
+  }
+  const cite = payload.citations?.[idx];
+  if (cite && isClaimRef(cite)) return cite;
+  return payload.labels[idx] ?? '';
 }
 
 function buildTooltipHtml(
   label: string,
   meta: Record<string, string> | undefined,
   seriesRows: { name: string; value: string; color: string }[],
+  caseRef = label,
 ): string {
   const header = `<div style="font-weight:600;font-size:12.5px;color:#e2e8f0;margin-bottom:6px">${escapeHtml(
     label,
@@ -98,8 +112,8 @@ function buildTooltipHtml(
       `</div>`
     : '';
 
-  const hint = isClaimId(label)
-    ? `<div style="margin-top:8px;font-size:10.5px;color:#a5b4fc">Clic para abrir el caso</div>`
+  const hint = isClaimRef(caseRef)
+    ? `<div style="margin-top:8px;font-size:10.5px;color:#a5b4fc">Clic para abrir el caso · Ctrl+clic en nueva pestaña</div>`
     : '';
 
   return `<div style="min-width:200px;max-width:320px">${header}${seriesHtml}${metaHtml}${hint}</div>`;
@@ -147,13 +161,16 @@ function buildOption(payload: ChartVisual['data'], type: VizChartType): EChartsO
         borderWidth: 1,
         textStyle: { color: '#e2e8f0' },
         formatter: (p: unknown) => {
-          const pt = p as { value: [number, number]; color: string };
-          const idx = pt.value?.[0] ?? -1;
+          const pt = p as { value: [number, number, number]; color: string; dataIndex: number };
+          const idx = pt.dataIndex ?? -1;
           const label = idx >= 0 ? payload.labels[idx] : '';
           const meta = idx >= 0 ? payload.meta?.[idx] : undefined;
-          return buildTooltipHtml(label, meta, [
-            { name: first?.name ?? '', value: String(pt.value?.[1] ?? ''), color: pt.color },
-          ]);
+          return buildTooltipHtml(
+            label,
+            meta,
+            [{ name: first?.name ?? '', value: String(pt.value?.[0] ?? ''), color: pt.color }],
+            resolveCaseRef(payload, idx),
+          );
         },
       },
       grid: { left: 8, right: 16, top: 12, bottom: 24, containLabel: true },
@@ -201,12 +218,21 @@ function buildOption(payload: ChartVisual['data'], type: VizChartType): EChartsO
         textStyle: { color: '#e2e8f0' },
         extraCssText: 'box-shadow: 0 10px 24px rgba(15,23,42,0.45); border-radius: 10px;',
         formatter: (params: unknown) => {
-          const p = params as { name: string; value: number; color: string; seriesName: string };
-          const idx = payload.labels.indexOf(p.name);
+          const p = params as {
+            name: string;
+            value: number;
+            color: string;
+            seriesName: string;
+            dataIndex: number;
+          };
+          const idx = p.dataIndex ?? payload.labels.indexOf(p.name);
           const meta = idx >= 0 ? payload.meta?.[idx] : undefined;
-          return buildTooltipHtml(p.name, meta, [
-            { name: p.seriesName, value: String(p.value), color: p.color },
-          ]);
+          return buildTooltipHtml(
+            p.name,
+            meta,
+            [{ name: p.seriesName, value: String(p.value), color: p.color }],
+            resolveCaseRef(payload, idx),
+          );
         },
       },
       legend: { type: 'scroll', bottom: 0, textStyle: { color: AXIS_TEXT } },
@@ -289,26 +315,32 @@ function buildOption(payload: ChartVisual['data'], type: VizChartType): EChartsO
             seriesName: string;
             value: [number, number];
             color: string;
+            dataIndex: number;
           };
-          const idx = p.value?.[0] ?? -1;
+          const idx = p.dataIndex ?? p.value?.[0] ?? -1;
           const label = idx >= 0 ? payload.labels[idx] : '';
           const meta = idx >= 0 ? payload.meta?.[idx] : undefined;
-          return buildTooltipHtml(label, meta, [
-            { name: p.seriesName, value: String(p.value?.[1] ?? ''), color: p.color },
-          ]);
+          return buildTooltipHtml(
+            label,
+            meta,
+            [{ name: p.seriesName, value: String(p.value?.[1] ?? ''), color: p.color }],
+            resolveCaseRef(payload, idx),
+          );
         }
         const arr = Array.isArray(params) ? params : [params];
         if (arr.length === 0) return '';
-        const first = arr[0] as { axisValue?: string; name?: string };
+        const first = arr[0] as { axisValue?: string; name?: string; dataIndex?: number };
         const label = String(first.axisValue ?? first.name ?? '');
-        const idx = payload.labels.indexOf(label);
+        // dataIndex over labels.indexOf — timeline labels (dates) can repeat,
+        // and indexOf would pin every duplicate to the first point's meta.
+        const idx = typeof first.dataIndex === 'number' ? first.dataIndex : payload.labels.indexOf(label);
         const meta = idx >= 0 ? payload.meta?.[idx] : undefined;
         const rows = (arr as { seriesName: string; value: number; color: string }[]).map((p) => ({
           name: p.seriesName,
           value: String(p.value),
           color: p.color,
         }));
-        return buildTooltipHtml(label, meta, rows);
+        return buildTooltipHtml(label, meta, rows, resolveCaseRef(payload, idx));
       },
     },
     legend,
@@ -351,13 +383,13 @@ function buildOption(payload: ChartVisual['data'], type: VizChartType): EChartsO
       @if (citations().length > 0) {
         <div class="flex flex-wrap gap-1 mt-2">
           @for (c of citations(); track c) {
-            <button
-              type="button"
-              class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-brand-soft text-brand-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              (click)="openCase.emit(c)"
+            <a
+              [href]="hrefFor(c)"
+              class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-brand-soft text-brand-ink no-underline hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              (click)="onCitationClick($event, c)"
             >
               {{ c }}
-            </button>
+            </a>
           }
         </div>
       }
@@ -387,15 +419,19 @@ export class VizChart implements OnDestroy {
       this.chart.on('finished', () => this.emitChartImage());
       this.chart.on('click', (params) => {
         if (params.componentType !== 'series') return;
-        let label = String(params.name ?? '');
-        if (!label && Array.isArray(params.value)) {
-          const idx = params.value[0];
-          if (typeof idx === 'number') label = this.payload().labels[idx] ?? '';
+        const payload = this.payload();
+        let idx = typeof params.dataIndex === 'number' ? params.dataIndex : -1;
+        if (idx < 0 && params.name) idx = payload.labels.indexOf(String(params.name));
+        // Timeline points are labeled by date — resolveCaseRef digs the claim
+        // id out of the point's meta/citations so the click actually routes.
+        const ref = resolveCaseRef(payload, idx) || String(params.name ?? '');
+        if (!ref) return;
+        const raw = (params.event?.event ?? null) as MouseEvent | null;
+        if (raw && (raw.ctrlKey || raw.metaKey) && isClaimRef(ref)) {
+          window.open(claimHref(ref), '_blank', 'noopener');
+          return;
         }
-        if (!label && typeof params.dataIndex === 'number') {
-          label = this.payload().labels[params.dataIndex] ?? '';
-        }
-        if (label) this.openCase.emit(label);
+        this.openCase.emit(ref);
       });
       this.observer = new ResizeObserver(() => {
         requestAnimationFrame(() => this.chart?.resize());
@@ -422,6 +458,14 @@ export class VizChart implements OnDestroy {
     if (this.setOptionRaf !== null) cancelAnimationFrame(this.setOptionRaf);
     this.observer?.disconnect();
     this.chart?.dispose();
+  }
+
+  protected hrefFor(citation: string): string {
+    return isClaimRef(citation) ? claimHref(citation) : '#';
+  }
+
+  protected onCitationClick(event: MouseEvent, citation: string): void {
+    handleEntityLinkClick(event, () => this.openCase.emit(citation));
   }
 
   protected icon(type: VizChartType): string {

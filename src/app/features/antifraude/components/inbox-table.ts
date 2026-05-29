@@ -4,7 +4,14 @@ import type { InboxRowDto } from '@core/api/clients/claim.dto';
 import { Icon } from '@shared/ui/icon';
 import { RiskRing } from '@shared/ui/risk-ring';
 import { SortableHeader } from '@shared/ui/sortable-header';
-import { formatDateTime, ramoIcon, ramoLabel, TableSortController } from '@shared/utils';
+import {
+  TableSortController,
+  claimHref,
+  formatDateTime,
+  handleEntityLinkClick,
+  ramoIcon,
+  ramoLabel,
+} from '@shared/utils';
 
 interface InboxRowVm {
   row: InboxRowDto;
@@ -48,7 +55,11 @@ interface InboxRowVm {
                 <div class="flex items-center gap-2">
                   <ui-icon [name]="ramoIcon(vm.row.ramo)" [cacheKey]="vm.row.claim_id" [size]="16" />
                   <div>
-                    <div class="font-mono text-[12px] text-ink-2">{{ vm.row.claim_id }}</div>
+                    <a
+                      [href]="claimHref(vm.row.claim_id)"
+                      class="font-mono text-[12px] text-ink-2 no-underline hover:underline hover:text-brand"
+                      (click)="onIdClick($event, vm.row.claim_id)"
+                    >{{ vm.row.claim_id }}</a>
                     <div class="text-[11.5px] text-ink-3">{{ ramoLabel(vm.row.ramo) }} · {{ vm.row.asegurado }}</div>
                   </div>
                 </div>
@@ -88,6 +99,11 @@ export class InboxTable {
 
   protected readonly ramoIcon = ramoIcon;
   protected readonly ramoLabel = ramoLabel;
+  protected readonly claimHref = claimHref;
+
+  protected onIdClick(event: MouseEvent, id: string): void {
+    handleEntityLinkClick(event, () => this.open.emit(id));
+  }
 
   // Ordering is owned by the page (default tier→FIFO + user override), so this
   // only maps each row to its view model — it renders in the order it receives.

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
@@ -47,42 +47,14 @@ import { SidebarNav } from './sidebar-nav';
         <app-sidebar-nav />
       </div>
 
-      @if (fullBleed()) {
-        <main tabindex="-1" class="centinela-main centinela-main--full-bleed min-h-0 h-full overflow-hidden outline-none">
+      <main tabindex="-1" [class]="mainClasses()" class="centinela-main min-h-0 outline-none">
+        <div [class]="contentWrapperClasses()">
           <router-outlet />
-        </main>
-      } @else if (viewportFit()) {
-        <main tabindex="-1" class="centinela-main centinela-main--viewport min-h-0 h-full overflow-hidden outline-none">
-          <div class="centinela-viewport-shell">
-            <router-outlet />
-          </div>
-        </main>
-      } @else {
-        <main tabindex="-1" class="flex-1 md:flex-initial min-h-0 overflow-y-auto scroll-pretty centinela-main outline-none">
-          <div class="max-w-page mx-auto px-4 md:px-8 pt-14 md:pt-8 pb-24 min-w-0">
-            <router-outlet />
-          </div>
-        </main>
-      }
+        </div>
+      </main>
     </div>
 
     <ui-keyboard-shortcuts-help />
-
-    @if (!fullBleed()) {
-      <button
-        type="button"
-        class="centinela-kbd-dock"
-        (click)="shortcuts.openHelp()"
-        aria-label="Ver atajos de teclado"
-        title="Atajos de teclado — pulsa ?"
-      >
-        <span class="centinela-kbd-dock__icon" aria-hidden="true">
-          <ui-icon name="keyboard" [size]="16" />
-        </span>
-        <span class="centinela-kbd-dock__label">Atajos</span>
-        <kbd class="centinela-kbd-dock__badge">?</kbd>
-      </button>
-    }
   `,
 })
 export class AppShell {
@@ -110,6 +82,18 @@ export class AppShell {
     ),
     { initialValue: false },
   );
+
+  protected readonly mainClasses = computed(() => {
+    if (this.fullBleed()) return 'centinela-main--full-bleed h-full overflow-hidden';
+    if (this.viewportFit()) return 'centinela-main--viewport h-full overflow-hidden';
+    return 'flex-1 md:flex-initial overflow-y-auto scroll-pretty';
+  });
+
+  protected readonly contentWrapperClasses = computed(() => {
+    if (this.fullBleed()) return 'contents';
+    if (this.viewportFit()) return 'centinela-viewport-shell';
+    return 'max-w-page mx-auto px-4 md:px-8 pt-14 md:pt-8 pb-24 min-w-0';
+  });
 
   constructor() {
     bindShortcutHandlers(

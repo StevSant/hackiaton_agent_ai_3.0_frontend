@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
@@ -342,7 +342,9 @@ export class ClaimDetailPage {
         if (!claim.panel_analysis) void this.claims.analyzePanel(id);
       });
 
-      const orderedIds = this.claimNavigation.getOrderedIds(this.fallbackNavIds());
+      const orderedIds = untracked(() =>
+        this.claimNavigation.getOrderedIds(this.fallbackNavIds()),
+      );
       this.claims.prefetchNeighborDetails(orderedIds, id, 2);
     });
 

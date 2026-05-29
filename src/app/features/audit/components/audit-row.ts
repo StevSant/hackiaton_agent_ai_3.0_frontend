@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 import { Icon } from '@shared/ui/icon';
+import { claimHref, handleEntityLinkClick, isClaimRef } from '@shared/utils';
 import type { AuditAction, AuditActor, AuditEvent } from '../models';
 
 @Component({
@@ -24,9 +25,13 @@ import type { AuditAction, AuditActor, AuditEvent } from '../models';
           }
           <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] bg-soft text-ink-3 border border-line">{{ actorLabel() }}</span>
           @if (event().target) {
-            <button class="font-mono text-[11.5px] px-1.5 py-px rounded bg-brand-soft text-brand-ink hover:opacity-80 cursor-pointer" (click)="openTarget.emit(event().target!)">
+            <a
+              [href]="targetHref(event().target!)"
+              class="font-mono text-[11.5px] px-1.5 py-px rounded bg-brand-soft text-brand-ink no-underline hover:opacity-80 cursor-pointer"
+              (click)="onTargetClick($event, event().target!)"
+            >
               {{ event().target }}
-            </button>
+            </a>
           }
         </div>
         <div class="text-[12.5px] text-ink-3 mt-1">{{ event().detail }}</div>
@@ -42,6 +47,16 @@ import type { AuditAction, AuditActor, AuditEvent } from '../models';
 export class AuditRow {
   readonly event = input.required<AuditEvent>();
   readonly openTarget = output<string>();
+
+  protected targetHref(target: string): string {
+    if (isClaimRef(target)) return claimHref(target);
+    if (target.startsWith('PRV-')) return '/network';
+    return '#';
+  }
+
+  protected onTargetClick(event: MouseEvent, target: string): void {
+    handleEntityLinkClick(event, () => this.openTarget.emit(target));
+  }
 
   private readonly actorMeta: Record<AuditActor, { icon: string; bg: string; fg: string; label: string }> = {
     analista: { icon: 'person', bg: 'oklch(0.95 0.04 30)', fg: 'oklch(0.45 0.18 30)', label: 'Analista' },

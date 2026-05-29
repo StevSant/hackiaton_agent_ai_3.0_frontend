@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { NgClass, TitleCasePipe } from '@angular/common';
 
+import { claimHref, handleEntityLinkClick } from '@shared/utils';
 import type { TableRow } from '../models';
 
 /** Preferred column order when rendering claim-shaped rows. */
@@ -167,6 +168,12 @@ function rowClaimId(row: TableRow, cols: string[]): string | null {
                       >
                         {{ tierVal | titlecase }}
                       </span>
+                    } @else if (isClaimCell(row[col]); as claimId) {
+                      <a
+                        [href]="claimHref(claimId)"
+                        class="text-brand-ink no-underline hover:underline"
+                        (click)="onClaimLinkClick($event, claimId)"
+                      >{{ claimId }}</a>
                     } @else {
                       {{ formatCell(row[col]) }}
                     }
@@ -205,6 +212,16 @@ export class AgentTable {
 
   protected asString(value: string | number | boolean | null): string {
     return typeof value === 'string' ? value : '';
+  }
+
+  protected readonly claimHref = claimHref;
+
+  protected isClaimCell(value: string | number | boolean | null): string | null {
+    return typeof value === 'string' && isClaimId(value) ? value : null;
+  }
+
+  protected onClaimLinkClick(event: MouseEvent, claimId: string): void {
+    handleEntityLinkClick(event, () => this.openCase.emit(claimId));
   }
 
   protected onRowClick(row: TableRow): void {
