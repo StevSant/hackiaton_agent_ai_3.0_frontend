@@ -424,9 +424,12 @@ function generateUuid(): string {
         aria-label="Panel de documento"
       >
         <document-canvas-panel
+          #canvasPanel
           class="flex-1 min-h-0 flex flex-col"
-          [doc]="{ titulo: activeDoc.titulo, contenido_markdown: activeDoc.contenidoMarkdown }"
+          [doc]="activeDoc"
           (close)="store.closeDocument()"
+          (apply)="onCanvasApply(activeDoc.id, $event)"
+          (improve)="onCanvasImprove(activeDoc.id, $event.instrucciones, canvasPanel)"
         />
       </aside>
     }
@@ -715,12 +718,30 @@ export class ChatPage implements AfterViewChecked {
     void this.store.ask(text, convId);
   }
 
-  /** Handle (openCanvas) from a chat message — open (or update) the artifact side panel. */
+  /** Handle (openCanvas) from a chat message — open (or focus) the artifact side panel. */
   protected onOpenCanvas(doc: { titulo: string; contenidoMarkdown: string }): void {
     this.store.openDocument({
       titulo: doc.titulo,
       contenidoMarkdown: doc.contenidoMarkdown,
     });
+  }
+
+  /** WYSIWYG edit applied — persist the markdown produced by turndown. */
+  protected onCanvasApply(docId: string, markdown: string): void {
+    this.store.updateDocumentContent(docId, markdown);
+  }
+
+  /** "Mejorar con IA" — append a NEW attachment + chat reference card via the store. */
+  protected async onCanvasImprove(
+    docId: string,
+    instrucciones: string | null,
+    panel: DocumentCanvasPanel,
+  ): Promise<void> {
+    try {
+      await this.store.improveDocument(docId, instrucciones);
+    } catch {
+      panel.improveFailed();
+    }
   }
 
   protected scrollSuggestions(direction: 'prev' | 'next'): void {

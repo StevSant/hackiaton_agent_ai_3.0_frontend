@@ -12,6 +12,24 @@ export interface DocumentPayload {
   contenido_markdown: string;
 }
 
+/**
+ * A document attached to a conversation. Multiple can coexist in one chat — each
+ * generated/improved document becomes its own attachment, rendered as a
+ * `chat-document-card` in the thread and openable in the right-side canvas panel.
+ */
+export interface ConversationDocument {
+  id: string;
+  titulo: string;
+  contenidoMarkdown: string;
+  createdAt: number;
+  /** Source message id, when the document originated from an assistant turn. */
+  messageId?: string;
+  /** Set when this document is an AI-improved derivative of another attachment. */
+  parentId?: string;
+  /** Version index within a lineage (1 = original, 2 = first improvement, …). */
+  version?: number;
+}
+
 export interface AgentMessage {
   id: string;
   role: AgentRole;

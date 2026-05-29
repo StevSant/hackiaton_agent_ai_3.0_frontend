@@ -1,11 +1,19 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
+import { AgentApi } from '@core/api/clients/agent.api';
 import { ConversationsApi } from '@core/api/clients/conversations.api';
 import { environment } from '@core/config/env';
 import { AppError } from '@core/errors/app-error';
 import { SseClient } from '@core/realtime/sse.client';
-import type { AgentMessage, AgentStep, ChartPayload, DocumentPayload, TableRow } from '../models';
+import type {
+  AgentMessage,
+  AgentStep,
+  ChartPayload,
+  ConversationDocument,
+  DocumentPayload,
+  TableRow,
+} from '../models';
 import type { ChatContext } from '../models/chat-context';
 import { ConversationsStore } from './conversations.store';
 import { buildCaseWelcomeMessage } from '../utils/case-context-message';
@@ -226,7 +234,10 @@ function extractTableRows(result: unknown): TableRow[] | null {
   return null;
 }
 
-/** State for the artifact side panel (document canvas). */
+/**
+ * State for the artifact side panel (document canvas). A single panel is open at
+ * a time (`activeDocumentId`), but the conversation can hold MANY attachments.
+ */
 export interface ActiveDocument {
   titulo: string;
   contenidoMarkdown: string;
@@ -234,11 +245,15 @@ export interface ActiveDocument {
   messageId?: string;
 }
 
+let nextDocId = 0;
+const newDocId = (): string => `doc_${Date.now()}_${++nextDocId}`;
+
 @Injectable({ providedIn: 'root' })
 export class AgentStore {
   private readonly sse = inject(SseClient);
   private readonly conversationsApi = inject(ConversationsApi);
   private readonly conversationsStore = inject(ConversationsStore);
+  private readonly agentApi = inject(AgentApi);
 
   private readonly _messages = signal<AgentMessage[]>([
     {
@@ -252,21 +267,112 @@ export class AgentStore {
   private readonly _responding = signal<boolean>(false);
   private readonly _conversationId = signal<string | null>(null);
   private readonly _chatContext = signal<ChatContext>(null);
-  private readonly _activeDocument = signal<ActiveDocument | null>(null);
+  /** All document attachments in this conversation (multiple coexist). */
+  private readonly _documents = signal<ConversationDocument[]>([]);
+  /** Id of the document currently open in the right-side canvas panel, if any. */
+  private readonly _activeDocumentId = signal<string | null>(null);
 
   readonly messages = this._messages.asReadonly();
   readonly thinking = this._thinking.asReadonly();
   readonly isResponding = this._responding.asReadonly();
   readonly conversationId = this._conversationId.asReadonly();
   readonly chatContext = this._chatContext.asReadonly();
-  readonly activeDocument = this._activeDocument.asReadonly();
+  readonly documents = this._documents.asReadonly();
 
+  /** The document open in the panel, resolved from the active id. */
+  readonly activeDocument = computed<ConversationDocument | null>(() => {
+    const id = this._activeDocumentId();
+    if (!id) return null;
+    return this._documents().find((d) => d.id === id) ?? null;
+  });
+
+  /**
+   * Appends a new document attachment to the conversation and returns it.
+   * Each generated/improved document is a NEW attachment — never overwrites.
+   */
+  addDocument(
+    payload: DocumentPayload,
+    opts?: { messageId?: string; parentId?: string; version?: number },
+  ): ConversationDocument {
+    const doc: ConversationDocument = {
+      id: newDocId(),
+      titulo: payload.titulo,
+      contenidoMarkdown: payload.contenido_markdown,
+      createdAt: Date.now(),
+      messageId: opts?.messageId,
+      parentId: opts?.parentId,
+      version: opts?.version,
+    };
+    this._documents.update((docs) => [...docs, doc]);
+    return doc;
+  }
+
+  /**
+   * Opens a document by content. Reuses an existing attachment with the same
+   * title + content (so clicking a chat card re-focuses its doc); otherwise
+   * creates a transient attachment. Used by the per-message "Abrir en canvas".
+   */
   openDocument(doc: ActiveDocument): void {
-    this._activeDocument.set(doc);
+    const existing = this._documents().find(
+      (d) => d.titulo === doc.titulo && d.contenidoMarkdown === doc.contenidoMarkdown,
+    );
+    if (existing) {
+      this._activeDocumentId.set(existing.id);
+      return;
+    }
+    const created = this.addDocument(
+      { titulo: doc.titulo, contenido_markdown: doc.contenidoMarkdown },
+      { messageId: doc.messageId },
+    );
+    this._activeDocumentId.set(created.id);
   }
 
   closeDocument(): void {
-    this._activeDocument.set(null);
+    this._activeDocumentId.set(null);
+  }
+
+  /** Persists edited content (from the canvas WYSIWYG editor) back to the attachment. */
+  updateDocumentContent(id: string, contenidoMarkdown: string): void {
+    this._documents.update((docs) =>
+      docs.map((d) => (d.id === id ? { ...d, contenidoMarkdown } : d)),
+    );
+  }
+
+  /**
+   * CHANGE 3 — "Mejorar con IA" as a chat reference (attachment lineage).
+   * Calls the improve endpoint, then:
+   *  - appends a NEW document attachment marked as a derivative (parentId/version),
+   *  - posts a lightweight assistant message carrying it as a documentPayload so it
+   *    shows a `chat-document-card` in the thread (the original card stays above),
+   *  - opens the improved version in the canvas.
+   * Stays client-side: never calls `ask` (no new agent turn, no 500).
+   */
+  async improveDocument(id: string, instrucciones: string | null): Promise<void> {
+    const source = this._documents().find((d) => d.id === id);
+    if (!source) return;
+    const result = await firstValueFrom(
+      this.agentApi.improveDocument({
+        titulo: source.titulo,
+        contenido_markdown: source.contenidoMarkdown,
+        instrucciones,
+      }),
+    );
+    const messageId = newId();
+    const improved = this.addDocument(result, {
+      messageId,
+      parentId: source.id,
+      version: (source.version ?? 1) + 1,
+    });
+    this._messages.update((messages) => [
+      ...messages,
+      {
+        id: messageId,
+        role: 'assistant',
+        content: `📎 Documento actualizado: «${result.titulo}»`,
+        documentPayload: result,
+      },
+    ]);
+    this._activeDocumentId.set(improved.id);
   }
 
   /** Backward-compat wrapper — maps claim id to ChatContext union. */
@@ -292,6 +398,13 @@ export class AgentStore {
   resetToFresh(id: string): void {
     this._conversationId.set(id);
     this._messages.set([]);
+    this.clearDocuments();
+  }
+
+  /** Clears the canvas + all attachments — called when switching conversations. */
+  private clearDocuments(): void {
+    this._documents.set([]);
+    this._activeDocumentId.set(null);
   }
 
   startNewConversation(
@@ -300,6 +413,7 @@ export class AgentStore {
     asegurado?: Asegurado | null,
   ): void {
     this._conversationId.set(id);
+    this.clearDocuments();
 
     // Overloaded: when called with (id, claim) from legacy sites, entity is a Claim.
     // New callers pass tagged objects.
@@ -344,6 +458,9 @@ export class AgentStore {
         detail.context_provider_id ? { kind: 'provider',  id: detail.context_provider_id } :
         detail.context_asegurado_id? { kind: 'asegurado', id: detail.context_asegurado_id }: null;
       this._chatContext.set(restoredCtx);
+      // Loading a different conversation resets the canvas + attachments.
+      this._documents.set([]);
+      this._activeDocumentId.set(null);
       this._messages.set(
         detail.messages.map((m) => {
           // chart_payload and transparency_metadata only exist on persisted
@@ -375,6 +492,22 @@ export class AgentStore {
           };
         }),
       );
+      // Restore every document attachment found across the loaded messages so a
+      // conversation with N generated documents shows N cards, each openable.
+      const restoredDocs: ConversationDocument[] = [];
+      for (const msg of this._messages()) {
+        const payload = msg.documentPayload;
+        if (payload) {
+          restoredDocs.push({
+            id: newDocId(),
+            titulo: payload.titulo,
+            contenidoMarkdown: payload.contenido_markdown,
+            createdAt: Date.now(),
+            messageId: msg.id,
+          });
+        }
+      }
+      this._documents.set(restoredDocs);
       if (this._messages().length === 0) {
         this._messages.set([
           {
@@ -496,12 +629,10 @@ export class AgentStore {
           msg.id === assistantId ? { ...msg, documentPayload } : msg,
         ),
       );
-      // Auto-open the artifact side panel when the agent generates a document.
-      this._activeDocument.set({
-        titulo: documentPayload.titulo,
-        contenidoMarkdown: documentPayload.contenido_markdown,
-        messageId: assistantId,
-      });
+      // Append as a NEW conversation attachment (multiple docs coexist) and
+      // auto-open it in the artifact side panel.
+      const doc = this.addDocument(documentPayload, { messageId: assistantId });
+      this._activeDocumentId.set(doc.id);
     };
 
     const url = `${environment.backendUrl}${environment.apiPrefix}/agent/ask`;

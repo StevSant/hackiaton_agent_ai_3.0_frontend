@@ -1,28 +1,37 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   OnChanges,
   SimpleChanges,
   inject,
   input,
   output,
   signal,
+  viewChild,
 } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+
+import { marked } from 'marked';
 
 import { AgentApi } from '@core/api/clients/agent.api';
 import { MarkdownPipe } from '@shared/pipes';
 import { Icon } from '@shared/ui/icon';
-import type { DocumentPayload } from '../models';
+import type { ConversationDocument } from '../models';
+import { htmlToMarkdown } from '../utils/html-to-markdown';
 import { slugify } from '../utils/message-to-markdown';
 
 /**
  * Right-side artifact panel (Claude.ai-style canvas).
  * Rendered by the chat page — NOT inside a message.
  *
- * Presents the document as a white "page" with edit + download + "Mejorar con IA".
- * "Mejorar con IA" calls the dedicated /agent/document/improve endpoint and updates
- * the panel in place — it does NOT create a new chat turn.
+ * Edit mode is WYSIWYG: the SAME rendered document (headings, tables, lists) is
+ * made `contenteditable` so the user never sees markdown syntax. On "Aplicar" the
+ * edited HTML is converted back to markdown (turndown + gfm) and emitted via
+ * `apply` so the store keeps a markdown source for download + improve.
+ *
+ * "Mejorar con IA" emits `improve(instrucciones)` — the page calls the store, which
+ * appends a NEW attachment + a chat reference card. It does NOT mutate in place.
  */
 @Component({
   selector: 'document-canvas-panel',
@@ -132,29 +141,53 @@ import { slugify } from '../utils/message-to-markdown';
         </div>
       }
 
+      <!-- ── Edit toolbar (only in edit mode) ── -->
+      @if (editMode()) {
+        <div class="flex items-center gap-1 px-4 py-2 border-b border-line bg-soft shrink-0">
+          <span class="text-[11px] text-ink-3 mr-1">Formato:</span>
+          <button type="button" class="canvas-tool-btn" title="Negrita" (click)="fmt('bold')">
+            <ui-icon name="format_bold" [size]="15" />
+          </button>
+          <button type="button" class="canvas-tool-btn" title="Cursiva" (click)="fmt('italic')">
+            <ui-icon name="format_italic" [size]="15" />
+          </button>
+          <button type="button" class="canvas-tool-btn" title="Título" (click)="formatHeading()">
+            <ui-icon name="title" [size]="15" />
+          </button>
+          <button type="button" class="canvas-tool-btn" title="Lista" (click)="fmt('insertUnorderedList')">
+            <ui-icon name="format_list_bulleted" [size]="15" />
+          </button>
+          <span class="ml-auto text-[11px] text-ink-3">Editás el documento con formato</span>
+        </div>
+      }
+
       <!-- ── Body: scrollable page area ── -->
       <div class="flex-1 min-h-0 overflow-y-auto px-6 py-6 scroll-pretty">
         <!-- Paper page -->
         <div class="bg-white rounded-xl shadow-md border border-gray-200 mx-auto w-full max-w-[680px] min-h-[400px] px-8 py-8">
           @if (editMode()) {
-            <textarea
-              class="w-full min-h-[360px] text-[13px] font-mono text-gray-800 border border-line rounded-lg p-3 resize-y focus:outline-none focus:ring-2 focus:ring-brand bg-white"
-              [value]="draft()"
-              (input)="onDraftInput($event)"
+            <!-- WYSIWYG: the SAME rendered markdown, made editable. No raw syntax. -->
+            <div
+              #editable
+              class="markdown-body text-[14px] text-gray-800 leading-relaxed min-h-[320px] outline-none focus:ring-2 focus:ring-brand rounded-lg"
+              contenteditable="true"
+              role="textbox"
+              aria-multiline="true"
               aria-label="Editar contenido del documento"
-            ></textarea>
-            <div class="flex justify-end mt-3 gap-2">
+              [innerHTML]="renderedHtml()"
+            ></div>
+            <div class="flex justify-end mt-4 gap-2">
               <button
                 type="button"
                 class="text-[12px] px-3 py-1.5 rounded-lg border border-line text-ink-2 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                (click)="editMode.set(false)"
+                (click)="cancelEdit()"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 class="text-[12px] px-3 py-1.5 rounded-lg bg-brand text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                (click)="editMode.set(false)"
+                (click)="applyEdit()"
               >
                 Aplicar
               </button>
@@ -162,7 +195,7 @@ import { slugify } from '../utils/message-to-markdown';
           } @else {
             <div
               class="markdown-body text-[14px] text-gray-800 leading-relaxed"
-              [innerHTML]="draft() | markdown"
+              [innerHTML]="doc().contenidoMarkdown | markdown"
             ></div>
           }
         </div>
@@ -180,14 +213,36 @@ import { slugify } from '../utils/message-to-markdown';
       }
     </div>
   `,
+  styles: [
+    `
+      .canvas-tool-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 0.375rem;
+        color: var(--ink-2, #444);
+      }
+      .canvas-tool-btn:hover {
+        background: var(--hover, rgba(0, 0, 0, 0.05));
+        color: var(--brand);
+      }
+    `,
+  ],
 })
 export class DocumentCanvasPanel implements OnChanges {
-  /** The document to display. Changes reset draft to the new content. */
-  readonly doc = input.required<DocumentPayload>();
+  /** The document attachment to display. Changes reset the view to the new content. */
+  readonly doc = input.required<ConversationDocument>();
 
   readonly close = output<void>();
+  /** Emitted on "Aplicar" with the edited content converted back to markdown. */
+  readonly apply = output<string>();
+  /** Emitted on "Mejorar" with optional instructions — the page calls the store. */
+  readonly improve = output<{ instrucciones: string | null }>();
 
   private readonly agentApi = inject(AgentApi);
+  private readonly editable = viewChild<ElementRef<HTMLDivElement>>('editable');
 
   protected readonly editMode = signal(false);
   protected readonly downloading = signal(false);
@@ -196,39 +251,69 @@ export class DocumentCanvasPanel implements OnChanges {
   protected readonly improveError = signal(false);
   protected readonly showInstructions = signal(false);
   protected readonly instructionsInput = signal('');
-  protected readonly draft = signal('');
-
-  private draftInitialized = false;
+  /** Snapshot of the rendered HTML used to seed the contenteditable on edit entry. */
+  protected readonly renderedHtml = signal('');
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['doc']) {
-      // When the document input changes (new doc from AI), reset draft to new content.
-      this.draft.set(this.doc().contenido_markdown);
-      this.draftInitialized = true;
+      // Switching documents (or an improved version arriving) exits edit mode.
       this.editMode.set(false);
+      this.improving.set(false);
+      this.showInstructions.set(false);
     }
   }
 
   protected toggleEdit(): void {
-    this.ensureDraft();
-    this.editMode.update((v) => !v);
+    if (this.editMode()) {
+      this.editMode.set(false);
+      return;
+    }
+    this.enterEdit();
   }
 
-  protected onDraftInput(event: Event): void {
-    const target = event.target as HTMLTextAreaElement;
-    this.draft.set(target.value);
+  private enterEdit(): void {
+    // Seed the editable surface with the rendered HTML of the current markdown.
+    // Angular sanitizes this on [innerHTML] bind — formatting tags survive.
+    const html = marked.parse(this.doc().contenidoMarkdown, { async: false }) as string;
+    this.renderedHtml.set(html);
+    this.editMode.set(true);
+  }
+
+  protected cancelEdit(): void {
+    this.editMode.set(false);
+  }
+
+  protected applyEdit(): void {
+    const el = this.editable()?.nativeElement;
+    if (!el) {
+      this.editMode.set(false);
+      return;
+    }
+    const markdown = htmlToMarkdown(el.innerHTML);
+    this.apply.emit(markdown);
+    this.editMode.set(false);
+  }
+
+  /** Native rich-text command on the contenteditable surface. */
+  protected fmt(command: string): void {
+    document.execCommand(command, false);
+    this.editable()?.nativeElement.focus();
+  }
+
+  protected formatHeading(): void {
+    document.execCommand('formatBlock', false, 'h2');
+    this.editable()?.nativeElement.focus();
   }
 
   protected async onDownload(): Promise<void> {
     if (this.downloading()) return;
-    this.ensureDraft();
     this.downloading.set(true);
     this.downloadError.set(false);
     try {
       const blob = await firstValueFrom(
         this.agentApi.downloadDocumentDocx({
           titulo: this.doc().titulo,
-          contenido_markdown: this.draft(),
+          contenido_markdown: this.doc().contenidoMarkdown,
         }),
       );
       const url = URL.createObjectURL(blob);
@@ -257,35 +342,19 @@ export class DocumentCanvasPanel implements OnChanges {
     this.instructionsInput.set('');
   }
 
-  /** Confirm: call the dedicated endpoint and update the panel in place. */
-  protected async confirmImprove(): Promise<void> {
-    this.ensureDraft();
+  /** Confirm: delegate to the page → store, which appends a chat reference. */
+  protected confirmImprove(): void {
     this.showInstructions.set(false);
     this.improving.set(true);
     this.improveError.set(false);
     const instrucciones = this.instructionsInput().trim() || null;
     this.instructionsInput.set('');
-    try {
-      const result = await firstValueFrom(
-        this.agentApi.improveDocument({
-          titulo: this.doc().titulo,
-          contenido_markdown: this.draft(),
-          instrucciones,
-        }),
-      );
-      this.draft.set(result.contenido_markdown);
-      this.editMode.set(false);
-    } catch {
-      this.improveError.set(true);
-    } finally {
-      this.improving.set(false);
-    }
+    this.improve.emit({ instrucciones });
   }
 
-  private ensureDraft(): void {
-    if (!this.draftInitialized) {
-      this.draftInitialized = true;
-      this.draft.set(this.doc().contenido_markdown);
-    }
+  /** Called by the page when the improve request fails, to reset the spinner. */
+  improveFailed(): void {
+    this.improving.set(false);
+    this.improveError.set(true);
   }
 }
