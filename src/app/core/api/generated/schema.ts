@@ -2079,6 +2079,8 @@ export interface components {
             casos: number;
             /** Por Nivel */
             por_nivel: components["schemas"]["SavingsTierBucket"][];
+            /** Tasa Recuperacion */
+            tasa_recuperacion: number;
         };
         /**
          * SavingsEstimate
@@ -2093,6 +2095,21 @@ export interface components {
             prob_fraude_usada: number;
             /** Ahorro Potencial Estimado */
             ahorro_potencial_estimado: number;
+            /** Monto Reclamado */
+            monto_reclamado: number;
+            /** Suma Asegurada */
+            suma_asegurada: number;
+            /** Monto Pagado */
+            monto_pagado: number;
+            /** Deducible */
+            deducible: number;
+            /** Tasa Recuperacion */
+            tasa_recuperacion: number;
+            /**
+             * Prob Source
+             * @enum {string}
+             */
+            prob_source: "ml" | "score";
         };
         /** SavingsTierBucket */
         SavingsTierBucket: {

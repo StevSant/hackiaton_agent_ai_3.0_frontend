@@ -79,7 +79,11 @@ import type { Claim, ClaimAlert } from '../models';
       </div>
     </div>
     <div class="px-5 pb-5">
-      <claim-savings-card [ahorro]="claim().ahorro" />
+      <claim-savings-card
+        [ahorro]="claim().ahorro"
+        [score]="claim().score"
+        [senalesCount]="claim().alertas.length"
+      />
     </div>
   `,
 })

@@ -66,7 +66,11 @@ import { exportInsightsCsv } from '../utils/export-insights';
                 >
               </div>
             }
-            <p class="text-[11px] text-ink-3 mt-2 mb-0">
+            <p class="text-[11px] text-ink-2 mt-2 mb-0">
+              Metodología: por cada caso en alerta (🟡/🔴), exposición × probabilidad de posible
+              fraude × tasa de recuperación {{ tasaRecuperacion() }}%.
+            </p>
+            <p class="text-[11px] text-ink-3 mt-1 mb-0">
               Estimación basada en señales de riesgo, sujeta a revisión humana. No representa
               posible fraude confirmado.
             </p>
@@ -107,6 +111,15 @@ export class InsightsPage implements OnInit {
   protected readonly totalRiesgo = computed(() => {
     const s = this.insights.savings();
     return s ? formatMoney(s.total_valor_en_riesgo) : '—';
+  });
+
+  protected readonly tasaRecuperacion = computed(() => {
+    const s = this.insights.savings();
+    if (!s) return '—';
+    return (s.tasa_recuperacion * 100).toLocaleString('es-EC', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
   });
 
   protected readonly formatMoney = formatMoney;
