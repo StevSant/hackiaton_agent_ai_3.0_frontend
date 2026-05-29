@@ -136,6 +136,20 @@ interface NavItem {
               <span>Salir</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            class="centinela-sidebar-kbd"
+            (click)="onOpenShortcuts()"
+            aria-label="Ver atajos de teclado"
+            title="Atajos de teclado — pulsa ?"
+          >
+            <span class="centinela-sidebar-kbd__icon" aria-hidden="true">
+              <ui-icon name="keyboard" [size]="15" />
+            </span>
+            <span>Atajos</span>
+            <kbd class="centinela-sidebar-kbd__badge">?</kbd>
+          </button>
         </div>
       </div>
     </aside>
@@ -228,5 +242,9 @@ export class SidebarNav {
   protected onLogout(): void {
     this.auth.logout();
     void this.router.navigateByUrl('/auth/login');
+  }
+
+  protected onOpenShortcuts(): void {
+    this.shortcuts.openHelp();
   }
 }

@@ -67,28 +67,13 @@ import { SidebarNav } from './sidebar-nav';
     </div>
 
     <ui-keyboard-shortcuts-help />
-
-    <button
-      type="button"
-      class="centinela-kbd-hint"
-      [class.centinela-kbd-hint--fullbleed]="fullBleed()"
-      (click)="shortcuts.openHelp()"
-      aria-label="Ver atajos de teclado"
-      title="Atajos de teclado — pulsa ?"
-    >
-      <span class="centinela-kbd-hint__icon" aria-hidden="true">
-        <ui-icon name="keyboard" [size]="17" />
-      </span>
-      <span class="centinela-kbd-hint__label">Atajos</span>
-      <kbd class="centinela-kbd-hint__badge">?</kbd>
-    </button>
   `,
 })
 export class AppShell {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
-  protected readonly shortcuts = inject(KeyboardShortcutsService);
+  private readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly sidebarOpen = signal<boolean>(false);
 
