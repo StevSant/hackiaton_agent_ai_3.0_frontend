@@ -3,13 +3,16 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
 
+import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
 import { Icon } from '@shared/ui/icon';
+import { KeyboardShortcutsHelp } from '@shared/ui/keyboard-shortcuts-help';
+import { bindShortcutHandlers, isHelpKey } from '@shared/utils';
 import { SidebarNav } from './sidebar-nav';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, SidebarNav, Icon],
+  imports: [RouterOutlet, SidebarNav, Icon, KeyboardShortcutsHelp],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="h-screen bg-canvas text-ink flex flex-col md:grid md:grid-cols-[248px_1fr] md:grid-rows-1 relative min-h-0">
@@ -65,12 +68,27 @@ import { SidebarNav } from './sidebar-nav';
         </main>
       }
     </div>
+
+    <ui-keyboard-shortcuts-help />
+
+    @if (!fullBleed()) {
+      <button
+        type="button"
+        class="centinela-kbd-hint"
+        (click)="shortcuts.openHelp()"
+        aria-label="Ver atajos de teclado"
+      >
+        <kbd class="centinela-kbd-key centinela-kbd-key--inline">?</kbd>
+        <span class="hidden sm:inline">Atajos</span>
+      </button>
+    }
   `,
 })
 export class AppShell {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly sidebarOpen = signal<boolean>(false);
 
@@ -93,6 +111,21 @@ export class AppShell {
   );
 
   constructor() {
+    bindShortcutHandlers(
+      this.destroyRef,
+      this.shortcuts,
+      [
+        {
+          keys: '?',
+          label: 'Mostrar u ocultar atajos',
+          group: 'General',
+          allowInInput: true,
+          test: (event) => isHelpKey(event),
+          run: () => this.shortcuts.toggleHelp(),
+        },
+      ],
+    );
+
     // Auto-close the drawer when the user navigates (mobile only — at md+
     // the sidebar is part of the grid and the signal does nothing visible).
     this.router.events

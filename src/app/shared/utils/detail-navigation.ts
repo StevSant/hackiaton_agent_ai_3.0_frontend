@@ -1,5 +1,9 @@
 import { effect, type DestroyRef, type WritableSignal } from '@angular/core';
 
+import type { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
+
+import { bindShortcutHandlers, hasOpenDialog } from './keyboard';
+
 export function scrollAppMainToTop(): void {
   if (typeof document === 'undefined') return;
   const main = document.querySelector<HTMLElement>('.centinela-main');
@@ -12,33 +16,61 @@ export function scrollAppMainToTop(): void {
 
 export function bindDetailKeyboardNav(
   destroyRef: DestroyRef,
-  handlers: { onPrev: () => void; onNext: () => void },
+  shortcuts: KeyboardShortcutsService,
+  handlers: {
+    onPrev: () => void;
+    onNext: () => void;
+    onBack?: () => void;
+    onAskAi?: () => void;
+  },
+  scopeTitle = 'Detalle',
 ): void {
-  if (typeof window === 'undefined') return;
-
-  const onKeyDown = (event: KeyboardEvent): void => {
-    if (isTypingTarget(event.target)) return;
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
-
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      handlers.onPrev();
-      return;
-    }
-    if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      handlers.onNext();
-    }
-  };
-
-  window.addEventListener('keydown', onKeyDown);
-  destroyRef.onDestroy(() => window.removeEventListener('keydown', onKeyDown));
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+  bindShortcutHandlers(
+    destroyRef,
+    shortcuts,
+    [
+      {
+        keys: '←  ·  [',
+        label: 'Registro anterior',
+        group: 'Navegación',
+        test: (event) => event.key === 'ArrowLeft' || event.key === '[',
+        run: handlers.onPrev,
+      },
+      {
+        keys: '→  ·  ]',
+        label: 'Registro siguiente',
+        group: 'Navegación',
+        test: (event) => event.key === 'ArrowRight' || event.key === ']',
+        run: handlers.onNext,
+      },
+      ...(handlers.onBack
+        ? [
+            {
+              keys: 'B  ·  Esc',
+              label: 'Volver atrás',
+              group: 'Navegación',
+              test: (event: KeyboardEvent) =>
+                event.key === 'b' ||
+                event.key === 'B' ||
+                (event.key === 'Escape' && !hasOpenDialog()),
+              run: handlers.onBack,
+            },
+          ]
+        : []),
+      ...(handlers.onAskAi
+        ? [
+            {
+              keys: 'A',
+              label: 'Preguntar a la IA',
+              group: 'Acciones',
+              test: (event: KeyboardEvent) => event.key === 'a' || event.key === 'A',
+              run: handlers.onAskAi,
+            },
+          ]
+        : []),
+    ],
+    { scopeTitle: `Atajos — ${scopeTitle}` },
+  );
 }
 
 /** Increments `swapTick` whenever the record id changes (skips first render). */

@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 
 import { AseguradosStore } from '@core/state/asegurados.store';
 import { AseguradoNavigationStore } from '@core/state/asegurado-navigation.store';
+import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
 import { ClaimNavigationStore } from '@core/state/claim-navigation.store';
 import { ClaimsStore } from '@core/state/claims.store';
 import { Button } from '@shared/ui/button';
@@ -154,6 +155,7 @@ export class AseguradoDetailPage {
   private readonly claimNavigation = inject(ClaimNavigationStore);
   private readonly aseguradoNavigation = inject(AseguradoNavigationStore);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly asegurado = computed(() => this.store.findById(this.id()));
 
@@ -192,10 +194,11 @@ export class AseguradoDetailPage {
       scrollAppMainToTop();
     });
 
-    bindDetailKeyboardNav(this.destroyRef, {
+    bindDetailKeyboardNav(this.destroyRef, this.shortcuts, {
       onPrev: () => this.goToAsegurado(this.aseguradoNav().prevId),
       onNext: () => this.goToAsegurado(this.aseguradoNav().nextId),
-    });
+      onBack: () => this.back(),
+    }, 'Asegurado');
   }
 
   protected readonly riskPct = computed(() => {

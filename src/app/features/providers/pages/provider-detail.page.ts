@@ -5,6 +5,7 @@ import { ClaimsStore } from '@core/state/claims.store';
 import { ClaimNavigationStore } from '@core/state/claim-navigation.store';
 import { ProviderNavigationStore } from '@core/state/provider-navigation.store';
 import { ProvidersStore } from '@core/state/providers.store';
+import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
@@ -141,6 +142,7 @@ export class ProviderDetailPage {
   private readonly claimNavigation = inject(ClaimNavigationStore);
   private readonly providerNavigation = inject(ProviderNavigationStore);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly provider = computed(() => this.providersStore.findById(this.id()));
 
@@ -181,10 +183,11 @@ export class ProviderDetailPage {
       scrollAppMainToTop();
     });
 
-    bindDetailKeyboardNav(this.destroyRef, {
+    bindDetailKeyboardNav(this.destroyRef, this.shortcuts, {
       onPrev: () => this.goToProvider(this.providerNav().prevId),
       onNext: () => this.goToProvider(this.providerNav().nextId),
-    });
+      onBack: () => this.back(),
+    }, 'Proveedor');
   }
 
   protected readonly riskPct = computed(() => {

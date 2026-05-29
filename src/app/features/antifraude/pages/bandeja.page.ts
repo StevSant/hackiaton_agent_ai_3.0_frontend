@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import type { ClaimSummaryDto, InboxRowDto } from '@core/api/clients/claim.dto';
 import { AuthStore } from '@core/auth/auth.store';
 import { ClaimNavigationStore } from '@core/state/claim-navigation.store';
+import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
 import { ClaimsStore } from '@core/state/claims.store';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
@@ -12,7 +13,7 @@ import { PageHeader } from '@shared/ui/page-header';
 import { Pagination } from '@shared/ui/pagination';
 import { SegmentedTabs, type SegmentedTab } from '@shared/ui/segmented-tabs';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { formatDateTime, navigateToClaimDetail, ramoIcon, ramoLabel } from '@shared/utils';
+import { formatDateTime, navigateToClaimDetail, ramoIcon, ramoLabel, bindListKeyboardNav } from '@shared/utils';
 import { AntifraudeInboxStore } from '../services/antifraude-inbox.store';
 import { InboxTable } from '../components/inbox-table';
 
@@ -90,7 +91,11 @@ type TabKey = 'activos' | 'historico';
             </div>
           } @else {
             <div class="centinela-panel__scroll">
-              <antifraude-inbox-table [rows]="activePage()" (open)="openCase($event)" />
+              <antifraude-inbox-table
+                [rows]="activePage()"
+                [focusedId]="focusedRowId()"
+                (open)="openCase($event)"
+              />
             </div>
             <ui-pagination
               [page]="page()"
@@ -165,10 +170,13 @@ export class BandejaPage {
   private readonly router = inject(Router);
   private readonly claimNavigation = inject(ClaimNavigationStore);
   private readonly claimsStore = inject(ClaimsStore);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly tab = signal<TabKey>('activos');
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(10);
+  protected readonly listFocusIndex = signal(-1);
 
   protected readonly ramoIcon = ramoIcon;
   protected readonly ramoLabel = ramoLabel;
@@ -202,7 +210,26 @@ export class BandejaPage {
     return list.slice(start, start + this.pageSize());
   });
 
+  protected readonly listRows = computed(() =>
+    this.tab() === 'activos'
+      ? this.activePage().map((row) => ({ id: row.claim_id }))
+      : this.historicoPage().map((row) => ({ id: row.id })),
+  );
+
+  protected readonly focusedRowId = computed(() => {
+    const rows = this.listRows();
+    const index = this.listFocusIndex();
+    return index >= 0 && index < rows.length ? rows[index].id : null;
+  });
+
   constructor() {
+    bindListKeyboardNav(this.destroyRef, this.shortcuts, {
+      scopeTitle: 'Bandeja Antifraude',
+      rows: () => this.listRows(),
+      focusedIndex: this.listFocusIndex,
+      onOpen: (id) => this.openCase(id),
+    });
+
     effect(() => {
       // Lazy-load the historico tab on first activation only.
       // Without the `historicoLoaded` gate the effect would re-fire after every

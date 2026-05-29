@@ -31,6 +31,7 @@ export interface BandejaFilterState {
         <input
           type="search"
           placeholder="Buscar por ID, asegurado, ciudad…"
+          data-keyboard-search
           [value]="state().search"
           (input)="onSearchInput($any($event.target).value)"
         />

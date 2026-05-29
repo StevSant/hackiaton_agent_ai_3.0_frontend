@@ -39,3 +39,12 @@ export {
   bindRecordSwapPulse,
   scrollAppMainToTop,
 } from './detail-navigation';
+export { bindListKeyboardNav } from './list-keyboard-nav';
+export {
+  bindShortcutHandlers,
+  focusKeyboardSearch,
+  hasOpenDialog,
+  isHelpKey,
+  isTypingTarget,
+  type ShortcutHandler,
+} from './keyboard';

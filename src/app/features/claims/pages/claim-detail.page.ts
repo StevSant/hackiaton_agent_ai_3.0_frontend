@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 
 import { AuthStore } from '@core/auth/auth.store';
+import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
 import { ClaimNavigationStore } from '@core/state/claim-navigation.store';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
@@ -250,6 +251,7 @@ export class ClaimDetailPage {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly shortcuts = inject(KeyboardShortcutsService);
 
   private readonly returnTo = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('returnTo'))),
@@ -284,10 +286,12 @@ export class ClaimDetailPage {
       this.claims.prefetchNeighborDetails(orderedIds, id, 2);
     });
 
-    bindDetailKeyboardNav(this.destroyRef, {
+    bindDetailKeyboardNav(this.destroyRef, this.shortcuts, {
       onPrev: () => this.goToCase(this.caseNav().prevId),
       onNext: () => this.goToCase(this.caseNav().nextId),
-    });
+      onBack: () => this.back(),
+      onAskAi: () => this.askAI(),
+    }, 'Siniestro');
   }
 
   protected readonly provider = computed(() => {

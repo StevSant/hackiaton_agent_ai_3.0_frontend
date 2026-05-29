@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   signal,
 } from '@angular/core';
@@ -19,8 +20,9 @@ import { ClaimsTable } from '../components/claims-table';
 import { BandejaFilters, type BandejaFilterState } from '../components/bandeja-filters';
 import { ClaimsStore } from '@core/state/claims.store';
 import { ClaimNavigationStore } from '@core/state/claim-navigation.store';
+import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
 import type { Claim } from '@shared/models';
-import { navigateToClaimDetail, type RiskTier } from '@shared/utils';
+import { navigateToClaimDetail, bindListKeyboardNav, type RiskTier } from '@shared/utils';
 
 type TabKey = 'activos' | 'historico';
 type TierFilter = 'todos' | RiskTier | 'rebotados';
@@ -117,7 +119,11 @@ const DEFAULT_FILTER_STATE: BandejaFilterState = {
           </div>
         } @else {
           <div class="centinela-panel__scroll">
-            <claims-table [claims]="paged()" (open)="openCase($event)" />
+            <claims-table
+              [claims]="paged()"
+              [focusedId]="focusedRowId()"
+              (open)="openCase($event)"
+            />
           </div>
           <ui-pagination
             [page]="page()"
@@ -137,11 +143,14 @@ export class ClaimsListPage {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly claimNavigation = inject(ClaimNavigationStore);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly tab = signal<TabKey>('activos');
   protected readonly tierFilter = signal<TierFilter>('todos');
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(10);
+  protected readonly listFocusIndex = signal(-1);
 
   // Seed search from ?q= URL param (e.g. after importing multiple cases)
   protected readonly filterState = signal<BandejaFilterState>({
@@ -263,6 +272,21 @@ export class ClaimsListPage {
     const start = this.page() * this.pageSize();
     return list.slice(start, start + this.pageSize());
   });
+
+  protected readonly focusedRowId = computed(() => {
+    const rows = this.paged();
+    const index = this.listFocusIndex();
+    return index >= 0 && index < rows.length ? rows[index].id : null;
+  });
+
+  constructor() {
+    bindListKeyboardNav(this.destroyRef, this.shortcuts, {
+      scopeTitle: 'Bandeja de triaje',
+      rows: () => this.paged(),
+      focusedIndex: this.listFocusIndex,
+      onOpen: (id) => this.openCase(id),
+    });
+  }
 
   protected onTab(key: string): void {
     this.tab.set(key as TabKey);

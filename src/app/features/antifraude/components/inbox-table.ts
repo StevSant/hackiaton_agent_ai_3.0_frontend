@@ -35,7 +35,11 @@ interface InboxRowVm {
         </thead>
         <tbody>
           @for (vm of vms(); track vm.row.claim_id) {
-            <tr (click)="open.emit(vm.row.claim_id)">
+            <tr
+              [attr.data-keyboard-row]="vm.row.claim_id"
+              [class.centinela-table-row--focused]="focusedId() === vm.row.claim_id"
+              (click)="open.emit(vm.row.claim_id)"
+            >
               <td>
                 <ui-risk-ring [score]="vm.row.score" [size]="42" [stroke]="4" />
               </td>
@@ -77,6 +81,7 @@ interface InboxRowVm {
 })
 export class InboxTable {
   readonly rows = input.required<readonly InboxRowDto[]>();
+  readonly focusedId = input<string | null>(null);
   readonly open = output<string>();
 
   protected readonly ramoIcon = ramoIcon;

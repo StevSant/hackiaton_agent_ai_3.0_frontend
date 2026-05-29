@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import {
@@ -7,6 +7,7 @@ import {
 } from '@core/api/clients/asegurados.api';
 import { AseguradosStore } from '@core/state/asegurados.store';
 import { AseguradoNavigationStore } from '@core/state/asegurado-navigation.store';
+import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
 import type { Asegurado } from '@shared/models';
 import { Button } from '@shared/ui/button';
 import { Chip } from '@shared/ui/chip';
@@ -16,7 +17,7 @@ import { KpiSmall } from '@shared/ui/kpi-small';
 import { PageHeader } from '@shared/ui/page-header';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { formatMoney, navigateToAseguradoDetail } from '@shared/utils';
+import { formatMoney, navigateToAseguradoDetail, bindListKeyboardNav } from '@shared/utils';
 import {
   AseguradoFormModal,
   type AseguradoFormValue,
@@ -75,6 +76,7 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
         <ui-icon name="search" [size]="16" class="text-ink-3 shrink-0" />
         <input
           type="search"
+          data-keyboard-search
           placeholder="Buscar por nombre, ciudad o segmento…"
           [value]="search()"
           (input)="search.set($any($event.target).value)"
@@ -96,6 +98,7 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
     } @else {
       <asegurados-table
         [asegurados]="paged()"
+        [focusedId]="focusedRowId()"
         (open)="openAsegurado($event)"
         (edit)="openEdit($event)"
         (remove)="onDelete($event)"
@@ -135,11 +138,14 @@ export class AseguradosListPage {
   protected readonly store = inject(AseguradosStore);
   private readonly router = inject(Router);
   private readonly aseguradoNavigation = inject(AseguradoNavigationStore);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly search = signal<string>('');
   protected readonly mora = signal<MoraFilter>('todos');
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(25);
+  protected readonly listFocusIndex = signal(-1);
   protected readonly exportOpen = signal<boolean>(false);
   protected readonly aseguradoColumns = ASEGURADO_EXPORT_COLUMNS;
 
@@ -171,6 +177,21 @@ export class AseguradosListPage {
     const start = this.page() * size;
     return list.slice(start, start + size);
   });
+
+  protected readonly focusedRowId = computed(() => {
+    const rows = this.paged();
+    const index = this.listFocusIndex();
+    return index >= 0 && index < rows.length ? rows[index].id : null;
+  });
+
+  constructor() {
+    bindListKeyboardNav(this.destroyRef, this.shortcuts, {
+      scopeTitle: 'Asegurados',
+      rows: () => this.paged(),
+      focusedIndex: this.listFocusIndex,
+      onOpen: (id) => this.openAsegurado(id),
+    });
+  }
 
   protected readonly previewRows = computed(() =>
     this.filtered().slice(0, 3).map(projectAsegurado),

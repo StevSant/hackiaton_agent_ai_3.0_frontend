@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import {
@@ -7,6 +7,7 @@ import {
 } from '@core/api/clients/network.api';
 import { ProvidersStore } from '@core/state/providers.store';
 import { ProviderNavigationStore } from '@core/state/provider-navigation.store';
+import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
 import type { Provider } from '@shared/models';
 import { Button } from '@shared/ui/button';
 import { Chip } from '@shared/ui/chip';
@@ -21,6 +22,7 @@ import {
   exportProviders,
   formatMoney,
   navigateToProviderDetail,
+  bindListKeyboardNav,
   projectProvider,
 } from '@shared/utils';
 import { ProviderFormModal, type ProviderFormValue } from '../components/provider-form-modal';
@@ -73,6 +75,7 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
         <ui-icon name="search" [size]="16" class="text-ink-3 shrink-0" />
         <input
           type="search"
+          data-keyboard-search
           placeholder="Buscar por nombre, ciudad o tipo…"
           [value]="search()"
           (input)="search.set($any($event.target).value)"
@@ -94,6 +97,7 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
     } @else {
       <providers-table
         [providers]="paged()"
+        [focusedId]="focusedRowId()"
         (open)="openProvider($event)"
         (edit)="openEdit($event)"
         (remove)="onDelete($event)"
@@ -132,11 +136,14 @@ export class ProvidersListPage {
   protected readonly store = inject(ProvidersStore);
   private readonly router = inject(Router);
   private readonly providerNavigation = inject(ProviderNavigationStore);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly search = signal<string>('');
   protected readonly restrictive = signal<RestrictiveFilter>('todos');
   protected readonly page = signal<number>(1);
   protected readonly pageSize = signal<number>(20);
+  protected readonly listFocusIndex = signal(-1);
   protected readonly exportOpen = signal<boolean>(false);
   protected readonly providerColumns = PROVIDER_EXPORT_COLUMNS;
 
@@ -168,6 +175,21 @@ export class ProvidersListPage {
     const start = (this.page() - 1) * size;
     return list.slice(start, start + size);
   });
+
+  protected readonly focusedRowId = computed(() => {
+    const rows = this.paged();
+    const index = this.listFocusIndex();
+    return index >= 0 && index < rows.length ? rows[index].id : null;
+  });
+
+  constructor() {
+    bindListKeyboardNav(this.destroyRef, this.shortcuts, {
+      scopeTitle: 'Proveedores',
+      rows: () => this.paged(),
+      focusedIndex: this.listFocusIndex,
+      onOpen: (id) => this.openProvider(id),
+    });
+  }
 
   protected readonly previewRows = computed(() =>
     this.filtered().slice(0, 3).map(projectProvider),
