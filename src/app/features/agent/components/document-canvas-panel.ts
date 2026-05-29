@@ -4,6 +4,7 @@ import {
   ElementRef,
   OnChanges,
   SimpleChanges,
+  computed,
   inject,
   input,
   output,
@@ -95,20 +96,20 @@ import { slugify } from '../utils/message-to-markdown';
             </label>
           }
 
-          <!-- Ocultar tablas — omit pipe tables from the downloaded Word. -->
+          <!-- Incluir tablas — positive toggle (checked = tables in the Word + preview). -->
           <label
             class="inline-flex items-center gap-1.5 text-[12px] text-ink-2 px-2.5 py-1.5 rounded-lg border border-line cursor-pointer hover:bg-hover"
-            [class.text-brand-ink]="hideTables()"
-            [class.bg-brand-soft]="hideTables()"
-            title="No incluir las tablas en el documento Word"
+            [class.text-brand-ink]="includeTables()"
+            [class.bg-brand-soft]="includeTables()"
+            title="Incluir las tablas en el documento Word"
           >
             <input
               type="checkbox"
               class="accent-brand"
-              [checked]="hideTables()"
-              (change)="hideTables.set($any($event.target).checked)"
+              [checked]="includeTables()"
+              (change)="includeTables.set($any($event.target).checked)"
             />
-            Ocultar tablas
+            Incluir tablas
           </label>
 
           <!-- Download -->
@@ -193,7 +194,7 @@ import { slugify } from '../utils/message-to-markdown';
           } @else {
             <div
               class="canvas-content markdown-body text-[14px] text-gray-800 leading-relaxed overflow-auto"
-              [innerHTML]="doc().contenidoMarkdown | markdown"
+              [innerHTML]="previewContent() | markdown"
             ></div>
           }
         </div>
@@ -227,6 +228,13 @@ import { slugify } from '../utils/message-to-markdown';
         max-width: none;
         width: auto;
       }
+      /* The embedded chart image must fit the page width in the preview. */
+      .canvas-content ::ng-deep img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 0.5rem 0;
+      }
     `,
   ],
 })
@@ -250,10 +258,32 @@ export class DocumentCanvasPanel implements OnChanges {
   protected readonly downloadError = signal(false);
   /** Embed the chart in the downloaded .docx — ON by default so it always comes out. */
   protected readonly includeChart = signal(true);
-  /** Omit pipe tables from the .docx — OFF by default so tables always show. */
-  protected readonly hideTables = signal(false);
+  /** Include pipe tables in the .docx — ON by default so tables always show. */
+  protected readonly includeTables = signal(true);
   /** Snapshot of the rendered HTML used to seed the contenteditable on edit entry. */
   protected readonly renderedHtml = signal('');
+
+  /**
+   * Markdown shown in the read-only preview, transformed to MATCH what the
+   * download will produce: the chart placeholder becomes the real chart image
+   * (or is dropped), and tables are dropped when "Incluir tablas" is off. This
+   * is why toggling a checkbox updates the canvas live.
+   */
+  protected readonly previewContent = computed(() => {
+    let md = this.doc().contenidoMarkdown;
+    if (!this.includeTables()) {
+      md = md
+        .split('\n')
+        .filter((line) => !/^\s*\|/.test(line))
+        .join('\n');
+    }
+    const chart = this.chartImage();
+    // ![alt](url) placeholder → real chart image when included, else removed.
+    md = md.replace(/!\[[^\]]*\]\([^)]*\)/g, () =>
+      this.includeChart() && chart ? `![Gráfico](${chart})` : '',
+    );
+    return md;
+  });
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['doc']) {
@@ -315,7 +345,7 @@ export class DocumentCanvasPanel implements OnChanges {
           titulo: this.doc().titulo,
           contenido_markdown: this.doc().contenidoMarkdown,
           chart_image_base64: this.includeChart() && chart ? chart : null,
-          include_tables: !this.hideTables(),
+          include_tables: this.includeTables(),
         }),
       );
       const url = URL.createObjectURL(blob);
