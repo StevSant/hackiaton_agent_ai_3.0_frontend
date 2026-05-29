@@ -360,6 +360,14 @@ export class AgentStore {
     this._pendingDocumentContext.set(ctx);
   }
 
+  /** The document the next turn will improve, or null. Drives the composer reference chip. */
+  readonly pendingDocumentContext = this._pendingDocumentContext.asReadonly();
+
+  /** Remove the pending document reference (the chip's ✕ button). */
+  clearPendingDocumentContext(): void {
+    this._pendingDocumentContext.set(null);
+  }
+
   /** CHANGE 2 — register the latest chart's PNG data URL (called by agent-chart). */
   setLatestChartImage(dataUrl: string): void {
     this._latestChartImage.set(dataUrl);
