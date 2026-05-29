@@ -224,6 +224,7 @@ interface AuthOrbitAgent {
     .auth-mini-brows--calm { animation: authBrowCalm 4.8s ease-in-out infinite; transform-origin: 50px 20px; transform-box: fill-box; }
     .auth-mini-brows--vigia { animation: authBrowVigia 2.6s ease-in-out infinite; transform-origin: 50px 20px; transform-box: fill-box; }
     .auth-mini-brows--rastreador { animation: authBrowRastreador 3.2s ease-in-out infinite; transform-origin: 50px 20px; transform-box: fill-box; }
+    .auth-mini-brows--sorpresa { animation: authBrowSorpresa 3.8s ease-in-out infinite; transform-origin: 50px 20px; transform-box: fill-box; }
 
     @keyframes authBrowCalm {
       0%, 100% { transform: translateY(0); }
@@ -238,6 +239,11 @@ interface AuthOrbitAgent {
     @keyframes authBrowRastreador {
       0%, 100% { transform: translateY(0); }
       40% { transform: translateY(-1.8px); }
+    }
+
+    @keyframes authBrowSorpresa {
+      0%, 100% { transform: translateY(0); }
+      45% { transform: translateY(-1px); }
     }
 
     .auth-mini-gaze {
@@ -275,6 +281,7 @@ interface AuthOrbitAgent {
       .auth-mini-brows--calm,
       .auth-mini-brows--vigia,
       .auth-mini-brows--rastreador,
+      .auth-mini-brows--sorpresa,
       .auth-mini-gaze-pulse,
       .auth-mini-lid {
         animation: none !important;
@@ -424,10 +431,10 @@ interface AuthOrbitAgent {
           <div>
             <div class="text-mkt-accent-ink text-[11px] uppercase tracking-[0.18em] mb-2 font-semibold mkt-eyebrow">Panel multiagente</div>
             <p class="text-[22px] font-semibold text-mkt-ink tracking-tight leading-snug max-w-[320px]">
-              Cuatro especialistas, un acceso
+              Cinco agentes, un acceso
             </p>
             <p class="text-mkt-ink-2 text-[14px] mt-2 max-w-[340px] leading-relaxed font-medium">
-              Leslie, Naomi, Ámbar e Iris orbitan el mismo núcleo y Naelis, la moderadora, sintetiza el consenso. Ingresa y elige tu perspectiva.
+              Leslie, Naomi, Ámbar, Iris y Naelis — la moderadora de consenso — analizan el mismo caso. Ingresa y elige tu perspectiva.
             </p>
           </div>
           <div class="flex flex-wrap gap-2">
@@ -482,8 +489,8 @@ export class AuthShell implements AfterViewInit, OnDestroy {
       highlightX: 47.2,
       highlightY: 48,
       irisRadius: 11.5,
-      browLeft: 'M 24 18 L 41 16',
-      browRight: 'M 76 18 L 59 16',
+      browLeft: 'M 23 20 L 42 19',
+      browRight: 'M 77 20 L 58 19',
       browAnimClass: 'auth-mini-brows--calm',
       breatheDelay: '0ms',
     },
@@ -507,13 +514,13 @@ export class AuthShell implements AfterViewInit, OnDestroy {
       name: 'Ámbar',
       accent: '#fbbf24',
       irisInner: '#b45309',
-      gazeTransform: 'translate(0, 4.5)',
-      highlightX: 47.2,
-      highlightY: 48,
-      irisRadius: 11.5,
-      browLeft: 'M 24 17 L 41 16',
-      browRight: 'M 76 17 L 59 16',
-      browAnimClass: 'auth-mini-brows--calm',
+      gazeTransform: 'translate(4, -0.5)',
+      highlightX: 48.5,
+      highlightY: 47,
+      irisRadius: 12,
+      browLeft: 'M 24 18 L 41 17',
+      browRight: 'M 76 11 L 59 13',
+      browAnimClass: 'auth-mini-brows--sorpresa',
       breatheDelay: '1200ms',
     },
     {

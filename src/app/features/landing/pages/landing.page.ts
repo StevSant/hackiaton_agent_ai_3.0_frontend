@@ -494,6 +494,7 @@ interface MultiAgentPersona {
     .ma-brows--calm { animation: browCalm 4.8s ease-in-out infinite; }
     .ma-brows--vigia { animation: browVigia 2.6s ease-in-out infinite; }
     .ma-brows--rastreador { animation: browRastreador 3.2s ease-in-out infinite; }
+    .ma-brows--sorpresa { animation: browSorpresa 3.8s ease-in-out infinite; }
 
     @keyframes browCalm {
       0%, 100% { transform: translateY(0); }
@@ -512,6 +513,11 @@ interface MultiAgentPersona {
       65% { transform: translateY(-0.5px); }
     }
 
+    @keyframes browSorpresa {
+      0%, 100% { transform: translateY(0); }
+      45% { transform: translateY(-1px); }
+    }
+
     .ma-gaze {
       transform-origin: 50px 50px;
       transform-box: fill-box;
@@ -520,6 +526,7 @@ interface MultiAgentPersona {
     .ma-gaze--centinela { animation: gazeCentinela 6s ease-in-out infinite; }
     .ma-gaze--vigia { animation: gazeVigia 4.5s ease-in-out infinite; }
     .ma-gaze--rastreador { animation: gazeRastreador 4.8s ease-in-out infinite; }
+    .ma-gaze--relato { animation: gazeRelato 5.4s ease-in-out infinite; }
 
     @keyframes gazeCentinela {
       0%, 100% { transform: translate(0, 4.5px); }
@@ -539,6 +546,12 @@ interface MultiAgentPersona {
       28% { transform: translate(-5.8px, -4.5px); }
       52% { transform: translate(-3px, -3px); }
       78% { transform: translate(-5.2px, -4.2px); }
+    }
+
+    @keyframes gazeRelato {
+      0%, 100% { transform: translate(4px, -0.5px); }
+      40% { transform: translate(5.5px, 0.5px); }
+      75% { transform: translate(3px, 0); }
     }
 
     .ma-lid-squint {
@@ -919,52 +932,52 @@ interface MultiAgentPersona {
         <div class="text-center mb-10 sm:mb-14 max-w-2xl mx-auto reveal" #reveal>
           <div class="text-mkt-accent-ink mkt-eyebrow text-[11px] uppercase tracking-[0.18em] mb-3">Panel multiagente</div>
           <h2 class="text-[30px] sm:text-[38px] lg:text-[44px] font-semibold tracking-tight text-mkt-ink leading-[1.12]">
-            Cuatro especialistas, un mismo caso.
+            Cinco agentes, un mismo caso.
           </h2>
           <p class="mt-4 text-mkt-ink-3 text-[15px] sm:text-[15.5px] leading-relaxed">
-            Reglas, modelo, narrativa y documentos analizan el reclamo en paralelo,
-            debaten cuando discrepan y un <span class="text-mkt-accent-ink font-medium">Moderador</span>
-            sintetiza el consenso — siempre como alerta para revisión humana.
+            Reglas, modelo, narrativa, documentos y un <span class="text-mkt-accent-ink font-medium">moderador de consenso</span>
+            analizan el reclamo en paralelo, debaten cuando discrepan y sintetizan la alerta
+            — siempre para revisión humana.
           </p>
         </div>
 
         <div class="multiagent-orbit reveal" #reveal>
-          <svg class="multiagent-links absolute inset-0 w-full h-full" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true">
+          <svg class="multiagent-links absolute inset-0 w-full h-full" viewBox="0 0 900 520" preserveAspectRatio="none" aria-hidden="true">
             <defs>
-              <linearGradient id="ma-link-tl" gradientUnits="userSpaceOnUse" x1="168" y1="116" x2="48" y2="44">
+              <linearGradient id="ma-link-tl" gradientUnits="userSpaceOnUse" x1="392" y1="188" x2="88" y2="85">
                 <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.8"/>
                 <stop offset="100%" stop-color="#60a5fa" stop-opacity="0.18"/>
               </linearGradient>
-              <linearGradient id="ma-link-tr" gradientUnits="userSpaceOnUse" x1="232" y1="116" x2="352" y2="44">
+              <linearGradient id="ma-link-tr" gradientUnits="userSpaceOnUse" x1="508" y1="188" x2="812" y2="85">
                 <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.8"/>
                 <stop offset="100%" stop-color="#a78bfa" stop-opacity="0.18"/>
               </linearGradient>
-              <linearGradient id="ma-link-bl" gradientUnits="userSpaceOnUse" x1="168" y1="184" x2="48" y2="256">
+              <linearGradient id="ma-link-bl" gradientUnits="userSpaceOnUse" x1="392" y1="332" x2="88" y2="435">
                 <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.8"/>
                 <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.18"/>
               </linearGradient>
-              <linearGradient id="ma-link-br" gradientUnits="userSpaceOnUse" x1="232" y1="184" x2="352" y2="256">
+              <linearGradient id="ma-link-br" gradientUnits="userSpaceOnUse" x1="508" y1="332" x2="812" y2="435">
                 <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.8"/>
                 <stop offset="100%" stop-color="#fb7185" stop-opacity="0.18"/>
               </linearGradient>
             </defs>
 
-            <path d="M168,116 Q104,80 48,44" class="agent-link" stroke="url(#ma-link-tl)" />
-            <path d="M232,116 Q296,80 352,44" class="agent-link agent-link--d1" stroke="url(#ma-link-tr)" />
-            <path d="M168,184 Q92,238 48,256" class="agent-link agent-link--d2" stroke="url(#ma-link-bl)" />
-            <path d="M232,184 Q308,238 352,256" class="agent-link agent-link--d3" stroke="url(#ma-link-br)" />
+            <path d="M88,85 C 210,88 318,148 392,188" class="agent-link" stroke="url(#ma-link-tl)" />
+            <path d="M812,85 C 690,88 582,148 508,188" class="agent-link agent-link--d1" stroke="url(#ma-link-tr)" />
+            <path d="M88,435 C 210,432 318,372 392,332" class="agent-link agent-link--d2" stroke="url(#ma-link-bl)" />
+            <path d="M812,435 C 690,432 582,372 508,332" class="agent-link agent-link--d3" stroke="url(#ma-link-br)" />
 
-            <circle r="2.2" class="agent-packet" fill="#60a5fa">
-              <animateMotion dur="3s" repeatCount="indefinite" path="M48,44 Q104,80 168,116" />
+            <circle r="2.5" class="agent-packet" fill="#60a5fa">
+              <animateMotion dur="3s" repeatCount="indefinite" path="M88,85 C 210,88 318,148 392,188" />
             </circle>
-            <circle r="2.2" class="agent-packet" fill="#a78bfa">
-              <animateMotion dur="3s" begin="0.75s" repeatCount="indefinite" path="M352,44 Q296,80 232,116" />
+            <circle r="2.5" class="agent-packet" fill="#a78bfa">
+              <animateMotion dur="3s" begin="0.75s" repeatCount="indefinite" path="M812,85 C 690,88 582,148 508,188" />
             </circle>
-            <circle r="2.2" class="agent-packet" fill="#fbbf24">
-              <animateMotion dur="3s" begin="1.5s" repeatCount="indefinite" path="M48,256 Q92,238 168,184" />
+            <circle r="2.5" class="agent-packet" fill="#fbbf24">
+              <animateMotion dur="3s" begin="1.5s" repeatCount="indefinite" path="M88,435 C 210,432 318,372 392,332" />
             </circle>
-            <circle r="2.2" class="agent-packet" fill="#fb7185">
-              <animateMotion dur="3s" begin="2.25s" repeatCount="indefinite" path="M352,256 Q308,238 232,184" />
+            <circle r="2.5" class="agent-packet" fill="#fb7185">
+              <animateMotion dur="3s" begin="2.25s" repeatCount="indefinite" path="M812,435 C 690,432 582,372 508,332" />
             </circle>
           </svg>
 
@@ -1659,8 +1672,8 @@ export class LandingPage implements AfterViewInit, OnDestroy {
       highlightX: 47.2,
       highlightY: 48,
       irisRadius: 11.5,
-      browLeft: 'M 24 18 L 41 16',
-      browRight: 'M 76 18 L 59 16',
+      browLeft: 'M 23 20 L 42 19',
+      browRight: 'M 77 20 L 58 19',
       slotClass: 'multiagent-node--tl',
       breatheDelay: '0ms',
       nodeDelay: '0.15s',
@@ -1691,13 +1704,13 @@ export class LandingPage implements AfterViewInit, OnDestroy {
       tag: 'Relato y similares',
       accent: '#fbbf24',
       irisInner: '#b45309',
-      gazeClass: 'ma-gaze--rastreador',
-      browAnimClass: 'ma-brows--calm',
-      highlightX: 47.2,
-      highlightY: 48,
-      irisRadius: 11.5,
-      browLeft: 'M 24 17 L 41 16',
-      browRight: 'M 76 17 L 59 16',
+      gazeClass: 'ma-gaze--relato',
+      browAnimClass: 'ma-brows--sorpresa',
+      highlightX: 48.5,
+      highlightY: 47,
+      irisRadius: 12,
+      browLeft: 'M 24 18 L 41 17',
+      browRight: 'M 76 11 L 59 13',
       slotClass: 'multiagent-node--bl',
       breatheDelay: '900ms',
       nodeDelay: '0.55s',
