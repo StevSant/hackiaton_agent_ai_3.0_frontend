@@ -4431,6 +4431,12 @@ page-insights {
 .sin-chip:hover {
   background: color-mix(in oklch, var(--brand) 22%, transparent);
 }
+/* Chips are real <a> tags now — keep the chip look over the generic link rule */
+.markdown-body a.sin-chip {
+  color: var(--brand-ink);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
 
 .centinela-kbd-key {
   display: inline-flex;

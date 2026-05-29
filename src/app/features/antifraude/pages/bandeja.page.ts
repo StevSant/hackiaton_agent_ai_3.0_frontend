@@ -16,7 +16,9 @@ import { SkeletonTable } from '@shared/ui/skeleton-table';
 import {
   bindListKeyboardNav,
   bindSectionArrowNav,
+  claimHref,
   formatDateTime,
+  handleEntityLinkClick,
   ramoIcon,
   ramoLabel,
   sortRows,
@@ -180,7 +182,11 @@ type TabKey = 'activos' | 'historico';
                         <td>
                           <div class="flex items-center gap-2">
                             <ui-icon [name]="ramoIcon(h.ramo)" [size]="16" />
-                            <div class="font-mono text-[12px] text-ink-2">{{ h.id }}</div>
+                            <a
+                              [href]="claimHref(h.id)"
+                              class="font-mono text-[12px] text-ink-2 no-underline hover:underline hover:text-brand"
+                              (click)="onIdClick($event, h.id)"
+                            >{{ h.id }}</a>
                           </div>
                         </td>
                         <td>{{ h.asegurado }}</td>
@@ -240,6 +246,11 @@ export class BandejaPage {
   protected readonly ramoIcon = ramoIcon;
   protected readonly ramoLabel = ramoLabel;
   protected readonly formatDateTime = formatDateTime;
+  protected readonly claimHref = claimHref;
+
+  protected onIdClick(event: MouseEvent, id: string): void {
+    handleEntityLinkClick(event, () => this.openCase(id));
+  }
 
   protected readonly greeting = computed(() => {
     const name = this.auth.user()?.name?.split(' ')[0] ?? 'Antifraude';

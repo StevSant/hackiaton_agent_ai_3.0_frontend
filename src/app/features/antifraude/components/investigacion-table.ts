@@ -4,7 +4,9 @@ import { Avatar } from '@shared/ui/avatar';
 import { Icon } from '@shared/ui/icon';
 import { SortableHeader } from '@shared/ui/sortable-header';
 import {
+  claimHref,
   formatMoney,
+  handleEntityLinkClick,
   ramoLabel,
   reviewStatusBadgeClass,
   reviewStatusLabel,
@@ -42,7 +44,11 @@ import type { Claim } from '@shared/models';
               (click)="open.emit(claim.id)"
             >
               <td class="hidden md:table-cell">
-                <span class="font-mono text-[12.5px] font-medium text-brand">#{{ claim.id }}</span>
+                <a
+                  [href]="claimHref(claim.id)"
+                  class="font-mono text-[12.5px] font-medium text-brand no-underline hover:underline"
+                  (click)="onIdClick($event, claim.id)"
+                >#{{ claim.id }}</a>
               </td>
               <td>
                 <div class="flex items-center gap-2.5 min-w-0">
@@ -144,6 +150,12 @@ export class InvestigacionTable {
 
   protected topAlerts(claim: Claim) {
     return claim.alertas.slice(0, 2);
+  }
+
+  protected readonly claimHref = claimHref;
+
+  protected onIdClick(event: MouseEvent, id: string): void {
+    handleEntityLinkClick(event, () => this.open.emit(id));
   }
 
   protected onOpen(event: MouseEvent, claimId: string): void {

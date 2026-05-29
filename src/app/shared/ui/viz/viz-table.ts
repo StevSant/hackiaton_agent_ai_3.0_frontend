@@ -2,7 +2,14 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 import { SortableHeader } from '@shared/ui/sortable-header';
-import { TableSortController, sortRows, type SortAccessors } from '@shared/utils';
+import {
+  TableSortController,
+  claimHref,
+  handleEntityLinkClick,
+  isClaimRef,
+  sortRows,
+  type SortAccessors,
+} from '@shared/utils';
 
 import { TIER_COLOR } from './viz-theme';
 import type { TableVisual } from './visual.model';
@@ -51,8 +58,9 @@ function buildAccessors(
                             [style.background]="tierColor(row[col.key])"></span>
                     }
                     @case ('citation') {
-                      <button type="button" class="text-brand-ink hover:underline"
-                              (click)="openCase.emit(stringify(row[col.key]))">{{ row[col.key] }}</button>
+                      <a [href]="hrefFor(stringify(row[col.key]))"
+                         class="text-brand-ink no-underline hover:underline"
+                         (click)="onCitationClick($event, stringify(row[col.key]))">{{ row[col.key] }}</a>
                     }
                     @default { {{ row[col.key] }} }
                   }
@@ -84,5 +92,13 @@ export class VizTable {
 
   protected stringify(v: unknown): string {
     return String(v ?? '');
+  }
+
+  protected hrefFor(citation: string): string {
+    return isClaimRef(citation) ? claimHref(citation) : '#';
+  }
+
+  protected onCitationClick(event: MouseEvent, citation: string): void {
+    handleEntityLinkClick(event, () => this.openCase.emit(citation));
   }
 }

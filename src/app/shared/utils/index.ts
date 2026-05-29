@@ -41,6 +41,9 @@ export {
   navigateToClaimDetail,
   claimDetailQueryParams,
 } from './navigate-to-claim';
+export { isClaimRef } from './is-claim-ref';
+export { claimHref } from './claim-href';
+export { handleEntityLinkClick } from './entity-link-click';
 export { navigateToProviderDetail } from './navigate-to-provider';
 export { navigateToAseguradoDetail } from './navigate-to-asegurado';
 export {
