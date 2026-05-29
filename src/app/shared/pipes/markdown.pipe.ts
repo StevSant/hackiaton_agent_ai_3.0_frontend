@@ -17,10 +17,19 @@ export class MarkdownPipe implements PipeTransform {
   transform(value: string | null | undefined): SafeHtml {
     if (!value) return '';
     const html = marked.parse(value, { async: false }) as string;
+    // Real anchors (not spans) so ctrl/cmd/middle-click opens the case in a
+    // new tab. Plain left clicks are intercepted in ChatMessage.onBubbleClick
+    // and routed through the SPA router.
     const withChips = html.replace(
       SIN_PATTERN,
-      '<span class="sin-chip" data-sin-id="$&">$&</span>',
+      '<a class="sin-chip" data-sin-id="$&" href="/claims/$&">$&</a>',
     );
-    return this.sanitizer.bypassSecurityTrustHtml(withChips);
+    // External links written by the agent open in a new tab instead of
+    // navigating the SPA away mid-conversation.
+    const withTargets = withChips.replace(
+      /<a href="(https?:\/\/[^"]*)"/g,
+      '<a target="_blank" rel="noopener" href="$1"',
+    );
+    return this.sanitizer.bypassSecurityTrustHtml(withTargets);
   }
 }

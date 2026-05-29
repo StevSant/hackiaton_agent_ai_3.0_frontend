@@ -12,7 +12,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { AgentApi } from '@core/api/clients/agent.api';
@@ -68,6 +68,7 @@ function generateUuid(): string {
     DocumentCanvasPanel,
     VoiceEqualizer,
     TtsPlayer,
+    RouterLink,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -130,9 +131,9 @@ function generateUuid(): string {
                 <p class="chat-case-context__risk">{{ riskTierLabel(claim.nivel) }} · {{ formatMoneyShort(claim.monto_reclamado) }}</p>
               </div>
               <div class="chat-case-context__actions">
-                <button type="button" class="chat-case-context__link" (click)="openCase(claim.id)">
+                <a class="chat-case-context__link" [routerLink]="['/claims', claim.id]">
                   Ver caso
-                </button>
+                </a>
                 <button
                   type="button"
                   class="chat-case-context__clear"
@@ -160,9 +161,9 @@ function generateUuid(): string {
                 <p class="chat-case-context__risk">{{ p.alertas }} alertas / {{ p.casos }} casos · {{ contextProviderRiskPct() }}% riesgo</p>
               </div>
               <div class="chat-case-context__actions">
-                <button type="button" class="chat-case-context__link" (click)="openProvider(p.id)">
+                <a class="chat-case-context__link" [routerLink]="['/providers', p.id]">
                   Ver proveedor
-                </button>
+                </a>
                 <button
                   type="button"
                   class="chat-case-context__clear"
@@ -193,9 +194,9 @@ function generateUuid(): string {
                 <p class="chat-case-context__risk">{{ a.alertas }} alertas / {{ a.casos }} casos · {{ contextAseguradoRiskPct() }}% riesgo</p>
               </div>
               <div class="chat-case-context__actions">
-                <button type="button" class="chat-case-context__link" (click)="openAsegurado(a.id)">
+                <a class="chat-case-context__link" [routerLink]="['/asegurados', a.id]">
                   Ver asegurado
-                </button>
+                </a>
                 <button
                   type="button"
                   class="chat-case-context__clear"
@@ -873,14 +874,6 @@ export class ChatPage implements AfterViewChecked {
       queryParams: { conversation: this.activeConversationId() },
       replaceUrl: true,
     });
-  }
-
-  protected openProvider(id: string): void {
-    void this.router.navigate(['/providers', id]);
-  }
-
-  protected openAsegurado(id: string): void {
-    void this.router.navigate(['/asegurados', id]);
   }
 
   protected openCase(idOrLabel: string): void {

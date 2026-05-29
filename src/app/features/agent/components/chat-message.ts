@@ -209,6 +209,11 @@ export class ChatMessage {
     if (!target) return;
     const chip = target.closest('[data-sin-id]');
     if (!chip) return;
+    // Modified clicks fall through to the anchor's default (new tab).
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
     const id = chip.getAttribute('data-sin-id');
     if (id) this.openCase.emit(id);
   }
