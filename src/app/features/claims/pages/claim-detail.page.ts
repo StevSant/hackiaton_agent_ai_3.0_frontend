@@ -105,6 +105,10 @@ import { ProvidersStore } from '@core/state/providers.store';
               <ui-icon name="auto_awesome" [size]="14" />
               Preguntar a la IA
             </ui-button>
+            <ui-button (click)="openPanel()">
+              <ui-icon name="groups" [size]="14" />
+              Análisis multi-agente
+            </ui-button>
             <ui-button (click)="showOnMap()">
               <ui-icon name="map" [size]="14" />
               Mostrar en el mapa
@@ -268,6 +272,10 @@ export class ClaimDetailPage {
     void this.router.navigate(['/agent'], {
       queryParams: { case: this.id(), conversation: conversationId },
     });
+  }
+
+  protected openPanel(): void {
+    void this.router.navigate(['/fraud-panel', this.id()]);
   }
 
   protected showOnMap(): void {

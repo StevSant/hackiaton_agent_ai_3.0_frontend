@@ -75,6 +75,11 @@ export const routes: Routes = [
         path: 'uploads',
         loadChildren: () => import('@features/uploads/uploads.routes').then((m) => m.routes),
       },
+      {
+        path: 'fraud-panel',
+        loadChildren: () =>
+          import('@features/fraud-panel/fraud-panel.routes').then((m) => m.routes),
+      },
     ],
   },
   { path: '**', redirectTo: '' },
