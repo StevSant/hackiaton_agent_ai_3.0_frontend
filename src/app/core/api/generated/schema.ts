@@ -1026,6 +1026,10 @@ export interface components {
         /**
          * ClaimAlert
          * @description UI projection of a `RuleActivation`, rendered as a chip in the breakdown.
+         *
+         *     `detalle` is the rule's generic description; `evidence` carries the
+         *     per-claim variables that made *this* rule fire (e.g. {"demora_denuncia_horas": 56}).
+         *     The detail dialog renders `evidence` as the "en este caso" explanation.
          */
         ClaimAlert: {
             /** Code */
@@ -1039,6 +1043,10 @@ export interface components {
             severidad: "high" | "med" | "low";
             /** Detalle */
             detalle: string;
+            /** Evidence */
+            evidence?: {
+                [key: string]: unknown;
+            };
         };
         /**
          * ClaimDetail

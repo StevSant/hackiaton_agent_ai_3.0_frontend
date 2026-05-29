@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 import { RiskRing } from '@shared/ui/risk-ring';
+import { ALERT_CATALOG } from '@shared/models';
 import { suggestedAction } from '../utils/ai-explanation';
+import { hardRuleOverride } from '../utils/hard-rule-override';
 import type { Claim, ClaimAlert } from '../models';
 
 @Component({
@@ -22,6 +24,34 @@ import type { Claim, ClaimAlert } from '../models';
               Se activaron {{ claim().alertas.length }} señales con un total de {{ totalPts() }} puntos sobre 100.
             }
           </p>
+          @if (override(); as ov) {
+            <div
+              class="mt-3 max-w-[520px] flex items-start gap-2 rounded-md px-3 py-2 border"
+              [class]="
+                claim().nivel === 'rojo'
+                  ? 'bg-tier-red-soft border-tier-red-ink/20'
+                  : 'bg-tier-yellow-soft border-tier-yellow-ink/20'
+              "
+            >
+              <span
+                class="font-mono text-[11px] leading-none mt-0.5"
+                [class]="claim().nivel === 'rojo' ? 'text-tier-red-ink' : 'text-tier-yellow-ink'"
+                aria-hidden="true"
+                >⚑</span
+              >
+              <p
+                class="text-[12px] m-0"
+                [class]="claim().nivel === 'rojo' ? 'text-tier-red-ink' : 'text-tier-yellow-ink'"
+              >
+                Clasificado como <strong>{{ overrideTierWord() }}</strong> por
+                {{ ov.rules.length === 1 ? 'una regla crítica' : 'reglas críticas' }} —
+                <span class="font-medium">{{ overrideRuleLabels() }}</span> —,
+                <strong>independiente del puntaje acumulado</strong> ({{ claim().score }}/100).
+                Las reglas críticas escalan el caso a {{ overrideReviewWord() }};
+                no implican fraude, solo que el caso amerita revisión.
+              </p>
+            </div>
+          }
           <div class="flex items-center gap-1.5 mt-3.5 flex-wrap">
             @for (a of topAlerts(); track a.code) {
               <button
@@ -31,7 +61,11 @@ import type { Claim, ClaimAlert } from '../models';
                 [title]="tooltipFor(a)"
                 (click)="ruleClick.emit(a)"
               >
-                {{ a.code }} · +{{ a.puntos }}
+                @if (a.puntos > 0) {
+                  {{ a.code }} · +{{ a.puntos }}
+                } @else {
+                  ⚑ {{ a.code }} · crítica
+                }
               </button>
             }
           </div>
@@ -59,9 +93,35 @@ export class ScorePanel {
     this.claim().alertas.reduce((s, a) => s + a.puntos, 0),
   );
 
-  protected topAlerts() {
-    return this.claim().alertas.slice(0, 4);
-  }
+  protected readonly override = computed(() => {
+    const ov = hardRuleOverride(this.claim());
+    return ov.active ? ov : null;
+  });
+
+  protected readonly overrideRuleLabels = computed(() =>
+    (this.override()?.rules ?? [])
+      .map((r) => `${r.code} · ${ALERT_CATALOG[r.code]?.titulo ?? r.code}`)
+      .join(', '),
+  );
+
+  protected readonly overrideTierWord = computed(() =>
+    this.claim().nivel === 'rojo' ? 'riesgo alto' : 'riesgo medio',
+  );
+
+  protected readonly overrideReviewWord = computed(() =>
+    this.claim().nivel === 'rojo' ? 'revisión especializada de campo' : 'revisión documental',
+  );
+
+  // Show every activated rule as a chip — never truncate. The responsible hard
+  // rule(s) are pinned first (they justify the tier even with 0 points), then
+  // the rest by points desc, so the decisive signal always leads.
+  protected readonly topAlerts = computed(() => {
+    const alertas = this.claim().alertas;
+    const pinned = new Set((this.override()?.rules ?? []).map((r) => r.code));
+    const head = alertas.filter((a) => pinned.has(a.code));
+    const tail = alertas.filter((a) => !pinned.has(a.code)).sort((a, b) => b.puntos - a.puntos);
+    return [...head, ...tail];
+  });
 
   protected chipClass(sev: 'high' | 'med' | 'low'): string {
     return sev === 'high'
@@ -72,6 +132,7 @@ export class ScorePanel {
   }
 
   protected tooltipFor(a: ClaimAlert): string {
-    return `${a.code} · +${a.puntos} pts — ${a.detalle} (clic para ver detalle)`;
+    const peso = a.puntos > 0 ? `+${a.puntos} pts` : 'regla crítica — escala el caso sin sumar puntos';
+    return `${a.code} · ${peso} — ${a.detalle} (clic para ver detalle)`;
   }
 }

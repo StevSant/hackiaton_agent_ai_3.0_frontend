@@ -172,6 +172,7 @@ export class SavedFiltersModal {
 
   protected describeFilters(filters: InvestigationFilters): string {
     const parts: string[] = [];
+    if (filters.search.trim()) parts.push(`Búsqueda: ${filters.search.trim()}`);
     if (filters.tier !== 'todos') parts.push(`Riesgo: ${filters.tier}`);
     if (filters.ramo !== 'todos') parts.push(`Ramo: ${filters.ramo}`);
     if (filters.city.trim()) parts.push(`Ciudad: ${filters.city.trim()}`);
@@ -183,6 +184,7 @@ export class SavedFiltersModal {
 
 function isEmpty(filters: InvestigationFilters): boolean {
   return (
+    filters.search.trim() === '' &&
     filters.tier === EMPTY_INVESTIGATION_FILTERS.tier &&
     filters.ramo === EMPTY_INVESTIGATION_FILTERS.ramo &&
     filters.status === EMPTY_INVESTIGATION_FILTERS.status &&

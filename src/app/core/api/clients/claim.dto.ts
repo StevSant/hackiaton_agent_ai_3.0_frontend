@@ -22,6 +22,7 @@ export interface ClaimAlertDto {
   puntos: number;
   severidad: AlertSeverityDto;
   detalle: string;
+  evidence?: Record<string, unknown>;
 }
 
 export interface ClaimDocumentDto {

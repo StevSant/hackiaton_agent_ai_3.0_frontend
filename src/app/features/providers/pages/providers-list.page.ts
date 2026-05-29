@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import {
@@ -8,8 +8,9 @@ import {
 import { ProvidersStore } from '@core/state/providers.store';
 import type { Provider } from '@shared/models';
 import { Button } from '@shared/ui/button';
-import { Chip } from '@shared/ui/chip';
+import { ExportButton } from '@shared/ui/export-button';
 import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
+import { FilterBar, type FilterControl, type FilterValue } from '@shared/ui/filter-bar';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
@@ -23,15 +24,14 @@ import {
 import { ProviderFormModal, type ProviderFormValue } from '../components/provider-form-modal';
 import { ProvidersTable } from '../components/providers-table';
 
-type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
-
 @Component({
   selector: 'page-providers-list',
   standalone: true,
   imports: [
     Button,
-    Chip,
+    ExportButton,
     ExportModal,
+    FilterBar,
     Icon,
     KpiSmall,
     Pagination,
@@ -53,10 +53,11 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
           <ui-icon name="add" [size]="16" />
           Agregar proveedor
         </ui-button>
-        <ui-button [disabled]="filtered().length === 0" (click)="exportOpen.set(true)">
-          <ui-icon name="download" [size]="14" />
-          Exportar reporte
-        </ui-button>
+        <ui-export-button
+          label="Exportar reporte"
+          [disabled]="filtered().length === 0"
+          (trigger)="exportOpen.set(true)"
+        />
       </div>
     </div>
 
@@ -67,23 +68,11 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
       <ui-kpi-small label="Monto total" [value]="formatMoney(stats().monto)" icon="payments" />
     </div>
 
-    <div class="bg-surface border border-line rounded-lg shadow-1 px-4 py-3 mb-4 flex items-center justify-between gap-4 flex-wrap">
-      <div class="flex items-center gap-2 flex-1 min-w-[260px]">
-        <ui-icon name="search" [size]="16" class="text-ink-3" />
-        <input
-          type="search"
-          class="bg-transparent border-0 outline-0 text-[13.5px] flex-1 text-ink placeholder:text-ink-3"
-          placeholder="Buscar por nombre, ciudad o tipo…"
-          [value]="search()"
-          (input)="search.set($any($event.target).value)"
-        />
-      </div>
-      <div class="flex items-center gap-1.5">
-        <ui-chip [active]="restrictive() === 'todos'" (click)="restrictive.set('todos')">Todos</ui-chip>
-        <ui-chip [active]="restrictive() === 'restrictiva'" (click)="restrictive.set('restrictiva')">Lista restrictiva</ui-chip>
-        <ui-chip [active]="restrictive() === 'normal'" (click)="restrictive.set('normal')">Normales</ui-chip>
-      </div>
-    </div>
+    <ui-filter-bar
+      [controls]="filterControls()"
+      [value]="filters()"
+      (valueChange)="filters.set($event)"
+    />
 
     @if (store.loading() && store.providers().length === 0) {
       <ui-skeleton-table [rows]="8" [cols]="6" />
@@ -132,8 +121,53 @@ export class ProvidersListPage {
   protected readonly store = inject(ProvidersStore);
   private readonly router = inject(Router);
 
-  protected readonly search = signal<string>('');
-  protected readonly restrictive = signal<RestrictiveFilter>('todos');
+  protected readonly filters = signal<FilterValue>({
+    search: '',
+    city: '',
+    tipo: '',
+    restrictive: 'todos',
+  });
+
+  protected readonly filterControls = computed<FilterControl[]>(() => [
+    { type: 'search', key: 'search', placeholder: 'Buscar por nombre, ciudad o tipo…' },
+    {
+      type: 'select',
+      key: 'city',
+      label: 'Ciudad',
+      icon: 'location_on',
+      options: [
+        { value: '', label: 'Todas las ciudades' },
+        ...this.cityOptions().map((c) => ({ value: c, label: c })),
+      ],
+    },
+    {
+      type: 'select',
+      key: 'tipo',
+      label: 'Tipo',
+      options: [
+        { value: '', label: 'Todos los tipos' },
+        ...this.tipoOptions().map((t) => ({ value: t, label: t })),
+      ],
+    },
+    {
+      type: 'chips',
+      key: 'restrictive',
+      emptyValue: 'todos',
+      options: [
+        { value: 'todos', label: 'Todos' },
+        { value: 'restrictiva', label: 'Lista restrictiva' },
+        { value: 'normal', label: 'Normales' },
+      ],
+    },
+  ]);
+
+  protected readonly cityOptions = computed(() =>
+    uniqueSorted(this.store.providers().map((p) => p.ciudad)),
+  );
+  protected readonly tipoOptions = computed(() =>
+    uniqueSorted(this.store.providers().map((p) => p.tipo)),
+  );
+
   protected readonly page = signal<number>(1);
   protected readonly pageSize = signal<number>(20);
   protected readonly exportOpen = signal<boolean>(false);
@@ -147,11 +181,16 @@ export class ProvidersListPage {
 
   protected readonly filtered = computed(() => {
     const list = this.store.providers();
-    const term = this.search().trim().toLowerCase();
-    const restrictiveFilter = this.restrictive();
+    const f = this.filters();
+    const term = (f['search'] ?? '').trim().toLowerCase();
+    const city = f['city'] ?? '';
+    const tipo = f['tipo'] ?? '';
+    const restrictive = f['restrictive'] ?? 'todos';
     return list.filter((p) => {
-      if (restrictiveFilter === 'restrictiva' && !p.listaRestrictiva) return false;
-      if (restrictiveFilter === 'normal' && p.listaRestrictiva) return false;
+      if (restrictive === 'restrictiva' && !p.listaRestrictiva) return false;
+      if (restrictive === 'normal' && p.listaRestrictiva) return false;
+      if (city && p.ciudad !== city) return false;
+      if (tipo && p.tipo !== tipo) return false;
       if (!term) return true;
       return (
         p.nombre.toLowerCase().includes(term) ||
@@ -160,6 +199,13 @@ export class ProvidersListPage {
       );
     });
   });
+
+  constructor() {
+    effect(() => {
+      this.filters(); // track
+      this.page.set(1);
+    });
+  }
 
   protected readonly paged = computed(() => {
     const list = this.filtered();
@@ -244,4 +290,13 @@ export class ProvidersListPage {
 function todayStamp(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function uniqueSorted(values: readonly string[]): string[] {
+  const set = new Set<string>();
+  for (const v of values) {
+    const trimmed = (v ?? '').trim();
+    if (trimmed) set.add(trimmed);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, 'es'));
 }

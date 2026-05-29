@@ -12,6 +12,7 @@ export type InvestigationTierFilter = 'todos' | RiskTier;
 export type InvestigationCategoryFilter = 'todos' | RamoKey;
 
 export interface InvestigationFilters {
+  search: string;
   tier: InvestigationTierFilter;
   ramo: InvestigationCategoryFilter;
   city: string;
@@ -20,6 +21,7 @@ export interface InvestigationFilters {
 }
 
 export const EMPTY_INVESTIGATION_FILTERS: InvestigationFilters = {
+  search: '',
   tier: 'todos',
   ramo: 'todos',
   city: '',

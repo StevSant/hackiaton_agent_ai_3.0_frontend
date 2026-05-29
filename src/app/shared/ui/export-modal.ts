@@ -25,6 +25,19 @@ export interface ExportRequest {
   format: ExportFormat;
   filename: string;
   columns: string[];
+  range?: string;
+  extra?: Record<string, boolean>;
+}
+
+export interface ExportRangeOption {
+  value: string;
+  label: string;
+}
+
+export interface ExportExtraToggle {
+  key: string;
+  label: string;
+  defaultOn?: boolean;
 }
 
 interface FormatOption {
@@ -125,17 +138,47 @@ const ALL_FORMATS: readonly FormatOption[] = [
           </div>
         </div>
 
-        <div>
-          <label class="block text-[11.5px] text-ink-3 uppercase tracking-wider font-medium mb-1.5">
-            Nombre del archivo
-          </label>
-          <input
-            type="text"
-            class="w-full bg-surface border border-line rounded-sm px-3 py-2 text-[13.5px] font-mono focus:border-brand focus:ring-2 focus:ring-brand-soft focus:outline-none"
-            [value]="filename()"
-            (input)="filename.set($any($event.target).value)"
-          />
+        <div class="grid gap-3" [class]="rangeOptions().length > 0 ? 'grid-cols-2' : 'grid-cols-1'">
+          @if (rangeOptions().length > 0) {
+            <div>
+              <label class="block text-[11.5px] text-ink-3 uppercase tracking-wider font-medium mb-1.5">
+                Rango de fechas
+              </label>
+              <select
+                class="w-full bg-surface border border-line rounded-sm px-3 py-2 text-[13.5px] focus:border-brand focus:ring-2 focus:ring-brand-soft focus:outline-none"
+                [value]="range()"
+                (change)="range.set($any($event.target).value)"
+              >
+                @for (r of rangeOptions(); track r.value) {
+                  <option [value]="r.value">{{ r.label }}</option>
+                }
+              </select>
+            </div>
+          }
+          <div>
+            <label class="block text-[11.5px] text-ink-3 uppercase tracking-wider font-medium mb-1.5">
+              Nombre del archivo
+            </label>
+            <input
+              type="text"
+              class="w-full bg-surface border border-line rounded-sm px-3 py-2 text-[13.5px] font-mono focus:border-brand focus:ring-2 focus:ring-brand-soft focus:outline-none"
+              [value]="filename()"
+              (input)="filename.set($any($event.target).value)"
+            />
+          </div>
         </div>
+
+        @if (extraToggle(); as toggle) {
+          <label class="flex items-center gap-2 text-[12.5px] text-ink-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              class="accent-[var(--brand)]"
+              [checked]="extraOn()"
+              (change)="extraOn.set($any($event.target).checked)"
+            />
+            {{ toggle.label }}
+          </label>
+        }
 
         @if (previewRows().length > 0 && selected().size > 0) {
           <div>
@@ -180,12 +223,16 @@ export class ExportModal {
   readonly totalRows = input<number>(0);
   readonly previewRows = input<readonly Record<string, unknown>[]>([]);
   readonly formats = input<readonly ExportFormat[]>(['csv', 'xlsx', 'json']);
+  readonly rangeOptions = input<readonly ExportRangeOption[]>([]);
+  readonly extraToggle = input<ExportExtraToggle | null>(null);
   readonly close = output<void>();
   readonly download = output<ExportRequest>();
 
   protected readonly format = signal<ExportFormat>('csv');
   protected readonly filename = signal<string>('');
   protected readonly selected = signal<Set<string>>(new Set());
+  protected readonly range = signal<string>('');
+  protected readonly extraOn = signal<boolean>(false);
 
   protected readonly availableFormats = computed<readonly FormatOption[]>(() => {
     const allowed = new Set(this.formats());
@@ -245,6 +292,12 @@ export class ExportModal {
       if (!allowed.includes(this.format())) {
         this.format.set(allowed[0] ?? 'csv');
       }
+      const ranges = this.rangeOptions();
+      if (ranges.length > 0 && !ranges.some((r) => r.value === this.range())) {
+        this.range.set(ranges[0].value);
+      }
+      const toggle = this.extraToggle();
+      this.extraOn.set(toggle?.defaultOn ?? false);
     });
   }
 
@@ -268,10 +321,13 @@ export class ExportModal {
     const orderedColumns = this.columns()
       .filter((c) => this.selected().has(c.key))
       .map((c) => c.key);
+    const toggle = this.extraToggle();
     this.download.emit({
       format: this.format(),
       filename: this.filename().trim(),
       columns: orderedColumns,
+      range: this.rangeOptions().length > 0 ? this.range() : undefined,
+      extra: toggle ? { [toggle.key]: this.extraOn() } : undefined,
     });
     this.close.emit();
   }
