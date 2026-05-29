@@ -59,13 +59,19 @@ function riskFromRatio(alertas: number, casos: number): Risk {
         </div>
       } @else {
         <div class="flex-1 relative px-4 py-4 overflow-x-hidden overflow-y-auto" (mouseleave)="hoveredId.set(null)">
-          <div class="relative w-full" [style.height.px]="canvasHeight()">
-            <div class="absolute top-0 left-0 text-[11px] font-semibold uppercase tracking-wide text-brand-ink">
-              Proveedores
-            </div>
-            <div class="absolute top-0 right-0 text-[11px] font-semibold uppercase tracking-wide text-ink-3">
-              Asegurados
-            </div>
+          <div
+            class="relative"
+            [class]="layout() === 'estrella' ? 'w-full max-w-[560px] aspect-square mx-auto' : 'w-full'"
+            [style.height.px]="layout() === 'estrella' ? null : canvasHeight()"
+          >
+            @if (layout() === 'columnas') {
+              <div class="absolute top-0 left-0 text-[11px] font-semibold uppercase tracking-wide text-brand-ink">
+                Proveedores
+              </div>
+              <div class="absolute top-0 right-0 text-[11px] font-semibold uppercase tracking-wide text-ink-3">
+                Asegurados
+              </div>
+            }
 
             <svg class="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
               @for (e of placedEdges(); track e.id) {
@@ -156,6 +162,7 @@ function riskFromRatio(alertas: number, casos: number): Risk {
 export class NetworkGraph {
   readonly nodes = input.required<readonly NetworkNodeDto[]>();
   readonly edges = input.required<readonly NetworkEdgeDto[]>();
+  readonly layout = input<'columnas' | 'estrella'>('columnas');
 
   readonly openNode = output<{ id: string; kind: 'proveedor' | 'asegurado' }>();
 
@@ -195,12 +202,10 @@ export class NetworkGraph {
     return Math.max(400, rows * 58 + 30);
   });
 
-  protected readonly placedNodes = computed<PlacedNode[]>(() => {
+  /** Insured ordered by the average position of their providers (barycenter) — cuts crossings. */
+  private readonly orderedInsured = computed<NetworkNodeDto[]>(() => {
     const { providers, insured } = this.visible();
     const provIndex = new Map(providers.map((p, i) => [p.id, i]));
-
-    // Order insured by the average position of the providers they link to
-    // (barycenter heuristic) — cuts edge crossings dramatically.
     const bary = new Map<string, number>();
     for (const a of insured) {
       const ys: number[] = [];
@@ -211,42 +216,82 @@ export class NetworkGraph {
       }
       bary.set(a.id, ys.length ? ys.reduce((s, v) => s + v, 0) / ys.length : 0);
     }
-    const insuredSorted = [...insured].sort(
-      (a, b) => (bary.get(a.id) ?? 0) - (bary.get(b.id) ?? 0),
-    );
+    return [...insured].sort((a, b) => (bary.get(a.id) ?? 0) - (bary.get(b.id) ?? 0));
+  });
 
+  protected readonly placedNodes = computed<PlacedNode[]>(() =>
+    this.layout() === 'estrella' ? this.placeRadial() : this.placeColumns(),
+  );
+
+  private placeColumns(): PlacedNode[] {
+    const providers = this.visible().providers;
+    const insured = this.orderedInsured();
     const place = (list: NetworkNodeDto[], x: number): PlacedNode[] => {
       const n = list.length;
-      return list.map((node, i) => ({
-        id: node.id,
-        label: shorten(node.label),
-        kind: node.kind,
-        ciudad: node.ciudad,
-        casos: node.casos,
-        alertas: node.alertas,
-        monto: node.monto,
-        listaRestrictiva: node.lista_restrictiva,
-        risk: riskFromRatio(node.alertas, node.casos),
-        x,
-        y: n === 1 ? 50 : 7 + (i / (n - 1)) * 88,
-        size: 44 + Math.min(16, Math.round(node.casos * 0.9)),
-      }));
+      return list.map((node, i) => this.toPlaced(node, x, n === 1 ? 50 : 7 + (i / (n - 1)) * 88));
     };
-    return [...place(providers, PROV_X), ...place(insuredSorted, ASEG_X)];
-  });
+    return [...place(providers, PROV_X), ...place(insured, ASEG_X)];
+  }
+
+  /** Radial "star": providers on the left arc, insured on the right arc of one ring. */
+  private placeRadial(): PlacedNode[] {
+    const providers = this.visible().providers;
+    const insured = this.orderedInsured();
+    const R = 39;
+    const arc = (list: NetworkNodeDto[], from: number, to: number): PlacedNode[] => {
+      const n = list.length;
+      return list.map((node, i) => {
+        const t = n === 1 ? 0.5 : i / (n - 1);
+        const angle = ((from + (to - from) * t) * Math.PI) / 180;
+        return this.toPlaced(node, 50 + R * Math.cos(angle), 50 - R * Math.sin(angle));
+      });
+    };
+    // Providers span the left semicircle (top→bottom), insured the right.
+    return [...arc(providers, 110, 250), ...arc(insured, 70, -70)];
+  }
+
+  private toPlaced(node: NetworkNodeDto, x: number, y: number): PlacedNode {
+    return {
+      id: node.id,
+      label: shorten(node.label),
+      kind: node.kind,
+      ciudad: node.ciudad,
+      casos: node.casos,
+      alertas: node.alertas,
+      monto: node.monto,
+      listaRestrictiva: node.lista_restrictiva,
+      risk: riskFromRatio(node.alertas, node.casos),
+      x,
+      y,
+      size: 44 + Math.min(16, Math.round(node.casos * 0.9)),
+    };
+  }
 
   protected readonly placedEdges = computed<PlacedEdge[]>(() => {
     const byId = new Map(this.placedNodes().map((n) => [n.id, n]));
+    const radial = this.layout() === 'estrella';
     const out: PlacedEdge[] = [];
     for (const e of this.edges()) {
       const p = byId.get(e.proveedor_id);
       const a = byId.get(e.asegurado_id);
       if (!p || !a) continue;
-      const cx1 = p.x + (a.x - p.x) * 0.42;
-      const cx2 = p.x + (a.x - p.x) * 0.58;
+      let path: string;
+      if (radial) {
+        // Control point = midpoint pulled toward the center, bending each chord
+        // inward so the links fan out like a star instead of a straight web.
+        const midX = (p.x + a.x) / 2;
+        const midY = (p.y + a.y) / 2;
+        const cx = midX + (50 - midX) * 0.55;
+        const cy = midY + (50 - midY) * 0.55;
+        path = `M ${p.x} ${p.y} Q ${cx} ${cy} ${a.x} ${a.y}`;
+      } else {
+        const cx1 = p.x + (a.x - p.x) * 0.42;
+        const cx2 = p.x + (a.x - p.x) * 0.58;
+        path = `M ${p.x} ${p.y} C ${cx1} ${p.y} ${cx2} ${a.y} ${a.x} ${a.y}`;
+      }
       out.push({
         id: `${e.proveedor_id}__${e.asegurado_id}`,
-        path: `M ${p.x} ${p.y} C ${cx1} ${p.y} ${cx2} ${a.y} ${a.x} ${a.y}`,
+        path,
         risk: e.alertas > 0 ? (e.casos_compartidos >= 2 ? 'alert' : 'warn') : 'ok',
         width: Math.min(3.5, 0.8 + e.casos_compartidos * 0.6),
         provId: e.proveedor_id,

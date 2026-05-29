@@ -24,6 +24,7 @@ import { ProvidersStore } from '@core/state/providers.store';
 
 type RamoFilter = 'todos' | RamoKey;
 type GraphTierFilter = 'todos' | 'rojo' | 'amarillo_rojo' | 'estandar';
+type GraphLayout = 'columnas' | 'estrella';
 
 @Component({
   selector: 'page-network',
@@ -110,24 +111,41 @@ type GraphTierFilter = 'todos' | 'rojo' | 'amarillo_rojo' | 'estandar';
             </div>
             <div class="text-[11.5px] text-ink-2 mt-1 font-medium">{{ graphSubtitle() }}</div>
           </div>
-          <div class="flex flex-wrap items-center gap-1.5">
-            <span class="text-[11px] uppercase tracking-wide text-ink-3 mr-0.5">Riesgo</span>
-            @for (opt of graphTierOptions; track opt.value) {
-              <button
-                type="button"
-                class="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] border transition-colors"
-                [class]="tierChipClasses(opt.value)"
-                (click)="setGraphTier(opt.value)"
-              >
-                {{ opt.label }}
-              </button>
-            }
+          <div class="flex flex-col items-end gap-1.5">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-[11px] uppercase tracking-wide text-ink-3 mr-0.5">Vista</span>
+              @for (opt of graphLayoutOptions; track opt.value) {
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] border transition-colors"
+                  [class]="layoutChipClasses(opt.value)"
+                  (click)="setGraphLayout(opt.value)"
+                >
+                  <ui-icon [name]="opt.icon" [size]="13" />
+                  {{ opt.label }}
+                </button>
+              }
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-[11px] uppercase tracking-wide text-ink-3 mr-0.5">Riesgo</span>
+              @for (opt of graphTierOptions; track opt.value) {
+                <button
+                  type="button"
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] border transition-colors"
+                  [class]="tierChipClasses(opt.value)"
+                  (click)="setGraphTier(opt.value)"
+                >
+                  {{ opt.label }}
+                </button>
+              }
+            </div>
           </div>
         </div>
         <network-graph
           class="flex-1"
           [nodes]="graphNodes()"
           [edges]="graphEdges()"
+          [layout]="graphLayout()"
           (openNode)="onOpenNode($event)"
         />
       </div>
@@ -166,6 +184,7 @@ export class NetworkPage {
   protected readonly relations = this.store.relations;
   protected readonly filter = signal<RamoFilter>('todos');
   protected readonly graphTier = signal<GraphTierFilter>('amarillo_rojo');
+  protected readonly graphLayout = signal<GraphLayout>('columnas');
   protected readonly exportOpen = signal<boolean>(false);
   protected readonly providerColumns = PROVIDER_EXPORT_COLUMNS;
   protected readonly ramoOptions: readonly RamoKey[] = RAMO_KEYS;
@@ -174,6 +193,10 @@ export class NetworkPage {
     { value: 'rojo', label: 'Solo rojos' },
     { value: 'amarillo_rojo', label: 'Amarillos + rojos' },
     { value: 'estandar', label: 'Estándar' },
+  ];
+  protected readonly graphLayoutOptions: ReadonlyArray<{ value: GraphLayout; label: string; icon: string }> = [
+    { value: 'columnas', label: 'Columnas', icon: 'view_column' },
+    { value: 'estrella', label: 'Estrella', icon: 'hub' },
   ];
 
   protected readonly counts = computed<Record<RamoKey, number>>(() => {
@@ -278,6 +301,16 @@ export class NetworkPage {
 
   protected setGraphTier(value: GraphTierFilter): void {
     this.graphTier.set(value);
+  }
+
+  protected setGraphLayout(value: GraphLayout): void {
+    this.graphLayout.set(value);
+  }
+
+  protected layoutChipClasses(value: GraphLayout): string {
+    return value === this.graphLayout()
+      ? 'bg-brand-soft border-brand text-brand-ink'
+      : 'bg-surface border-line text-ink-2 hover:bg-soft';
   }
 
   protected ramoLabel(key: RamoKey): string {
