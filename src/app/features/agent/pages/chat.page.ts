@@ -22,6 +22,7 @@ import { AgentEyeIcon } from '../components/agent-eye-icon';
 import { ChatMessage } from '../components/chat-message';
 import { ConversationRenameModal } from '../components/conversation-rename-modal';
 import { ConversationsSidebar } from '../components/conversations-sidebar';
+import { DocumentCanvasPanel } from '../components/document-canvas-panel';
 import { TtsPlayer } from '../components/tts-player';
 import { VoiceEqualizer } from '../components/voice-equalizer';
 import type { ConversationSummary } from '../models';
@@ -63,12 +64,20 @@ function generateUuid(): string {
     AgentEyeIcon,
     ConversationsSidebar,
     ConversationRenameModal,
+    DocumentCanvasPanel,
     VoiceEqualizer,
     TtsPlayer,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="chat-page flex flex-col flex-1 min-h-0 h-full bg-surface">
+    <!-- Split wrapper: chat left + artifact panel right -->
+    <div class="chat-split flex flex-row flex-1 min-h-0 h-full overflow-hidden">
+
+    <!-- LEFT: chat column — compresses when panel is open -->
+    <div
+      class="chat-page flex flex-col flex-1 min-h-0 h-full bg-surface transition-all duration-300"
+      [class.lg:max-w-[50%]]="store.activeDocument() !== null"
+    >
       <header class="chat-panel__toolbar shrink-0">
         <button
           type="button"
@@ -219,7 +228,7 @@ function generateUuid(): string {
             (openCase)="openCase($event)"
             (ttsToggle)="onTtsToggle($event)"
             (toggleChart)="store.toggleChart($event)"
-            (improve)="onImproveRequest($event)"
+            (openCanvas)="onOpenCanvas($event)"
           />
         }
         @if (store.thinking()) {
@@ -405,6 +414,26 @@ function generateUuid(): string {
         </section>
       </footer>
     </div>
+    <!-- END chat column -->
+
+    <!-- RIGHT: artifact canvas panel — slides in when a document is active -->
+    @if (store.activeDocument(); as activeDoc) {
+      <aside
+        class="canvas-panel flex flex-col min-h-0 border-l border-line bg-surface transition-all duration-300 lg:w-1/2 w-full"
+        role="complementary"
+        aria-label="Panel de documento"
+      >
+        <document-canvas-panel
+          class="flex-1 min-h-0 flex flex-col"
+          [doc]="{ titulo: activeDoc.titulo, contenido_markdown: activeDoc.contenidoMarkdown }"
+          (close)="store.closeDocument()"
+          (improve)="onImproveRequest($event)"
+        />
+      </aside>
+    }
+
+    </div>
+    <!-- END split wrapper -->
 
     <!-- History drawer (slide-over from the left) -->
     @if (historyOpen()) {
@@ -677,11 +706,19 @@ export class ChatPage implements AfterViewChecked {
     void this.store.ask(text, convId);
   }
 
-  /** Handle "Mejorar con IA" from a document canvas — re-sends the document text as a new turn. */
+  /** Handle "Mejorar con IA" from the document panel — re-sends the document text as a new turn. */
   protected onImproveRequest(currentText: string): void {
     const convId = this.activeConversationId() ?? undefined;
     if (convId) this._freshIds.delete(convId);
     void this.store.ask(`Mejorá este documento:\n\n${currentText}`, convId);
+  }
+
+  /** Handle (openCanvas) from a chat message — open (or update) the artifact side panel. */
+  protected onOpenCanvas(doc: { titulo: string; contenidoMarkdown: string }): void {
+    this.store.openDocument({
+      titulo: doc.titulo,
+      contenidoMarkdown: doc.contenidoMarkdown,
+    });
   }
 
   protected scrollSuggestions(direction: 'prev' | 'next'): void {

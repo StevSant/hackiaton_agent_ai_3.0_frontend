@@ -7,8 +7,35 @@
   overflow: hidden;
 }
 
-.chat-page {
+.chat-split {
   width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.chat-page {
+  flex: 1 1 auto;
+  min-width: 0;
+  transition: max-width 300ms ease;
+}
+
+/* Right artifact panel */
+.canvas-panel {
+  flex: 0 0 50%;
+  max-width: 50%;
+  overflow: hidden;
+}
+
+@media (max-width: 1023px) {
+  /* On small screens the panel overlays full-width (fixed on top of chat) */
+  .canvas-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    flex: none;
+    max-width: 100%;
+    width: 100%;
+  }
 }
 
 .chat-page__messages {

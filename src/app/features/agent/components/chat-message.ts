@@ -17,7 +17,7 @@ import { AgentChart } from './agent-chart';
 import { AgentEyeIcon } from './agent-eye-icon';
 import { AgentSteps } from './agent-steps';
 import { AgentTable } from './agent-table';
-import { ChatDocumentCanvas } from './chat-document-canvas';
+import { ChatDocumentCard } from './chat-document-card';
 import type { AgentMessage } from '../models';
 import { messageToMarkdown, messageTitulo, slugify } from '../utils/message-to-markdown';
 import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
@@ -25,7 +25,7 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
 @Component({
   selector: 'agent-chat-message',
   standalone: true,
-  imports: [AgentSteps, MarkdownPipe, Icon, AgentChart, AgentEyeIcon, AgentTable, ChatDocumentCanvas],
+  imports: [AgentSteps, MarkdownPipe, Icon, AgentChart, AgentEyeIcon, AgentTable, ChatDocumentCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="w-full flex gap-3 items-start" [class.justify-end]="isUser()">
@@ -84,8 +84,7 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
                 {{ listenLabel() }}
               </button>
             }
-
-            <!-- Feature B: per-message Word download (deterministic, no agent tool needed) -->
+            <!-- Per-message Word download + canvas (deterministic, no agent tool needed) -->
             @if (hasContent()) {
               <button
                 type="button"
@@ -100,35 +99,22 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
               <button
                 type="button"
                 class="inline-flex items-center gap-1 text-[11.5px] text-ink-3 px-1.5 py-0.5 rounded hover:text-brand hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-soft"
-                [class.text-brand]="inlineCanvasOpen()"
-                [attr.aria-pressed]="inlineCanvasOpen()"
-                (click)="inlineCanvasOpen.update(v => !v)"
-                aria-label="Abrir canvas editable"
+                aria-label="Abrir en canvas"
+                (click)="openCanvas.emit({ titulo: inlineTitulo(), contenidoMarkdown: inlineMarkdown() })"
               >
                 <ui-icon name="edit_note" [size]="14" />
-                ✏️ Canvas
+                Abrir en canvas
               </button>
             }
           </div>
 
-          <!-- Feature A: agent document canvas (from SSE document event) -->
           @if (documentPayload(); as doc) {
-            <chat-document-canvas
+            <chat-document-card
               [titulo]="doc.titulo"
               [contenidoMarkdown]="doc.contenido_markdown"
-              (improve)="improve.emit($event)"
+              (openCanvas)="openCanvas.emit({ titulo: doc.titulo, contenidoMarkdown: doc.contenido_markdown })"
             />
           }
-
-          <!-- Feature B: inline canvas for per-message editing -->
-          @if (inlineCanvasOpen() && !documentPayload() && hasContent()) {
-            <chat-document-canvas
-              [titulo]="inlineTitulo()"
-              [contenidoMarkdown]="inlineMarkdown()"
-              (improve)="improve.emit($event)"
-            />
-          }
-
           @if (chart(); as chartData) {
             @if (uiPrefs.showCharts()) {
               @if (chartAccepted()) {
@@ -153,7 +139,6 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
               <div class="w-full h-[280px] rounded-lg bg-soft animate-pulse"></div>
             </div>
           }
-
           @if (tablePayload(); as rows) {
             <agent-table [rows]="rows" (openCase)="openCase.emit($event)" />
           }
@@ -193,8 +178,8 @@ export class ChatMessage {
   readonly openCase = output<string>();
   readonly ttsToggle = output<string>();
   readonly toggleChart = output<string>();
-  /** Emitted when the user clicks "Mejorar con IA" on a document canvas. */
-  readonly improve = output<string>();
+  /** Opens the artifact side panel — payload is { titulo, contenidoMarkdown }. */
+  readonly openCanvas = output<{ titulo: string; contenidoMarkdown: string }>();
 
   private readonly agentApi = inject(AgentApi);
   protected readonly uiPrefs = inject(ChatUiPrefsStore);
@@ -208,13 +193,7 @@ export class ChatMessage {
   protected readonly chartPending = computed(() => this.message().chartPending === true);
   protected readonly tablePayload = computed(() => this.message().tablePayload ?? null);
   protected readonly documentPayload = computed(() => this.message().documentPayload ?? null);
-
-  /** Feature B: per-message inline canvas toggle. */
-  protected readonly inlineCanvasOpen = signal(false);
-  /** Feature B: downloading state for the per-message Word button. */
   protected readonly msgDownloading = signal(false);
-
-  /** Markdown derived from this message for Feature B actions. */
   protected readonly inlineMarkdown = computed(() => messageToMarkdown(this.message()));
   protected readonly inlineTitulo = computed(() => messageTitulo(this.message()));
 
@@ -228,7 +207,6 @@ export class ChatMessage {
     if (!this.ttsActive()) return 'Escuchar';
     return this.ttsState() === 'playing' ? 'Pausar' : 'Reanudar';
   });
-
   protected readonly avatarBg = computed(() =>
     this.isUser()
       ? 'linear-gradient(135deg, oklch(0.55 0.16 30), oklch(0.5 0.18 350))'

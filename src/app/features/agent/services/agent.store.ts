@@ -226,6 +226,14 @@ function extractTableRows(result: unknown): TableRow[] | null {
   return null;
 }
 
+/** State for the artifact side panel (document canvas). */
+export interface ActiveDocument {
+  titulo: string;
+  contenidoMarkdown: string;
+  /** The message ID that sourced this document, if any. */
+  messageId?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AgentStore {
   private readonly sse = inject(SseClient);
@@ -244,12 +252,22 @@ export class AgentStore {
   private readonly _responding = signal<boolean>(false);
   private readonly _conversationId = signal<string | null>(null);
   private readonly _chatContext = signal<ChatContext>(null);
+  private readonly _activeDocument = signal<ActiveDocument | null>(null);
 
   readonly messages = this._messages.asReadonly();
   readonly thinking = this._thinking.asReadonly();
   readonly isResponding = this._responding.asReadonly();
   readonly conversationId = this._conversationId.asReadonly();
   readonly chatContext = this._chatContext.asReadonly();
+  readonly activeDocument = this._activeDocument.asReadonly();
+
+  openDocument(doc: ActiveDocument): void {
+    this._activeDocument.set(doc);
+  }
+
+  closeDocument(): void {
+    this._activeDocument.set(null);
+  }
 
   /** Backward-compat wrapper — maps claim id to ChatContext union. */
   readonly contextClaimId = computed(() => {
@@ -478,6 +496,12 @@ export class AgentStore {
           msg.id === assistantId ? { ...msg, documentPayload } : msg,
         ),
       );
+      // Auto-open the artifact side panel when the agent generates a document.
+      this._activeDocument.set({
+        titulo: documentPayload.titulo,
+        contenidoMarkdown: documentPayload.contenido_markdown,
+        messageId: assistantId,
+      });
     };
 
     const url = `${environment.backendUrl}${environment.apiPrefix}/agent/ask`;
