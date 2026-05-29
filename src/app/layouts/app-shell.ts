@@ -89,7 +89,7 @@ export class AppShell {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly shortcuts = inject(KeyboardShortcutsService);
+  protected readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly sidebarOpen = signal<boolean>(false);
 
