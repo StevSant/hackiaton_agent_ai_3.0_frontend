@@ -1,51 +1,70 @@
 # hackiaton_agent_ai_3.0_frontend
 
-Angular (standalone + signals) + TailwindCSS frontend for the Hackiaton 3.0 Agent AI project. See [`CLAUDE.md`](./CLAUDE.md) for conventions.
+Frontend Angular (standalone + signals) + TailwindCSS de **Centinela IA** — detector de posibles fraudes en siniestros para el reto Aseguradora del Sur (hackIAthon 2026). Ver [`CLAUDE.md`](./CLAUDE.md) para las convenciones de desarrollo.
 
-## Prerequisites
+## Prerrequisitos
 
-- Node.js 20+ (24 recommended — the `gen:api` script uses `--env-file-if-exists`)
+- Node.js 20+ (24 recomendado — el script `gen:api` usa `--env-file-if-exists`)
 - [`pnpm`](https://pnpm.io/) 10+
 
-## Setup
+## Configuración
 
 ```bash
 pnpm install
-cp .env.example .env             # optional — only needed to point gen:api at a non-default backend
+cp .env.example .env             # opcional — sólo si gen:api apunta a un backend distinto al default
 ```
 
-## Run
+## Ejecutar
 
 ```bash
-pnpm dev                         # ng serve on http://localhost:4200
-pnpm build                       # production build
-pnpm watch                       # dev build with file watching
+pnpm dev                         # ng serve en http://localhost:4200
+pnpm build                       # build de producción (es el gate de CI — no hay script `lint`)
+pnpm watch                       # build de desarrollo con file watching
 ```
 
-## API types codegen
+## Generación de tipos de la API
 
-The backend's `/openapi.json` is the single source of truth for cross-stack types. Regenerate after every backend schema change:
+El `/openapi.json` del backend es la **única fuente de verdad** de los tipos cross-stack. Regenera después de cada cambio de schema en el backend:
 
 ```bash
-pnpm gen:api                     # writes src/app/core/api/generated/schema.ts
+pnpm gen:api                     # escribe src/app/core/api/generated/schema.ts
 ```
 
-`BACKEND_URL` defaults to `http://localhost:8000`. Override via env or `.env`.
+`BACKEND_URL` por defecto es `http://localhost:8000`. Se sobreescribe vía env o `.env`.
+La carpeta `core/api/generated/` es **read-only** — nunca editar a mano, regenerar.
 
-## Formatting
+## Formato
 
 ```bash
 pnpm format                      # prettier --write
 pnpm format:check                # prettier --check
 ```
 
-## Layout
+## Funcionalidades (rutas)
 
-See [`CLAUDE.md §3`](./CLAUDE.md) for the architecture. The skeleton lays out:
+Bajo `AppShell` (protegidas por `authGuard`):
 
-- `src/app/core/` — app-wide singletons (auth, api, realtime, config, errors, interceptors)
-- `src/app/shared/` — cross-feature primitives (ui/, pipes/, directives/, utils/)
-- `src/app/features/` — vertical slices (chat, auth, uploads, home)
+- `/claims` — triage de siniestros (lista ordenada por score + filtros) y detalle explicable.
+- `/agent` — chat con el agente IA (SSE), voz (Whisper + TTS), historial de conversaciones, gráficas ECharts.
+- `/fraud-panel` — panel multiagente: 4 especialistas debaten el caso en vivo.
+- `/insights` — dashboard ejecutivo: mapa de Ecuador, tendencias, top anomalías.
+- `/antifraude` — bandeja de escalados + investigación (rol `antifraude`).
+- `/network` — grafo de relaciones asegurado ↔ proveedor ↔ siniestro (rol `antifraude`).
+- `/providers`, `/asegurados` — vistas maestras + detalle.
+- `/alerts` — catálogo de reglas FS/RF.
+- `/audit` — bitácora de auditoría (rol `antifraude`).
+- `/uploads` — wizard de importación de siniestros + subida de documentos.
+- `/settings` — preferencias.
+
+`/` y `/landing` → página de aterrizaje pública. `/auth/login` → login (JWT local V0).
+
+## Estructura
+
+Ver [`CLAUDE.md §3`](./CLAUDE.md) para la arquitectura. El esqueleto:
+
+- `src/app/core/` — singletons (auth, api, realtime/SSE, config, errores, interceptors, guards)
+- `src/app/shared/` — primitivas cross-feature (ui/, pipes/, directives/, utils/)
+- `src/app/features/` — slices verticales: `claims`, `agent`, `fraud-panel`, `insights`, `antifraude`, `network`, `providers`, `asegurados`, `alerts`, `audit`, `uploads`, `auth`, `settings`, `landing`
 - `src/app/layouts/` — `AppShell`, `AuthShell`
 - `src/app/app.config.ts` — `provideRouter`, `provideHttpClient(withFetch(), withInterceptors([...]))`, `provideAnimationsAsync`
-- `src/app/app.routes.ts` — lazy-loaded feature routes under `AppShell` + auth flow under `AuthShell`
+- `src/app/app.routes.ts` — rutas lazy bajo `AppShell` + flujo de auth bajo `AuthShell`

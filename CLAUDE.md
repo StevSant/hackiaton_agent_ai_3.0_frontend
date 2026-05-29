@@ -83,6 +83,8 @@ src/app/
 └── app.config.ts               ← providers
 ```
 
+> **Live feature set (broader than the tree above).** The tree shows the original core slices; the shipped app also has: `fraud-panel/` (multi-agent panel debate, `/fraud-panel`), `insights/` (the executive dashboard — the `reports/` stretch slice shipped as `insights`), `antifraude/` (escalation `bandeja` + `investigacion`), `providers/`, `asegurados/`, `alerts/` (rules catalog), `audit/`, `settings/`, and `landing/`. `agent/` includes voice (Whisper transcription + `tts-player`), the conversations sidebar, and `agent-chart` (ECharts). When in doubt about routes, read `app.routes.ts`.
+
 **Deferred (do NOT scaffold for the hackathon submission):** `features/memory/`. See spec §11 for re-introduction triggers.
 
 > **Auth is in scope now (V0):** `features/auth/`, `core/auth/`, `core/guards/`, and `core/interceptors/auth.interceptor.ts` are first-class. They were originally on the deferred list; spec §17 (2026-05-26) added them back as **local JWT only** (Bearer header, no OAuth, no third-party SDK).
@@ -342,13 +344,16 @@ The user can override the filter via the FilterBar. Don't lock the filter — th
 ```bash
 pnpm install              # install deps
 pnpm dev                  # ng serve with HMR
-pnpm build                # production build
-pnpm test                 # unit tests (Karma/Jest — TBD)
-pnpm lint                 # eslint + prettier check
+pnpm build                # production build — THIS is the gate (catches TS/template errors)
+pnpm watch                # dev build with file watching
+pnpm format               # prettier --write
+pnpm format:check         # prettier --check
 pnpm gen:api              # regenerate src/app/core/api/generated/ from $BACKEND_URL/openapi.json
 ```
 
-**Before opening a PR**, run: `pnpm lint && pnpm build && pnpm test`. If you changed anything that consumes the API, also run `pnpm gen:api` against a running backend (or the staging URL).
+> There is **no `pnpm lint` script** and the unit-test runner is deferred (`pnpm test` maps to `ng test` but no specs are wired). The real quality gate is **`pnpm build`** — the repo is not prettier-clean, so don't gate on `format:check`.
+
+**Before opening a PR**, run `pnpm build`. If you changed anything that consumes the API, also run `pnpm gen:api` against a running backend (or the staging URL).
 
 ---
 
