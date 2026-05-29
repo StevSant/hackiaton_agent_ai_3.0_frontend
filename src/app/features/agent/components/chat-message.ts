@@ -5,11 +5,8 @@ import {
   inject,
   input,
   output,
-  signal,
 } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
 
-import { AgentApi } from '@core/api/clients/agent.api';
 import type { TtsState } from '@core/tts/text-to-speech.service';
 import { MarkdownPipe } from '@shared/pipes';
 import { Icon } from '@shared/ui/icon';
@@ -19,7 +16,6 @@ import { AgentSteps } from './agent-steps';
 import { AgentTable } from './agent-table';
 import { ChatDocumentCard } from './chat-document-card';
 import type { AgentMessage } from '../models';
-import { messageToMarkdown, messageTitulo, slugify } from '../utils/message-to-markdown';
 import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
 
 @Component({
@@ -84,28 +80,6 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
                 {{ listenLabel() }}
               </button>
             }
-            <!-- Per-message Word download + canvas (deterministic, no agent tool needed) -->
-            @if (hasContent()) {
-              <button
-                type="button"
-                class="inline-flex items-center gap-1 text-[11.5px] text-ink-3 px-1.5 py-0.5 rounded hover:text-brand hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-soft disabled:opacity-50"
-                [disabled]="msgDownloading()"
-                (click)="onMsgDownload()"
-                aria-label="Descargar Word"
-              >
-                <ui-icon name="download" [size]="14" />
-                {{ msgDownloading() ? 'Generando…' : '📄 Word' }}
-              </button>
-              <button
-                type="button"
-                class="inline-flex items-center gap-1 text-[11.5px] text-ink-3 px-1.5 py-0.5 rounded hover:text-brand hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-soft"
-                aria-label="Abrir en canvas"
-                (click)="openCanvas.emit({ titulo: inlineTitulo(), contenidoMarkdown: inlineMarkdown() })"
-              >
-                <ui-icon name="edit_note" [size]="14" />
-                Abrir en canvas
-              </button>
-            }
           </div>
 
           @if (documentPayload(); as doc) {
@@ -139,7 +113,7 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
               <div class="w-full h-[280px] rounded-lg bg-soft animate-pulse"></div>
             </div>
           }
-          @if (tablePayload(); as rows) {
+          @if (!documentPayload() && tablePayload(); as rows) {
             <agent-table [rows]="rows" (openCase)="openCase.emit($event)" />
           }
         </div>
@@ -181,7 +155,6 @@ export class ChatMessage {
   /** Opens the artifact side panel — payload is { titulo, contenidoMarkdown }. */
   readonly openCanvas = output<{ titulo: string; contenidoMarkdown: string }>();
 
-  private readonly agentApi = inject(AgentApi);
   protected readonly uiPrefs = inject(ChatUiPrefsStore);
 
   protected readonly isUser = computed(() => this.message().role === 'user');
@@ -193,9 +166,6 @@ export class ChatMessage {
   protected readonly chartPending = computed(() => this.message().chartPending === true);
   protected readonly tablePayload = computed(() => this.message().tablePayload ?? null);
   protected readonly documentPayload = computed(() => this.message().documentPayload ?? null);
-  protected readonly msgDownloading = signal(false);
-  protected readonly inlineMarkdown = computed(() => messageToMarkdown(this.message()));
-  protected readonly inlineTitulo = computed(() => messageTitulo(this.message()));
 
   protected readonly listenIcon = computed(() => {
     if (this.ttsActive() && this.ttsState() === 'loading') return 'progress_activity';
@@ -220,29 +190,5 @@ export class ChatMessage {
     if (!chip) return;
     const id = chip.getAttribute('data-sin-id');
     if (id) this.openCase.emit(id);
-  }
-
-  /** Feature B: download Word directly from the message text + table (no agent tool). */
-  protected async onMsgDownload(): Promise<void> {
-    if (this.msgDownloading()) return;
-    this.msgDownloading.set(true);
-    try {
-      const blob = await firstValueFrom(
-        this.agentApi.downloadDocumentDocx({
-          titulo: this.inlineTitulo(),
-          contenido_markdown: this.inlineMarkdown(),
-        }),
-      );
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${slugify(this.inlineTitulo()) || 'informe'}.docx`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Silent — backend unreachable; user sees no response, can retry.
-    } finally {
-      this.msgDownloading.set(false);
-    }
   }
 }

@@ -169,7 +169,7 @@ import { slugify } from '../utils/message-to-markdown';
             <!-- WYSIWYG: the SAME rendered markdown, made editable. No raw syntax. -->
             <div
               #editable
-              class="markdown-body text-[14px] text-gray-800 leading-relaxed min-h-[320px] outline-none focus:ring-2 focus:ring-brand rounded-lg"
+              class="canvas-content markdown-body text-[14px] text-gray-800 leading-relaxed min-h-[320px] overflow-auto outline-none focus:ring-2 focus:ring-brand rounded-lg"
               contenteditable="true"
               role="textbox"
               aria-multiline="true"
@@ -194,7 +194,7 @@ import { slugify } from '../utils/message-to-markdown';
             </div>
           } @else {
             <div
-              class="markdown-body text-[14px] text-gray-800 leading-relaxed"
+              class="canvas-content markdown-body text-[14px] text-gray-800 leading-relaxed overflow-auto"
               [innerHTML]="doc().contenidoMarkdown | markdown"
             ></div>
           }
@@ -227,6 +227,12 @@ import { slugify } from '../utils/message-to-markdown';
       .canvas-tool-btn:hover {
         background: var(--hover, rgba(0, 0, 0, 0.05));
         color: var(--brand);
+      }
+      /* Wide tables scroll horizontally inside the page instead of being clipped.
+         ::ng-deep reaches the [innerHTML]-injected table, which has no scoping attr. */
+      .canvas-content ::ng-deep table {
+        max-width: none;
+        width: auto;
       }
     `,
   ],
