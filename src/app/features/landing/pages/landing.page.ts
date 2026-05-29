@@ -210,6 +210,7 @@ interface MultiAgentPersona {
         0 0 0 1px rgba(15, 23, 42, 0.8),
         0 32px 80px -24px rgba(0, 0, 0, 0.75),
         0 0 80px -20px rgba(34, 211, 238, 0.3);
+      overflow: hidden;
     }
 
     .preview-bar {
@@ -1153,10 +1154,10 @@ interface MultiAgentPersona {
             </div>
 
             <!-- Chart + table -->
-            <div class="grid sm:grid-cols-[0.85fr_1fr] gap-4">
+            <div class="grid grid-cols-1 min-[520px]:grid-cols-[0.85fr_1fr] gap-4">
 
               <!-- score distribution chart -->
-              <div class="rounded-xl bg-slate-900/55 border border-slate-700/40 p-4">
+              <div class="rounded-xl bg-slate-900/55 border border-slate-700/40 p-4 min-w-0">
                 <div class="flex items-center justify-between mb-3">
                   <div class="text-[11px] uppercase tracking-wider text-slate-400">Distribución por riesgo</div>
                   <div class="badge-mono text-slate-500">7D</div>
@@ -1181,38 +1182,38 @@ interface MultiAgentPersona {
               </div>
 
               <!-- claim rows -->
-              <div class="rounded-xl bg-slate-900/55 border border-slate-700/40 p-4 flex flex-col">
-                <div class="flex items-center justify-between mb-3">
+              <div class="rounded-xl bg-slate-900/55 border border-slate-700/40 p-4 flex flex-col min-w-0">
+                <div class="flex items-center justify-between mb-3 gap-2">
                   <div class="text-[11px] uppercase tracking-wider text-slate-400">
                     {{ perspective() === 'antifraude' ? 'Bandeja escalada' : 'Triaje del día' }}
                   </div>
-                  <div class="badge-mono text-cyan-300/80">{{ currentRows().length }} casos</div>
+                  <div class="badge-mono text-cyan-300/80 shrink-0">{{ currentRows().length }} casos</div>
                 </div>
-                <div class="space-y-2 flex-1">
+                <div class="space-y-2 flex-1 min-w-0">
                   @for (row of currentRows(); track row.id) {
-                    <div class="flex items-center gap-2.5 rounded-lg bg-slate-950/40 border border-slate-700/30 px-2.5 py-2 hover:border-cyan-400/40 transition-colors">
-                      <span class="tier-dot" [class.tier-rojo]="row.tier === 'rojo'"
-                                              [class.tier-amarillo]="row.tier === 'amarillo'"
-                                              [class.tier-verde]="row.tier === 'verde'"></span>
-                      <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-2">
-                          <span class="badge-mono text-cyan-200/90">{{ row.id }}</span>
-                          <span class="text-[10.5px] text-slate-500 truncate">{{ row.ramo }}</span>
+                    <div class="rounded-lg bg-slate-950/40 border border-slate-700/30 px-2.5 py-2 hover:border-cyan-400/40 transition-colors min-w-0">
+                      <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="tier-dot shrink-0" [class.tier-rojo]="row.tier === 'rojo'"
+                                                      [class.tier-amarillo]="row.tier === 'amarillo'"
+                                                      [class.tier-verde]="row.tier === 'verde'"></span>
+                          <span class="badge-mono text-cyan-200/90 shrink-0">{{ row.id }}</span>
+                          <span class="text-[10px] text-slate-500 truncate">{{ row.ramo }}</span>
                         </div>
-                        <div class="text-[11.5px] text-slate-300 truncate">{{ row.signal }}</div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                          <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap"
+                                [class.bg-tier-red-soft]="row.tier === 'rojo'"
+                                [class.text-tier-red-ink]="row.tier === 'rojo'"
+                                [class.bg-tier-yellow-soft]="row.tier === 'amarillo'"
+                                [class.text-tier-yellow-ink]="row.tier === 'amarillo'"
+                                [class.bg-tier-green-soft]="row.tier === 'verde'"
+                                [class.text-tier-green-ink]="row.tier === 'verde'">
+                            {{ tierLabel(row.tier) }}
+                          </span>
+                          <span class="text-[11px] font-semibold text-slate-300 tabular-nums">{{ row.score }}</span>
+                        </div>
                       </div>
-                      <div class="flex flex-col items-end gap-0.5 shrink-0">
-                        <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                              [class.bg-tier-red-soft]="row.tier === 'rojo'"
-                              [class.text-tier-red-ink]="row.tier === 'rojo'"
-                              [class.bg-tier-yellow-soft]="row.tier === 'amarillo'"
-                              [class.text-tier-yellow-ink]="row.tier === 'amarillo'"
-                              [class.bg-tier-green-soft]="row.tier === 'verde'"
-                              [class.text-tier-green-ink]="row.tier === 'verde'">
-                          {{ tierLabel(row.tier) }}
-                        </span>
-                        <span class="text-[12px] text-slate-400 tabular-nums">Riesgo {{ row.score }}</span>
-                      </div>
+                      <p class="mt-1 pl-[18px] text-[11px] text-slate-400 leading-snug line-clamp-2">{{ row.signal }}</p>
                     </div>
                   }
                 </div>
@@ -1416,8 +1417,8 @@ export class LandingPage implements AfterViewInit, OnDestroy {
     if (this.perspective() === 'antifraude') {
       return [
         { id: 'SIN-08412', asegurado: 'María F. Salazar', ramo: 'Vehículos', score: 91, tier: 'rojo', signal: 'Pérdida total + denuncia tardía' },
-        { id: 'SIN-07731', asegurado: 'Jorge A. Pérez', ramo: 'Vida', score: 84, tier: 'rojo', signal: 'Relato muy similar a otros casos del proveedor' },
-        { id: 'SIN-07415', asegurado: 'Lucía Mejía', ramo: 'Salud', score: 79, tier: 'amarillo', signal: 'Varios reclamos recientes en la misma sucursal' },
+        { id: 'SIN-07731', asegurado: 'Jorge A. Pérez', ramo: 'Vida', score: 84, tier: 'rojo', signal: 'Relato similar en red del proveedor' },
+        { id: 'SIN-07415', asegurado: 'Lucía Mejía', ramo: 'Salud', score: 79, tier: 'amarillo', signal: 'Reclamos recientes en la misma sucursal' },
       ];
     }
     return [
@@ -1492,8 +1493,8 @@ export class LandingPage implements AfterViewInit, OnDestroy {
       role: 'Orquestador',
       personality: 'Sereno pero firme: mira el panorama y decide el siguiente paso.',
       duty: 'Coordina herramientas y compone la respuesta al analista.',
-      accent: '#22d3ee',
-      irisInner: '#0e7490',
+      accent: '#a78bfa',
+      irisInner: '#5b21b6',
       gazeClass: 'ma-gaze--centinela',
       browAnimClass: 'ma-brows--calm',
       blinkDelay: '0s',
@@ -1522,7 +1523,6 @@ export class LandingPage implements AfterViewInit, OnDestroy {
       irisRadius: 10.5,
       browLeft: 'M 21 15 L 39 23',
       browRight: 'M 79 15 L 61 23',
-      browCrease: 'M 39 23 Q 50 26.5 61 23',
       lidPath: 'M 24 41 Q 50 35 76 41 L 72 47 Q 50 43 28 47 Z',
       slotClass: 'multiagent-node--left',
       breatheDelay: '600ms',
