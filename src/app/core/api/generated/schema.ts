@@ -467,6 +467,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/claims/{claim_id}/narrative-analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Claim Narrative Route
+         * @description Run (or return cached) NLP analysis of the claim narrative.
+         *
+         *     Extracts entities, judges narrative coherence (the genuine source for FS-09),
+         *     and writes a short summary. Cached in ``claim_scores`` — a second call returns
+         *     the cached result without hitting the LLM. When the feature is disabled the
+         *     claim is returned unchanged.
+         */
+        post: operations["analyze_claim_narrative_route_api_v1_claims__claim_id__narrative_analysis_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/claims/{claim_id}/resumen": {
         parameters: {
             query?: never;
@@ -727,6 +752,23 @@ export interface paths {
         };
         /** Get Insights Route */
         get: operations["get_insights_route_api_v1_insights_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/savings-analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Savings Analysis Route */
+        get: operations["get_savings_analysis_route_api_v1_reports_savings_analysis_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1074,6 +1116,10 @@ export interface components {
             severidad: "high" | "med" | "low";
             /** Detalle */
             detalle: string;
+            /** Evidence */
+            evidence?: {
+                [key: string]: unknown;
+            };
         };
         /**
          * ClaimDetail
@@ -1143,6 +1189,8 @@ export interface components {
             anomaly_score?: number | null;
             /** Nearest Normal Claim Id */
             nearest_normal_claim_id?: string | null;
+            narrative_analysis?: components["schemas"]["NarrativeAnalysis"] | null;
+            panel_analysis?: components["schemas"]["PanelAnalysis"] | null;
             /**
              * Posible Falso Positivo
              * @default false
@@ -1158,6 +1206,7 @@ export interface components {
             latitude?: number | null;
             /** Longitude */
             longitude?: number | null;
+            ahorro?: components["schemas"]["SavingsEstimate"] | null;
         };
         /** ClaimDocument */
         ClaimDocument: {
@@ -1424,6 +1473,11 @@ export interface components {
             contenido_markdown: string;
             /** Chart Image Base64 */
             chart_image_base64?: string | null;
+            /**
+             * Include Tables
+             * @default true
+             */
+            include_tables: boolean;
         };
         /** EscalateRequest */
         EscalateRequest: {
@@ -1432,6 +1486,24 @@ export interface components {
              * @description Nota opcional para el equipo antifraude
              */
             note?: string | null;
+        };
+        /**
+         * ExtractedEntities
+         * @description Structured entities lifted from the narrative (empty lists when none).
+         */
+        ExtractedEntities: {
+            /** Personas */
+            personas?: string[];
+            /** Lugares */
+            lugares?: string[];
+            /** Fechas */
+            fechas?: string[];
+            /** Vehiculos */
+            vehiculos?: string[];
+            /** Terceros */
+            terceros?: string[];
+            /** Montos */
+            montos?: string[];
         };
         /**
          * FactorContribution
@@ -1640,6 +1712,25 @@ export interface components {
             } | null;
         };
         /**
+         * NarrativeAnalysis
+         * @description Full NLP read of the claim narrative: entities + coherence + summary.
+         */
+        NarrativeAnalysis: {
+            entidades?: components["schemas"]["ExtractedEntities"];
+            /**
+             * Narrativa Ilogica
+             * @default false
+             */
+            narrativa_ilogica: boolean;
+            /** Incoherencias */
+            incoherencias?: string[];
+            /**
+             * Resumen Narrativa
+             * @default
+             */
+            resumen_narrativa: string;
+        };
+        /**
          * NetworkEdge
          * @description A provider↔insured link built from the claims they share.
          *
@@ -1728,6 +1819,77 @@ export interface components {
             page: number;
             /** Page Size */
             page_size: number;
+        };
+        /**
+         * PanelAnalysis
+         * @description Cached result of a multi-agent panel debate, surfaced on the claim.
+         *
+         *     Advisory only — never overwrites the engine-derived score. Stores the full
+         *     lane snapshots (incl. narration) so the cached view replays the debate.
+         */
+        PanelAnalysis: {
+            /** Lanes */
+            lanes?: components["schemas"]["PanelLaneSnapshot"][];
+            /**
+             * Moderator Text
+             * @default
+             */
+            moderator_text: string;
+            consensus?: components["schemas"]["PanelConsensus"] | null;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
+        /**
+         * PanelConsensus
+         * @description Moderator synthesis. Action is ALWAYS a human-review framing (spec §2.10).
+         */
+        PanelConsensus: {
+            nivel_final: components["schemas"]["Tier"];
+            /** Nivel De Acuerdo */
+            nivel_de_acuerdo: number;
+            /** Puntos De Conflicto */
+            puntos_de_conflicto?: string[];
+            /** Resumen */
+            resumen: string;
+            /** Accion Recomendada */
+            accion_recomendada: string;
+            /**
+             * Posible Falso Positivo
+             * @default false
+             */
+            posible_falso_positivo: boolean;
+        };
+        /**
+         * PanelLaneSnapshot
+         * @description One specialist's full lane after a panel run — enough to replay it statically.
+         */
+        PanelLaneSnapshot: {
+            /** Agent Id */
+            agent_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Lens */
+            lens: string;
+            /**
+             * Narracion
+             * @default
+             */
+            narracion: string;
+            verdict?: components["schemas"]["SpecialistVerdict"] | null;
+            /**
+             * Rebuttal Narracion
+             * @default
+             */
+            rebuttal_narracion: string;
+            rebuttal?: components["schemas"]["SpecialistRebuttal"] | null;
+            /**
+             * Failed
+             * @default false
+             */
+            failed: boolean;
         };
         /**
          * ProviderCreate
@@ -1907,6 +2069,42 @@ export interface components {
             /** Max Points */
             max_points: number;
         };
+        /** SavingsAnalysisOut */
+        SavingsAnalysisOut: {
+            /** Total Valor En Riesgo */
+            total_valor_en_riesgo: number;
+            /** Total Ahorro Potencial */
+            total_ahorro_potencial: number;
+            /** Casos */
+            casos: number;
+            /** Por Nivel */
+            por_nivel: components["schemas"]["SavingsTierBucket"][];
+        };
+        /**
+         * SavingsEstimate
+         * @description Value object returned by estimate_savings.
+         */
+        SavingsEstimate: {
+            /** Exposicion */
+            exposicion: number;
+            /** Valor En Riesgo */
+            valor_en_riesgo: number;
+            /** Prob Fraude Usada */
+            prob_fraude_usada: number;
+            /** Ahorro Potencial Estimado */
+            ahorro_potencial_estimado: number;
+        };
+        /** SavingsTierBucket */
+        SavingsTierBucket: {
+            /** Nivel */
+            nivel: string;
+            /** Casos */
+            casos: number;
+            /** Valor En Riesgo */
+            valor_en_riesgo: number;
+            /** Ahorro Potencial */
+            ahorro_potencial: number;
+        };
         /**
          * SimilarClaim
          * @description A narrative-similar prior claim (pgvector cosine).
@@ -1918,6 +2116,36 @@ export interface components {
             similarity: number;
             /** Snippet */
             snippet: string;
+        };
+        /**
+         * SpecialistRebuttal
+         * @description A specialist's R2 reaction after reading peers' verdicts.
+         */
+        SpecialistRebuttal: {
+            /** Ajuste */
+            ajuste: string;
+            nivel_actualizado: components["schemas"]["Tier"];
+            /** Cambia Postura */
+            cambia_postura: boolean;
+        };
+        /**
+         * SpecialistVerdict
+         * @description One specialist's R1 verdict (LLM structured output). Never accuses.
+         */
+        SpecialistVerdict: {
+            nivel: components["schemas"]["Tier"];
+            /** Dictamen */
+            dictamen: string;
+            /** Puntos Clave */
+            puntos_clave?: string[];
+            /**
+             * Confianza
+             * @default media
+             * @enum {string}
+             */
+            confianza: "alta" | "media" | "baja";
+            /** Citas */
+            citas?: string[];
         };
         /**
          * Tier
@@ -2842,6 +3070,39 @@ export interface operations {
             };
         };
     };
+    analyze_claim_narrative_route_api_v1_claims__claim_id__narrative_analysis_post: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     patch_claim_resumen_route_api_v1_claims__claim_id__resumen_patch: {
         parameters: {
             query?: never;
@@ -3376,6 +3637,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InsightsBundleOut"];
+                };
+            };
+        };
+    };
+    get_savings_analysis_route_api_v1_reports_savings_analysis_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavingsAnalysisOut"];
                 };
             };
         };

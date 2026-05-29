@@ -21,7 +21,14 @@ import { FilterBar, type FilterControl, type FilterValue } from '@shared/ui/filt
 import { ClaimsTable } from '../components/claims-table';
 import { ClaimsStore } from '@core/state/claims.store';
 import type { Claim } from '@shared/models';
-import { bindListKeyboardNav, byTriagePriority, type RiskTier } from '@shared/utils';
+import {
+  bindListKeyboardNav,
+  byTriagePriority,
+  sortRows,
+  TableSortController,
+  type RiskTier,
+  type SortAccessors,
+} from '@shared/utils';
 
 type TabKey = 'activos' | 'historico';
 type TierFilter = 'todos' | RiskTier | 'rebotados';
@@ -89,7 +96,7 @@ type DateRangePreset = 'todos' | '7d' | '30d' | 'custom';
           </div>
         } @else {
           <div class="centinela-panel__scroll">
-            <claims-table [claims]="paged()" [focusedId]="focusedRowId()" (open)="openCase($event)" />
+            <claims-table [claims]="paged()" [sort]="sort" [focusedId]="focusedRowId()" (open)="openCase($event)" />
           </div>
           <ui-pagination
             [page]="page()"
@@ -112,6 +119,7 @@ export class ClaimsListPage {
   private readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly tab = signal<TabKey>('activos');
+  protected readonly sort = new TableSortController();
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(10);
   protected readonly listFocusIndex = signal(-1);
@@ -138,6 +146,13 @@ export class ClaimsListPage {
     // result set never leaves the user stranded on a now-empty page.
     effect(() => {
       this.filters();
+      this.page.set(0);
+    });
+
+    // Re-sorting also jumps back to the first page.
+    effect(() => {
+      this.sort.key();
+      this.sort.dir();
       this.page.set(0);
     });
   }
@@ -322,8 +337,15 @@ export class ClaimsListPage {
       .sort(byTriagePriority);
   });
 
+  // Default order = tier→FIFO triage priority; a clicked column overrides it.
+  // Sorting the full list here (not inside the table) keeps pagination correct —
+  // the table only ever sees one page.
+  protected readonly sorted = computed<Claim[]>(() =>
+    sortRows(this.filtered(), this.sort.key(), this.sort.dir(), CLAIMS_SORT),
+  );
+
   protected readonly paged = computed(() => {
-    const list = this.filtered();
+    const list = this.sorted();
     const start = this.page() * this.pageSize();
     return list.slice(start, start + this.pageSize());
   });
@@ -362,3 +384,14 @@ function isActiveForAnalista(c: Claim): boolean {
 function isHistoricForAnalista(c: Claim): boolean {
   return c.review.status === 'dictaminado' || c.review.status === 'revisado_sin_escalar';
 }
+
+const CLAIMS_SORT: SortAccessors<Claim> = {
+  score: (c) => c.score,
+  id: (c) => c.id,
+  asegurado: (c) => c.asegurado,
+  cobertura: (c) => c.cobertura,
+  ciudad: (c) => c.ciudad,
+  monto: (c) => c.monto_reclamado,
+  alertas: (c) => c.alertas.length,
+  estado: (c) => c.estado,
+};

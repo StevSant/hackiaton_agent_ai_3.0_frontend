@@ -89,6 +89,7 @@ export class ChatDocumentCard {
         this.agentApi.downloadDocumentDocx({
           titulo: this.titulo(),
           contenido_markdown: this.contenidoMarkdown(),
+          include_tables: true,
         }),
       );
       const url = URL.createObjectURL(blob);

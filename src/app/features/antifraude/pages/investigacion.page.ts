@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
@@ -9,7 +9,17 @@ import { FilterBar, type FilterControl, type FilterValue } from '@shared/ui/filt
 import { Icon } from '@shared/ui/icon';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { bindListKeyboardNav, byTriagePriority, RAMOS, reviewStatusLabel, type RamoKey, type RiskTier } from '@shared/utils';
+import {
+  bindListKeyboardNav,
+  byTriagePriority,
+  RAMOS,
+  reviewStatusLabel,
+  sortRows,
+  TableSortController,
+  type RamoKey,
+  type RiskTier,
+  type SortAccessors,
+} from '@shared/utils';
 import type { Claim } from '@shared/models';
 import { InvestigacionTable } from '../components/investigacion-table';
 import { SavedFiltersModal } from '../components/saved-filters-modal';
@@ -100,6 +110,7 @@ const EMPTY_FILTERS = EMPTY_INVESTIGATION_FILTERS;
       } @else {
         <investigacion-table
           [claims]="paged()"
+          [sort]="sort"
           [focusedId]="focusedRowId()"
           (open)="openCase($event)"
         />
@@ -146,6 +157,7 @@ export class InvestigacionPage {
   }
 
   protected readonly filters = signal<InvestigationFilters>({ ...EMPTY_FILTERS });
+  protected readonly sort = new TableSortController();
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(10);
   protected readonly listFocusIndex = signal(-1);
@@ -251,8 +263,13 @@ export class InvestigacionPage {
       .sort(byTriagePriority);
   });
 
+  // Default order is byTriagePriority (in `filtered`); a clicked column overrides it.
+  protected readonly sorted = computed(() =>
+    sortRows(this.filtered(), this.sort.key(), this.sort.dir(), CLAIM_SORT),
+  );
+
   protected readonly paged = computed(() => {
-    const list = this.filtered();
+    const list = this.sorted();
     const start = this.page() * this.pageSize();
     return list.slice(start, start + this.pageSize());
   });
@@ -268,6 +285,12 @@ export class InvestigacionPage {
       rows: () => this.paged(),
       focusedIndex: this.listFocusIndex,
       onOpen: (id) => this.openCase(id),
+    });
+
+    effect(() => {
+      this.sort.key(); // re-sorting jumps the analyst back to the first page
+      this.sort.dir();
+      this.page.set(0);
     });
   }
 
@@ -312,6 +335,17 @@ export class InvestigacionPage {
     return true;
   }
 }
+
+const CLAIM_SORT: SortAccessors<Claim> = {
+  id: (c) => c.id,
+  asegurado: (c) => c.asegurado,
+  cobertura: (c) => c.cobertura,
+  ciudad: (c) => c.ciudad,
+  monto: (c) => c.monto_reclamado,
+  alertas: (c) => c.alertas.length,
+  score: (c) => c.score,
+  estado: (c) => c.estado,
+};
 
 function todayStamp(): string {
   const d = new Date();

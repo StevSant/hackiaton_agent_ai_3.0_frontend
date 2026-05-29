@@ -230,6 +230,7 @@ function generateUuid(): string {
             (openCase)="openCase($event)"
             (ttsToggle)="onTtsToggle($event)"
             (toggleChart)="store.toggleChart($event)"
+            (toggleTable)="store.toggleTable($event)"
             (openCanvas)="onOpenCanvas($event)"
             (chartRendered)="store.setLatestChartImage($event)"
           />
@@ -268,6 +269,24 @@ function generateUuid(): string {
               (volumeChange)="tts.setVolume($event)"
               (voiceChange)="tts.setVoice($event)"
             />
+          </div>
+        }
+        @if (store.pendingDocumentContext(); as ref) {
+          <div
+            class="flex items-center gap-2 mb-2 px-3 py-2 rounded-xl border border-brand/30 bg-brand-soft text-[12.5px] text-brand-ink"
+          >
+            <ui-icon name="description" [size]="16" class="shrink-0" />
+            <span class="min-w-0 flex-1 truncate">
+              Mejorando: <span class="font-semibold">«{{ ref.titulo }}»</span>
+            </span>
+            <button
+              type="button"
+              class="inline-flex items-center justify-center w-6 h-6 rounded-md hover:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              (click)="store.clearPendingDocumentContext()"
+              aria-label="Quitar referencia del documento"
+            >
+              <ui-icon name="close" [size]="15" />
+            </button>
           </div>
         }
         <div
@@ -469,7 +488,7 @@ function generateUuid(): string {
         <div class="flex-1 min-h-0 flex flex-col">
           <agent-conversations-sidebar
             class="flex-1 min-h-0 flex flex-col"
-            [items]="conversations.list()"
+            [items]="conversations.filtered()"
             [activeId]="activeConversationId()"
             [query]="conversations.query()"
             [loading]="conversations.loading()"
@@ -740,18 +759,14 @@ export class ChatPage implements AfterViewChecked {
    * `send()` rides it in `document_context` (the MAIN agent improves it).
    */
   protected onImproveInMainChat(doc: { titulo: string; contenidoMarkdown: string }): void {
+    // Stash the document as a REMOVABLE reference (shown as a chip above the
+    // composer). No prefilled text — the analyst types their instruction freely;
+    // the next send() rides the document in `document_context`.
     this.store.setPendingDocumentContext({
       titulo: doc.titulo,
       contenido_markdown: doc.contenidoMarkdown,
     });
-    this.input.set(`Mejorá el documento «${doc.titulo}»: `);
-    const textarea = this.textarea()?.nativeElement;
-    if (textarea) {
-      textarea.focus();
-      // Caret at the end so the analyst types their instruction right after the prompt.
-      const len = textarea.value.length;
-      queueMicrotask(() => textarea.setSelectionRange(len, len));
-    }
+    this.textarea()?.nativeElement.focus();
   }
 
   protected scrollSuggestions(direction: 'prev' | 'next'): void {

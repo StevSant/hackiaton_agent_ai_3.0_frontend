@@ -94,7 +94,8 @@ interface TransparencyMetadata {
   steps?: StoredScratchpadEntry[];
   tool_calls?: StoredToolCall[];
   citations?: { claim_id: string }[];
-  document?: DocumentPayload | null;
+  // Backend persists the generated document under `document_payload`.
+  document_payload?: DocumentPayload | null;
 }
 
 /**
@@ -359,6 +360,14 @@ export class AgentStore {
     this._pendingDocumentContext.set(ctx);
   }
 
+  /** The document the next turn will improve, or null. Drives the composer reference chip. */
+  readonly pendingDocumentContext = this._pendingDocumentContext.asReadonly();
+
+  /** Remove the pending document reference (the chip's ✕ button). */
+  clearPendingDocumentContext(): void {
+    this._pendingDocumentContext.set(null);
+  }
+
   /** CHANGE 2 — register the latest chart's PNG data URL (called by agent-chart). */
   setLatestChartImage(dataUrl: string): void {
     this._latestChartImage.set(dataUrl);
@@ -469,7 +478,7 @@ export class AgentStore {
             undefined,
           );
           // Restore document payload if the agent called crear_documento during this turn.
-          const documentPayload = raw.transparency_metadata?.document ?? null;
+          const documentPayload = raw.transparency_metadata?.document_payload ?? null;
           return {
             id: m.id,
             role: m.role,
@@ -529,6 +538,15 @@ export class AgentStore {
     this._messages.update((messages) =>
       messages.map((msg) =>
         msg.id === messageId ? { ...msg, chartAccepted: !(msg.chartAccepted === true) } : msg,
+      ),
+    );
+  }
+
+  /** Toggle visibility of the table attached to a message (shown by default). */
+  toggleTable(messageId: string): void {
+    this._messages.update((messages) =>
+      messages.map((msg) =>
+        msg.id === messageId ? { ...msg, tableAccepted: !(msg.tableAccepted !== false) } : msg,
       ),
     );
   }

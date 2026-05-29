@@ -17,6 +17,7 @@ import {
   type RamoKey,
 } from '@shared/utils';
 import { NetworkGraph } from '../components/network-graph';
+import { NetworkMatrix } from '../components/network-matrix';
 import { ProviderRanking } from '../components/provider-ranking';
 import { RamoDistributionCard } from '../components/ramo-distribution-card';
 import type { Provider } from '@shared/models';
@@ -24,7 +25,7 @@ import { ProvidersStore } from '@core/state/providers.store';
 
 type RamoFilter = 'todos' | RamoKey;
 type GraphTierFilter = 'todos' | 'rojo' | 'amarillo_rojo' | 'estandar';
-type GraphLayout = 'columnas' | 'estrella';
+type GraphLayout = 'columnas' | 'estrella' | 'fuerza' | 'matriz';
 
 @Component({
   selector: 'page-network',
@@ -34,6 +35,7 @@ type GraphLayout = 'columnas' | 'estrella';
     ExportModal,
     Icon,
     NetworkGraph,
+    NetworkMatrix,
     ProviderRanking,
     RamoDistributionCard,
   ],
@@ -106,8 +108,13 @@ type GraphLayout = 'columnas' | 'estrella';
           <div>
             <h3 class="text-[13px] font-semibold m-0">Mapa de relaciones</h3>
             <div class="text-[12px] text-ink-3 mt-0.5">
-              Cada línea une un proveedor con un asegurado que comparten siniestros.
-              Pasa el cursor sobre un nodo para aislar sus vínculos.
+              @if (graphLayout() === 'matriz') {
+                Cada celda cuenta los siniestros que comparten un proveedor y un asegurado.
+                Más oscuro = más casos en común.
+              } @else {
+                Cada línea une un proveedor con un asegurado que comparten siniestros.
+                Clic en un nodo para aislar sus vínculos.
+              }
             </div>
             <div class="text-[11.5px] text-ink-2 mt-1 font-medium">{{ graphSubtitle() }}</div>
           </div>
@@ -141,13 +148,22 @@ type GraphLayout = 'columnas' | 'estrella';
             </div>
           </div>
         </div>
-        <network-graph
-          class="flex-1"
-          [nodes]="graphNodes()"
-          [edges]="graphEdges()"
-          [layout]="graphLayout()"
-          (openNode)="onOpenNode($event)"
-        />
+        @if (graphLayout() === 'matriz') {
+          <network-matrix
+            class="flex-1"
+            [nodes]="graphNodes()"
+            [edges]="graphEdges()"
+            (openNode)="onOpenNode($event)"
+          />
+        } @else {
+          <network-graph
+            class="flex-1"
+            [nodes]="graphNodes()"
+            [edges]="graphEdges()"
+            [layout]="nodeLayout()"
+            (openNode)="onOpenNode($event)"
+          />
+        }
       </div>
 
       <network-ramo-distribution-card />
@@ -233,6 +249,8 @@ export class NetworkPage {
   protected readonly graphLayoutOptions: ReadonlyArray<{ value: GraphLayout; label: string; icon: string }> = [
     { value: 'columnas', label: 'Columnas', icon: 'view_column' },
     { value: 'estrella', label: 'Estrella', icon: 'hub' },
+    { value: 'fuerza', label: 'Fuerza', icon: 'scatter_plot' },
+    { value: 'matriz', label: 'Matriz', icon: 'grid_on' },
   ];
 
   protected readonly counts = computed<Record<RamoKey, number>>(() => {
@@ -337,6 +355,12 @@ export class NetworkPage {
         monto: formatMoneyShort(e.monto),
         listaRestrictiva: restrictiva.get(e.proveedor_id) ?? false,
       }));
+  });
+
+  /** Narrowed layout for the node-link graph (matriz uses a separate component). */
+  protected readonly nodeLayout = computed<'columnas' | 'estrella' | 'fuerza'>(() => {
+    const l = this.graphLayout();
+    return l === 'estrella' || l === 'fuerza' ? l : 'columnas';
   });
 
   protected readonly graphSubtitle = computed(() => {

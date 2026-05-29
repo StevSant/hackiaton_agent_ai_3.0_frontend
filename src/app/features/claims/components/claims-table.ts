@@ -3,27 +3,28 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { Avatar } from '@shared/ui/avatar';
 import { Icon } from '@shared/ui/icon';
 import { RiskRing } from '@shared/ui/risk-ring';
-import { formatMoney, ramoIcon, ramoLabel } from '@shared/utils';
+import { SortableHeader } from '@shared/ui/sortable-header';
+import { formatMoney, ramoIcon, ramoLabel, TableSortController } from '@shared/utils';
 import type { Claim } from '../models';
 
 @Component({
   selector: 'claims-table',
   standalone: true,
-  imports: [Avatar, Icon, RiskRing],
+  imports: [Avatar, Icon, RiskRing, SortableHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="centinela-table-wrap">
       <table class="centinela-table">
         <thead>
           <tr>
-            <th class="w-16">Riesgo</th>
-            <th>Siniestro</th>
-            <th>Asegurado</th>
-            <th>Cobertura</th>
-            <th>Ciudad</th>
-            <th>Monto</th>
-            <th>Alertas</th>
-            <th>Estado</th>
+            <th sortKey="score" [sort]="sort()" class="w-16">Riesgo</th>
+            <th sortKey="id" [sort]="sort()">Siniestro</th>
+            <th sortKey="asegurado" [sort]="sort()">Asegurado</th>
+            <th sortKey="cobertura" [sort]="sort()">Cobertura</th>
+            <th sortKey="ciudad" [sort]="sort()">Ciudad</th>
+            <th sortKey="monto" [sort]="sort()">Monto</th>
+            <th sortKey="alertas" [sort]="sort()">Alertas</th>
+            <th sortKey="estado" [sort]="sort()">Estado</th>
             <th class="w-9"></th>
           </tr>
         </thead>
@@ -95,6 +96,7 @@ import type { Claim } from '../models';
 })
 export class ClaimsTable {
   readonly claims = input.required<readonly Claim[]>();
+  readonly sort = input.required<TableSortController>();
   readonly focusedId = input<string | null>(null);
   readonly open = output<string>();
 

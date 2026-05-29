@@ -3,7 +3,8 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import type { InboxRowDto } from '@core/api/clients/claim.dto';
 import { Icon } from '@shared/ui/icon';
 import { RiskRing } from '@shared/ui/risk-ring';
-import { formatDateTime, ramoIcon, ramoLabel } from '@shared/utils';
+import { SortableHeader } from '@shared/ui/sortable-header';
+import { formatDateTime, ramoIcon, ramoLabel, TableSortController } from '@shared/utils';
 
 interface InboxRowVm {
   row: InboxRowDto;
@@ -17,20 +18,20 @@ interface InboxRowVm {
 @Component({
   selector: 'antifraude-inbox-table',
   standalone: true,
-  imports: [Icon, RiskRing],
+  imports: [Icon, RiskRing, SortableHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="centinela-table-wrap">
       <table class="centinela-table">
         <thead>
           <tr>
-            <th class="w-16">Riesgo</th>
-            <th>Siniestro</th>
+            <th sortKey="score" [sort]="sort()" class="w-16">Riesgo</th>
+            <th sortKey="claim_id" [sort]="sort()">Siniestro</th>
             <th>Nota del analista</th>
-            <th>Dueño</th>
-            <th>Recibido</th>
-            <th>Estado</th>
-            <th>Re-trabajo</th>
+            <th sortKey="dueno" [sort]="sort()">Dueño</th>
+            <th sortKey="recibido" [sort]="sort()">Recibido</th>
+            <th sortKey="estado" [sort]="sort()">Estado</th>
+            <th sortKey="rework" [sort]="sort()">Re-trabajo</th>
           </tr>
         </thead>
         <tbody>
@@ -81,35 +82,28 @@ interface InboxRowVm {
 })
 export class InboxTable {
   readonly rows = input.required<readonly InboxRowDto[]>();
+  readonly sort = input.required<TableSortController>();
   readonly focusedId = input<string | null>(null);
   readonly open = output<string>();
 
   protected readonly ramoIcon = ramoIcon;
   protected readonly ramoLabel = ramoLabel;
 
-  protected readonly vms = computed<InboxRowVm[]>(() => {
-    return [...this.rows()]
-      .sort((a, b) => {
-        const tierRank: Record<string, number> = { rojo: 0, amarillo: 1, verde: 2 };
-        const ta = tierRank[a.nivel] ?? 9;
-        const tb = tierRank[b.nivel] ?? 9;
-        if (ta !== tb) return ta - tb;
-        const da = a.escalated_at ?? '';
-        const db = b.escalated_at ?? '';
-        return da.localeCompare(db);
-      })
-      .map((row) => {
-        const assigned = !!row.assigned_to_name;
-        return {
-          row,
-          statusLabel: assigned ? 'En revisión' : 'Escalado',
-          statusPalette: assigned
-            ? 'bg-brand-soft text-brand-ink'
-            : 'bg-tier-yellow-soft text-tier-yellow-ink',
-          duenoLabel: row.assigned_to_name ?? 'Sin asignar',
-          whenLabel: formatDateTime(row.escalated_at) ?? '—',
-          notePreview: row.escalation_note_preview ?? '(sin nota)',
-        };
-      });
-  });
+  // Ordering is owned by the page (default tier→FIFO + user override), so this
+  // only maps each row to its view model — it renders in the order it receives.
+  protected readonly vms = computed<InboxRowVm[]>(() =>
+    this.rows().map((row) => {
+      const assigned = !!row.assigned_to_name;
+      return {
+        row,
+        statusLabel: assigned ? 'En revisión' : 'Escalado',
+        statusPalette: assigned
+          ? 'bg-brand-soft text-brand-ink'
+          : 'bg-tier-yellow-soft text-tier-yellow-ink',
+        duenoLabel: row.assigned_to_name ?? 'Sin asignar',
+        whenLabel: formatDateTime(row.escalated_at) ?? '—',
+        notePreview: row.escalation_note_preview ?? '(sin nota)',
+      };
+    }),
+  );
 }

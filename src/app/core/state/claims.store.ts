@@ -141,15 +141,17 @@ export class ClaimsStore {
         const items: ClaimSummaryDto[] = [];
         let page = 0;
         while (true) {
-          const result = await firstValueFrom(
-            this.api.list({ page, page_size: PAGE_SIZE }),
-          );
+          const result = await firstValueFrom(this.api.list({ page, page_size: PAGE_SIZE }));
           items.push(...result.items);
           if (items.length >= result.total || result.items.length === 0) break;
           page += 1;
         }
         const summaries = items.map((row) => summaryToClaim(row));
-        const detailById = new Map(this._claims().filter((c) => c.alertas?.length).map((c) => [c.id, c]));
+        const detailById = new Map(
+          this._claims()
+            .filter((c) => c.alertas?.length)
+            .map((c) => [c.id, c]),
+        );
         const merged = summaries.map((s) => detailById.get(s.id) ?? s);
         this._claims.set(merged);
         writeCache(this.lastUserId, merged);
@@ -237,6 +239,22 @@ export class ClaimsStore {
    * returns. Marks the id as detail-loaded so the explainability accordions
    * render the recomputed data immediately (no second round-trip needed).
    */
+  /**
+   * Run (or fetch cached) NLP analysis of the claim narrative — entity
+   * extraction, coherence (FS-09), and a short summary. The backend caches the
+   * result, so a second call is a cheap no-op. Best-effort: failures are
+   * swallowed so the detail page still renders without the NLP card.
+   */
+  async analyzeNarrative(id: string): Promise<void> {
+    try {
+      const dto = await firstValueFrom(this.api.analyzeNarrative(id));
+      this.upsert(dtoToClaim(dto));
+      this._detailLoadedIds.update((s) => (s.has(id) ? s : new Set([...s, id])));
+    } catch {
+      // NLP is an enrichment — never block the detail view on its failure.
+    }
+  }
+
   async rescore(id: string): Promise<void> {
     const dto = await firstValueFrom(this.api.rescore(id));
     this.upsert(dtoToClaim(dto));
@@ -288,9 +306,9 @@ export class ClaimsStore {
       const prev = next[idx];
       next[idx] = {
         ...claim,
-        alertas: claim.alertas?.length ? claim.alertas : prev.alertas ?? [],
-        timeline: claim.timeline?.length ? claim.timeline : prev.timeline ?? [],
-        documentos: claim.documentos?.length ? claim.documentos : prev.documentos ?? [],
+        alertas: claim.alertas?.length ? claim.alertas : (prev.alertas ?? []),
+        timeline: claim.timeline?.length ? claim.timeline : (prev.timeline ?? []),
+        documentos: claim.documentos?.length ? claim.documentos : (prev.documentos ?? []),
         // ClaimDetail doesn't currently carry proveedor_id, but ClaimSummary
         // does — preserve it across a detail fetch so the provider page filter
         // (which matches by id) keeps working after the user opens a claim.
@@ -377,6 +395,9 @@ function dtoToClaim(dto: ClaimDto): Claim {
     posible_falso_positivo: dto.posible_falso_positivo,
     confianza: dto.confianza,
     resumen_editado: dto.resumen_editado ?? null,
+    narrative_analysis: dto.narrative_analysis ?? null,
+    panel_analysis: dto.panel_analysis ?? null,
+    ahorro: dto.ahorro ?? null,
   };
 }
 

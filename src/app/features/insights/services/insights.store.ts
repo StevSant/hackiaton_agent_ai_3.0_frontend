@@ -10,6 +10,7 @@ import {
   type InsightsBundleDto,
   type RegionalFraudPointDto,
 } from '@core/api/clients/insights.api';
+import type { SavingsAnalysisDto } from '@core/api/clients/claim.dto';
 import { AuthStore } from '@core/auth/auth.store';
 import { AppError } from '@core/errors/app-error';
 import type { AiAnomaly, ClaimTypeSlice, MapHotspot, RegionalFraudPoint } from '../models';
@@ -98,8 +99,16 @@ export class InsightsStore {
   private readonly _loading = signal<boolean>(false);
   private readonly _error = signal<AppError | null>(null);
 
+  private readonly _savings = signal<SavingsAnalysisDto | null>(null);
+  private readonly _savingsLoading = signal<boolean>(false);
+  private readonly _savingsError = signal<AppError | null>(null);
+
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
+
+  readonly savings = this._savings.asReadonly();
+  readonly savingsLoading = this._savingsLoading.asReadonly();
+  readonly savingsError = this._savingsError.asReadonly();
 
   private lastUserId: string | null = null;
 
@@ -148,16 +157,12 @@ export class InsightsStore {
 
   readonly hotspots = computed<MapHotspot[]>(() => {
     const rows = this._bundle()?.hotspots ?? [];
-    return rows
-      .map(dtoToHotspot)
-      .filter((h): h is MapHotspot => h !== null);
+    return rows.map(dtoToHotspot).filter((h): h is MapHotspot => h !== null);
   });
 
   readonly incidents = computed<IncidentPoint[]>(() => {
     const rows = this._bundle()?.incidents ?? [];
-    return rows
-      .map(dtoToIncident)
-      .filter((p): p is IncidentPoint => p !== null);
+    return rows.map(dtoToIncident).filter((p): p is IncidentPoint => p !== null);
   });
 
   readonly quarterlyOutlook = computed<QuarterlyOutlookView | null>(() => {
@@ -176,8 +181,10 @@ export class InsightsStore {
       this.lastUserId = userId;
       if (userId) {
         void this.load();
+        void this.loadSavings();
       } else {
         this._bundle.set(null);
+        this._savings.set(null);
       }
     });
   }
@@ -193,6 +200,20 @@ export class InsightsStore {
       this._error.set(err instanceof AppError ? err : new AppError('unknown', String(err)));
     } finally {
       this._loading.set(false);
+    }
+  }
+
+  async loadSavings(): Promise<void> {
+    if (this._savingsLoading()) return;
+    this._savingsLoading.set(true);
+    this._savingsError.set(null);
+    try {
+      const data = await firstValueFrom(this.api.savingsAnalysis());
+      this._savings.set(data);
+    } catch (err) {
+      this._savingsError.set(err instanceof AppError ? err : new AppError('unknown', String(err)));
+    } finally {
+      this._savingsLoading.set(false);
     }
   }
 }

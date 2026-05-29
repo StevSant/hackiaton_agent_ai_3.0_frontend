@@ -318,7 +318,11 @@ export class AgentChart implements OnDestroy {
       this.echartsModule = echarts;
       this.chart = echarts.init(this.host().nativeElement, undefined, { renderer: 'canvas' });
       this.chart.setOption(this.option());
-      this.emitChartImage();
+      // Capture the PNG on ECharts' `finished` event — getDataURL right after
+      // setOption (esp. with lazyUpdate) returns a blank canvas because the
+      // render hasn't painted yet. `finished` fires once rendering completes,
+      // so the captured image is the real chart. Fires on initial + updates.
+      this.chart.on('finished', () => this.emitChartImage());
       this.chart.on('click', (params) => {
         if (params.componentType !== 'series') return;
         let label = String(params.name ?? '');
@@ -347,8 +351,9 @@ export class AgentChart implements OnDestroy {
       if (this.setOptionRaf !== null) cancelAnimationFrame(this.setOptionRaf);
       this.setOptionRaf = requestAnimationFrame(() => {
         this.setOptionRaf = null;
+        // No explicit capture here — the `finished` handler re-captures once
+        // this update finishes painting (synchronous capture would be blank).
         this.chart?.setOption(option, { notMerge: true, lazyUpdate: true });
-        this.emitChartImage();
       });
     });
   }

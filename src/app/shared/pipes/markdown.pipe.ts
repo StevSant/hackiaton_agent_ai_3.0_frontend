@@ -2,7 +2,11 @@ import { Pipe, PipeTransform, inject } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked } from 'marked';
 
-const SIN_PATTERN = /SIN-\d{4}-\d{4,6}/g;
+// Claim IDs come in three shapes across the dataset: SIN-0049 (short),
+// IMP-00257 (imported), and SIN-2026-08412 (year-prefixed). The old pattern
+// only matched the last one, so IMP- and short SIN- IDs rendered as plain text
+// in most messages — the links were inconsistent. Match all three.
+const SIN_PATTERN = /\b(?:SIN|IMP)-\d{4,6}(?:-\d{4,6})?\b/g;
 
 marked.setOptions({ breaks: true, gfm: true });
 

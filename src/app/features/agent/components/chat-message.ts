@@ -60,6 +60,53 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
             } @else {
               <div class="markdown-body" [innerHTML]="message().content | markdown"></div>
             }
+
+            <!-- Chart rendered INSIDE the message bubble, like the inline table. -->
+            @if (chart(); as chartData) {
+              @if (uiPrefs.showCharts()) {
+                @if (chartAccepted()) {
+                  <agent-chart
+                    class="block mt-2"
+                    [payload]="chartData"
+                    (openCase)="openCase.emit($event)"
+                    (chartRendered)="chartRendered.emit($event)"
+                  />
+                }
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-ink bg-brand-soft border border-line rounded-lg px-2.5 py-1.5 mt-2 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  [attr.aria-pressed]="chartAccepted()"
+                  (click)="toggleChart.emit(message().id)"
+                >
+                  <ui-icon [name]="chartAccepted() ? 'visibility_off' : 'bar_chart'" [size]="15" />
+                  {{ chartAccepted() ? 'Ocultar gráfico' : 'Ver como gráfico' }}
+                </button>
+              }
+            } @else if (chartPending() && uiPrefs.showCharts()) {
+              <div class="rounded-xl border border-line bg-soft p-3 mt-2 w-full">
+                <div class="flex items-center gap-2 mb-2">
+                  <ui-icon name="bar_chart" [size]="14" class="text-ink-3" />
+                  <span class="text-[12.5px] font-semibold text-ink-3">Preparando visualización…</span>
+                </div>
+                <div class="w-full h-[280px] rounded-lg bg-surface animate-pulse"></div>
+              </div>
+            }
+
+            <!-- Fallback table (when the prose has none) — also INSIDE the bubble. -->
+            @if (!documentPayload() && !proseHasTable() && tablePayload(); as rows) {
+              @if (tableAccepted()) {
+                <agent-table class="block mt-2" [rows]="rows" (openCase)="openCase.emit($event)" />
+              }
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-ink bg-brand-soft border border-line rounded-lg px-2.5 py-1.5 mt-2 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                [attr.aria-pressed]="tableAccepted()"
+                (click)="toggleTable.emit(message().id)"
+              >
+                <ui-icon [name]="tableAccepted() ? 'visibility_off' : 'table_chart'" [size]="15" />
+                {{ tableAccepted() ? 'Ocultar tabla' : 'Ver tabla' }}
+              </button>
+            }
           </div>
 
           <!-- Footer action row -->
@@ -88,37 +135,6 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
               [contenidoMarkdown]="doc.contenido_markdown"
               (openCanvas)="openCanvas.emit({ titulo: doc.titulo, contenidoMarkdown: doc.contenido_markdown })"
             />
-          }
-          @if (chart(); as chartData) {
-            @if (uiPrefs.showCharts()) {
-              @if (chartAccepted()) {
-                <agent-chart
-                  [payload]="chartData"
-                  (openCase)="openCase.emit($event)"
-                  (chartRendered)="chartRendered.emit($event)"
-                />
-              }
-              <button
-                type="button"
-                class="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-ink bg-brand-soft border border-line rounded-lg px-2.5 py-1.5 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                [attr.aria-pressed]="chartAccepted()"
-                (click)="toggleChart.emit(message().id)"
-              >
-                <ui-icon [name]="chartAccepted() ? 'visibility_off' : 'bar_chart'" [size]="15" />
-                {{ chartAccepted() ? 'Ocultar gráfico' : 'Ver como gráfico' }}
-              </button>
-            }
-          } @else if (chartPending() && uiPrefs.showCharts()) {
-            <div class="rounded-xl border border-line bg-surface p-3 mt-1 w-full max-w-[640px]">
-              <div class="flex items-center gap-2 mb-2">
-                <ui-icon name="bar_chart" [size]="14" class="text-ink-3" />
-                <span class="text-[12.5px] font-semibold text-ink-3">Preparando visualización…</span>
-              </div>
-              <div class="w-full h-[280px] rounded-lg bg-soft animate-pulse"></div>
-            </div>
-          }
-          @if (!documentPayload() && tablePayload(); as rows) {
-            <agent-table [rows]="rows" (openCase)="openCase.emit($event)" />
           }
         </div>
       }
@@ -156,6 +172,7 @@ export class ChatMessage {
   readonly openCase = output<string>();
   readonly ttsToggle = output<string>();
   readonly toggleChart = output<string>();
+  readonly toggleTable = output<string>();
   /** Opens the artifact side panel — payload is { titulo, contenidoMarkdown }. */
   readonly openCanvas = output<{ titulo: string; contenidoMarkdown: string }>();
   /** CHANGE 2 — bubbles the rendered chart's PNG data URL up to the page → store. */
@@ -171,6 +188,14 @@ export class ChatMessage {
   protected readonly chartAccepted = computed(() => this.message().chartAccepted === true);
   protected readonly chartPending = computed(() => this.message().chartPending === true);
   protected readonly tablePayload = computed(() => this.message().tablePayload ?? null);
+  // Tables are shown by default; only an explicit toggle to false hides them.
+  protected readonly tableAccepted = computed(() => this.message().tableAccepted !== false);
+  // True when the agent already wrote a Markdown table in its prose — detected by
+  // a GFM delimiter row (e.g. |---|---|). In that case we suppress the redundant
+  // auto-extracted <agent-table> so the message shows ONE table (the nice inline one).
+  protected readonly proseHasTable = computed(() =>
+    /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/m.test(this.message().content),
+  );
   protected readonly documentPayload = computed(() => this.message().documentPayload ?? null);
 
   protected readonly listenIcon = computed(() => {

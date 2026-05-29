@@ -133,6 +133,7 @@ export class ChatDocumentCanvas {
         this.agentApi.downloadDocumentDocx({
           titulo: this.titulo(),
           contenido_markdown: this.draft(),
+          include_tables: true,
         }),
       );
       const url = URL.createObjectURL(blob);

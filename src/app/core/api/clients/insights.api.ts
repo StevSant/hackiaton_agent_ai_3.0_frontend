@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../config/env';
+import type { SavingsAnalysisDto } from './claim.dto';
 
 export interface AiAnomalyDto {
   id: string;
@@ -64,5 +65,9 @@ export class InsightsApi {
 
   get(): Observable<InsightsBundleDto> {
     return this.http.get<InsightsBundleDto>(`${this.base}/insights`);
+  }
+
+  savingsAnalysis(): Observable<SavingsAnalysisDto> {
+    return this.http.get<SavingsAnalysisDto>(`${this.base}/reports/savings-analysis`);
   }
 }

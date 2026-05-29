@@ -1,1 +1,1 @@
-export type { FraudRule, RuleKind } from './fraud-rule.model';
+export type { FraudRule, RuleKind } from '@shared/models';
