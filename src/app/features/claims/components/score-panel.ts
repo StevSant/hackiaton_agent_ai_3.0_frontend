@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { RiskRing } from '@shared/ui/risk-ring';
 import { ALERT_CATALOG } from '@shared/models';
 import { RiskSignalBadges } from './risk-signal-badges';
+import { SavingsCard } from './savings-card';
 import { suggestedAction } from '@shared/utils';
 import { hardRuleOverride } from '../utils/hard-rule-override';
 import type { Claim, ClaimAlert } from '../models';
@@ -10,20 +11,23 @@ import type { Claim, ClaimAlert } from '../models';
 @Component({
   selector: 'claim-score-panel',
   standalone: true,
-  imports: [RiskRing, RiskSignalBadges],
+  imports: [RiskRing, RiskSignalBadges, SavingsCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bg-surface border border-line rounded-lg shadow-1">
       <div class="px-5 py-5 flex items-center gap-7">
         <ui-risk-ring [score]="claim().score" [size]="132" [stroke]="10" />
         <div class="flex-1">
-          <div class="text-ink-3 text-[11px] uppercase tracking-wider font-medium">Score de posible fraude</div>
+          <div class="text-ink-3 text-[11px] uppercase tracking-wider font-medium">
+            Score de posible fraude
+          </div>
           <div class="text-[22px] font-semibold mt-1 tracking-tight">{{ headline() }}</div>
           <claim-risk-signal-badges class="block mt-2" [claim]="claim()" />
           <p class="text-ink-3 text-[12.5px] mt-2 mb-0 max-w-[520px]">
             {{ suggestedAction(claim()) }}
             @if (claim().alertas.length > 0) {
-              Se activaron {{ claim().alertas.length }} señales con un total de {{ totalPts() }} puntos sobre 100.
+              Se activaron {{ claim().alertas.length }} señales con un total de
+              {{ totalPts() }} puntos sobre 100.
             }
           </p>
           @if (override(); as ov) {
@@ -48,9 +52,9 @@ import type { Claim, ClaimAlert } from '../models';
                 Clasificado como <strong>{{ overrideTierWord() }}</strong> por
                 {{ ov.rules.length === 1 ? 'una regla crítica' : 'reglas críticas' }} —
                 <span class="font-medium">{{ overrideRuleLabels() }}</span> —,
-                <strong>independiente del puntaje acumulado</strong> ({{ claim().score }}/100).
-                Las reglas críticas escalan el caso a {{ overrideReviewWord() }};
-                no implican fraude, solo que el caso amerita revisión.
+                <strong>independiente del puntaje acumulado</strong> ({{ claim().score }}/100). Las
+                reglas críticas escalan el caso a {{ overrideReviewWord() }}; no implican fraude,
+                solo que el caso amerita revisión.
               </p>
             </div>
           }
@@ -73,6 +77,9 @@ import type { Claim, ClaimAlert } from '../models';
           </div>
         </div>
       </div>
+    </div>
+    <div class="px-5 pb-5">
+      <claim-savings-card [ahorro]="claim().ahorro" />
     </div>
   `,
 })
@@ -134,7 +141,8 @@ export class ScorePanel {
   }
 
   protected tooltipFor(a: ClaimAlert): string {
-    const peso = a.puntos > 0 ? `+${a.puntos} pts` : 'regla crítica — escala el caso sin sumar puntos';
+    const peso =
+      a.puntos > 0 ? `+${a.puntos} pts` : 'regla crítica — escala el caso sin sumar puntos';
     return `${a.code} · ${peso} — ${a.detalle} (clic para ver detalle)`;
   }
 }

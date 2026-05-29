@@ -30,3 +30,6 @@ export type SimilarClaimDto = S['SimilarClaim'];
 export type ClaimDto = S['ClaimDetail'];
 export type ClaimSummaryDto = S['ClaimSummary'];
 export type InboxRowDto = S['InboxRow'];
+
+export type SavingsEstimateDto = S['SavingsEstimate'];
+export type SavingsAnalysisDto = S['SavingsAnalysisOut'];

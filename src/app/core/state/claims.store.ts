@@ -141,15 +141,17 @@ export class ClaimsStore {
         const items: ClaimSummaryDto[] = [];
         let page = 0;
         while (true) {
-          const result = await firstValueFrom(
-            this.api.list({ page, page_size: PAGE_SIZE }),
-          );
+          const result = await firstValueFrom(this.api.list({ page, page_size: PAGE_SIZE }));
           items.push(...result.items);
           if (items.length >= result.total || result.items.length === 0) break;
           page += 1;
         }
         const summaries = items.map((row) => summaryToClaim(row));
-        const detailById = new Map(this._claims().filter((c) => c.alertas?.length).map((c) => [c.id, c]));
+        const detailById = new Map(
+          this._claims()
+            .filter((c) => c.alertas?.length)
+            .map((c) => [c.id, c]),
+        );
         const merged = summaries.map((s) => detailById.get(s.id) ?? s);
         this._claims.set(merged);
         writeCache(this.lastUserId, merged);
@@ -304,9 +306,9 @@ export class ClaimsStore {
       const prev = next[idx];
       next[idx] = {
         ...claim,
-        alertas: claim.alertas?.length ? claim.alertas : prev.alertas ?? [],
-        timeline: claim.timeline?.length ? claim.timeline : prev.timeline ?? [],
-        documentos: claim.documentos?.length ? claim.documentos : prev.documentos ?? [],
+        alertas: claim.alertas?.length ? claim.alertas : (prev.alertas ?? []),
+        timeline: claim.timeline?.length ? claim.timeline : (prev.timeline ?? []),
+        documentos: claim.documentos?.length ? claim.documentos : (prev.documentos ?? []),
         // ClaimDetail doesn't currently carry proveedor_id, but ClaimSummary
         // does — preserve it across a detail fetch so the provider page filter
         // (which matches by id) keeps working after the user opens a claim.
@@ -395,6 +397,7 @@ function dtoToClaim(dto: ClaimDto): Claim {
     resumen_editado: dto.resumen_editado ?? null,
     narrative_analysis: dto.narrative_analysis ?? null,
     panel_analysis: dto.panel_analysis ?? null,
+    ahorro: dto.ahorro ?? null,
   };
 }
 
