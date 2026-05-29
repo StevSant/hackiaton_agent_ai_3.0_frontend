@@ -363,7 +363,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Rescore Claim Route */
+        /**
+         * Rescore Claim Route
+         * @description Re-analyze one claim with the genuine relationship-driven pipeline.
+         *
+         *     Rebuilds the RuleContext from DB relationships + stored signal facts, runs
+         *     the rules engine (incl. FS-15 chassis/VIN identity check), persists the fresh
+         *     score, auto-escalates rojos, and enriches ML / anomaly fields when wired.
+         */
         post: operations["rescore_claim_route_api_v1_claims__claim_id__rescore_post"];
         delete?: never;
         options?: never;
@@ -489,11 +496,30 @@ export interface paths {
         /** List Providers Route */
         get: operations["list_providers_route_api_v1_network_providers_get"];
         put?: never;
-        post?: never;
+        /** Create Provider Route */
+        post: operations["create_provider_route_api_v1_network_providers_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/network/providers/{id_proveedor}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Provider Route */
+        delete: operations["delete_provider_route_api_v1_network_providers__id_proveedor__delete"];
+        options?: never;
+        head?: never;
+        /** Update Provider Route */
+        patch: operations["update_provider_route_api_v1_network_providers__id_proveedor__patch"];
         trace?: never;
     };
     "/api/v1/asegurados": {
@@ -506,11 +532,30 @@ export interface paths {
         /** List Asegurados Route */
         get: operations["list_asegurados_route_api_v1_asegurados_get"];
         put?: never;
-        post?: never;
+        /** Create Asegurado Route */
+        post: operations["create_asegurado_route_api_v1_asegurados_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/asegurados/{id_asegurado}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Asegurado Route */
+        delete: operations["delete_asegurado_route_api_v1_asegurados__id_asegurado__delete"];
+        options?: never;
+        head?: never;
+        /** Update Asegurado Route */
+        patch: operations["update_asegurado_route_api_v1_asegurados__id_asegurado__patch"];
         trace?: never;
     };
     "/api/v1/audit/events": {
@@ -654,6 +699,45 @@ export interface components {
             /** Confidence */
             confidence: number;
         };
+        /**
+         * AseguradoCreate
+         * @description Payload for adding a single insured person by hand.
+         */
+        AseguradoCreate: {
+            /**
+             * Id Asegurado
+             * @description Opcional — se genera si no se envía
+             */
+            id_asegurado?: string | null;
+            /** Nombre */
+            nombre?: string | null;
+            /** Segmento */
+            segmento?: string | null;
+            /** Ciudad */
+            ciudad: string;
+            /**
+             * Antiguedad
+             * @description Antigüedad en años
+             */
+            antiguedad?: number | null;
+            /**
+             * Num Polizas
+             * @default 0
+             */
+            num_polizas: number;
+            /**
+             * Reclamos Ultimos 12 Meses
+             * @default 0
+             */
+            reclamos_ultimos_12_meses: number;
+            /**
+             * Mora Actual
+             * @default false
+             */
+            mora_actual: boolean;
+            /** Score Cliente Simulado */
+            score_cliente_simulado?: number | null;
+        };
         /** AseguradoOut */
         AseguradoOut: {
             /** Id Asegurado */
@@ -703,6 +787,28 @@ export interface components {
              * @default []
              */
             ramos: string[];
+        };
+        /**
+         * AseguradoUpdate
+         * @description Partial update — only the provided fields are applied.
+         */
+        AseguradoUpdate: {
+            /** Nombre */
+            nombre?: string | null;
+            /** Segmento */
+            segmento?: string | null;
+            /** Ciudad */
+            ciudad?: string | null;
+            /** Antiguedad */
+            antiguedad?: number | null;
+            /** Num Polizas */
+            num_polizas?: number | null;
+            /** Reclamos Ultimos 12 Meses */
+            reclamos_ultimos_12_meses?: number | null;
+            /** Mora Actual */
+            mora_actual?: boolean | null;
+            /** Score Cliente Simulado */
+            score_cliente_simulado?: number | null;
         };
         /**
          * AuditAction
@@ -967,35 +1073,6 @@ export interface components {
             closed_at?: string | null;
             /** Closed Note */
             closed_note?: string | null;
-        };
-        /**
-         * ClaimRiskScore
-         * @description Full output of `score_claim`: rules + ml + anomaly + similarity.
-         *
-         *     The ML probability is kept SEPARATE from the additive rules `score` so the
-         *     analyst sees rules vs. model independently (explainability, §2.4).
-         */
-        ClaimRiskScore: {
-            /** Score */
-            score: number;
-            tier: components["schemas"]["Tier"];
-            /** Activations */
-            activations?: components["schemas"]["RuleActivation"][];
-            /** Ml Probability */
-            ml_probability?: number | null;
-            /** Ml Factors */
-            ml_factors?: components["schemas"]["FactorContribution"][];
-            /** Anomaly Score */
-            anomaly_score?: number | null;
-            /** Nearest Normal Claim Id */
-            nearest_normal_claim_id?: string | null;
-            /** Similar */
-            similar?: components["schemas"]["SimilarClaim"][];
-            /**
-             * Computed At
-             * Format: date-time
-             */
-            computed_at: string;
         };
         /**
          * ClaimSummary
@@ -1382,6 +1459,46 @@ export interface components {
             /** Page Size */
             page_size: number;
         };
+        /**
+         * ProviderCreate
+         * @description Payload for adding a single provider / beneficiary by hand.
+         */
+        ProviderCreate: {
+            /**
+             * Id Proveedor
+             * @description Opcional — se genera si no se envía
+             */
+            id_proveedor?: string | null;
+            /** Nombre */
+            nombre?: string | null;
+            /**
+             * Tipo
+             * @description Taller, clínica, beneficiario…
+             */
+            tipo: string;
+            /** Ciudad */
+            ciudad: string;
+            /**
+             * Antiguedad
+             * @description Antigüedad en meses
+             */
+            antiguedad?: number | null;
+            /**
+             * Lista Restrictiva
+             * @default false
+             */
+            lista_restrictiva: boolean;
+            /**
+             * Reclamos Asociados
+             * @default 0
+             */
+            reclamos_asociados: number;
+            /**
+             * Monto Promedio Reclamado
+             * @default 0
+             */
+            monto_promedio_reclamado: number;
+        };
         /** ProviderOut */
         ProviderOut: {
             /** Id Proveedor */
@@ -1406,6 +1523,26 @@ export interface components {
              */
             ramos: string[];
         };
+        /**
+         * ProviderUpdate
+         * @description Partial update — only the provided fields are applied.
+         */
+        ProviderUpdate: {
+            /** Nombre */
+            nombre?: string | null;
+            /** Tipo */
+            tipo?: string | null;
+            /** Ciudad */
+            ciudad?: string | null;
+            /** Antiguedad */
+            antiguedad?: number | null;
+            /** Lista Restrictiva */
+            lista_restrictiva?: boolean | null;
+            /** Reclamos Asociados */
+            reclamos_asociados?: number | null;
+            /** Monto Promedio Reclamado */
+            monto_promedio_reclamado?: number | null;
+        };
         /** QuarterlyOutlookOut */
         QuarterlyOutlookOut: {
             /** Body */
@@ -1425,29 +1562,6 @@ export interface components {
          * @enum {string}
          */
         ReviewStatus: "pendiente" | "escalado" | "en_revision" | "dictaminado" | "revisado_sin_escalar";
-        /**
-         * RuleActivation
-         * @description One fired fraud rule, produced by the rules engine (`domain/rules`).
-         *
-         *     `points` is 0 for hard rules (RF-*) — they override via `tier_hint`.
-         *     `evidence` carries the variables that made the rule fire; it is what the UI
-         *     renders under "Reglas activadas" (be specific — numbers, not adjectives).
-         */
-        RuleActivation: {
-            /**
-             * Code
-             * @example FS-07
-             * @example RF-01
-             */
-            code: string;
-            /** Points */
-            points: number;
-            tier_hint: components["schemas"]["Tier"];
-            /** Evidence */
-            evidence?: {
-                [key: string]: unknown;
-            };
-        };
         /**
          * RuleChangeKind
          * @enum {string}
@@ -2480,6 +2594,103 @@ export interface operations {
             };
         };
     };
+    create_provider_route_api_v1_network_providers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_provider_route_api_v1_network_providers__id_proveedor__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_proveedor: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_provider_route_api_v1_network_providers__id_proveedor__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_proveedor: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_asegurados_route_api_v1_asegurados_get: {
         parameters: {
             query?: never;
@@ -2496,6 +2707,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AseguradoOut"][];
+                };
+            };
+        };
+    };
+    create_asegurado_route_api_v1_asegurados_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AseguradoCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AseguradoOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_asegurado_route_api_v1_asegurados__id_asegurado__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_asegurado: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_asegurado_route_api_v1_asegurados__id_asegurado__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id_asegurado: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AseguradoUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AseguradoOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
