@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 
 import {
   NetworkApi,
+  type NetworkRelationsDto,
   type ProviderCreate,
   type ProviderDto,
   type ProviderUpdate,
@@ -41,10 +42,14 @@ export class ProvidersStore {
   private readonly _providers = signal<Provider[]>([]);
   private readonly _loading = signal<boolean>(false);
   private readonly _error = signal<AppError | null>(null);
+  private readonly _relations = signal<NetworkRelationsDto>({ nodes: [], edges: [] });
+  private readonly _relationsLoading = signal<boolean>(false);
 
   readonly providers = this._providers.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
+  readonly relations = this._relations.asReadonly();
+  readonly relationsLoading = this._relationsLoading.asReadonly();
 
   private lastUserId: string | null = null;
 
@@ -65,10 +70,25 @@ export class ProvidersStore {
       this.lastUserId = userId;
       if (userId) {
         void this.loadList();
+        void this.loadRelations();
       } else {
         this._providers.set([]);
+        this._relations.set({ nodes: [], edges: [] });
       }
     });
+  }
+
+  async loadRelations(): Promise<void> {
+    if (this._relationsLoading()) return;
+    this._relationsLoading.set(true);
+    try {
+      this._relations.set(await firstValueFrom(this.api.relations()));
+    } catch {
+      // Relations are a visualization aid — keep the page usable on failure.
+      this._relations.set({ nodes: [], edges: [] });
+    } finally {
+      this._relationsLoading.set(false);
+    }
   }
 
   async loadList(): Promise<void> {

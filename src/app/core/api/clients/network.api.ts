@@ -16,6 +16,32 @@ export interface ProviderDto {
   ramos?: string[];
 }
 
+export type NetworkNodeKind = 'proveedor' | 'asegurado';
+
+export interface NetworkNodeDto {
+  id: string;
+  label: string;
+  kind: NetworkNodeKind;
+  ciudad: string;
+  casos: number;
+  alertas: number;
+  monto: number;
+  lista_restrictiva: boolean;
+}
+
+export interface NetworkEdgeDto {
+  proveedor_id: string;
+  asegurado_id: string;
+  casos_compartidos: number;
+  alertas: number;
+  monto: number;
+}
+
+export interface NetworkRelationsDto {
+  nodes: NetworkNodeDto[];
+  edges: NetworkEdgeDto[];
+}
+
 export interface ProviderCreate {
   id_proveedor?: string | null;
   nombre?: string | null;
@@ -44,6 +70,10 @@ export class NetworkApi {
 
   listProviders(): Observable<ProviderDto[]> {
     return this.http.get<ProviderDto[]>(`${this.base}/network/providers`);
+  }
+
+  relations(): Observable<NetworkRelationsDto> {
+    return this.http.get<NetworkRelationsDto>(`${this.base}/network/relations`);
   }
 
   createProvider(body: ProviderCreate): Observable<ProviderDto> {
