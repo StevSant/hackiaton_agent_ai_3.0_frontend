@@ -94,7 +94,8 @@ interface TransparencyMetadata {
   steps?: StoredScratchpadEntry[];
   tool_calls?: StoredToolCall[];
   citations?: { claim_id: string }[];
-  document?: DocumentPayload | null;
+  // Backend persists the generated document under `document_payload`.
+  document_payload?: DocumentPayload | null;
 }
 
 /**
@@ -469,7 +470,7 @@ export class AgentStore {
             undefined,
           );
           // Restore document payload if the agent called crear_documento during this turn.
-          const documentPayload = raw.transparency_metadata?.document ?? null;
+          const documentPayload = raw.transparency_metadata?.document_payload ?? null;
           return {
             id: m.id,
             role: m.role,
