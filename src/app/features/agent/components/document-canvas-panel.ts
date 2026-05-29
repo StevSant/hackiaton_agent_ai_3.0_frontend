@@ -30,8 +30,9 @@ import { slugify } from '../utils/message-to-markdown';
  * edited HTML is converted back to markdown (turndown + gfm) and emitted via
  * `apply` so the store keeps a markdown source for download + improve.
  *
- * "Mejorar con IA" emits `improve(instrucciones)` — the page calls the store, which
- * appends a NEW attachment + a chat reference card. It does NOT mutate in place.
+ * CHANGE 1 — "Mejorar con IA" emits `improveInMainChat({titulo, contenidoMarkdown})`.
+ * The page prefills the MAIN chat input + focuses it (no separate panel input). The
+ * analyst types the instruction in the main composer; the MAIN agent improves it.
  */
 @Component({
   selector: 'document-canvas-panel',
@@ -50,20 +51,16 @@ import { slugify } from '../utils/message-to-markdown';
           <span class="text-[11px] text-ink-3">· DOCX</span>
         </div>
         <div class="flex items-center gap-1 shrink-0">
-          <!-- Mejorar con IA -->
+          <!-- Mejorar con IA — routes through the MAIN chat (no separate input). -->
           <button
             type="button"
             class="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-ink bg-brand-soft border border-brand/20 rounded-lg px-2.5 py-1.5 hover:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
             (click)="onImprove()"
-            [disabled]="improving() || downloading()"
+            [disabled]="downloading()"
             aria-label="Mejorar con IA"
           >
-            <ui-icon
-              [name]="improving() ? 'progress_activity' : 'auto_fix_high'"
-              [size]="14"
-              [class.animate-spin]="improving()"
-            />
-            {{ improving() ? 'Mejorando…' : 'Mejorar con IA' }}
+            <ui-icon name="auto_fix_high" [size]="14" />
+            Mejorar con IA
           </button>
 
           <!-- Edit toggle -->
@@ -80,11 +77,29 @@ import { slugify } from '../utils/message-to-markdown';
             {{ editMode() ? 'Vista' : 'Editar' }}
           </button>
 
+          <!-- Incluir gráfico — only when a chart image is available for the conversation. -->
+          @if (chartImage()) {
+            <label
+              class="inline-flex items-center gap-1.5 text-[12px] text-ink-2 px-2.5 py-1.5 rounded-lg border border-line cursor-pointer hover:bg-hover"
+              [class.text-brand-ink]="includeChart()"
+              [class.bg-brand-soft]="includeChart()"
+              title="Incluir el gráfico en el documento Word"
+            >
+              <input
+                type="checkbox"
+                class="accent-brand"
+                [checked]="includeChart()"
+                (change)="includeChart.set($any($event.target).checked)"
+              />
+              Incluir gráfico
+            </label>
+          }
+
           <!-- Download -->
           <button
             type="button"
             class="inline-flex items-center gap-1 text-[12px] px-2.5 py-1.5 rounded-lg border border-line hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
-            [disabled]="downloading() || improving()"
+            [disabled]="downloading()"
             (click)="onDownload()"
             aria-label="Descargar Word"
           >
@@ -107,39 +122,6 @@ import { slugify } from '../utils/message-to-markdown';
           </button>
         </div>
       </div>
-
-      <!-- ── Instructions input (shown when user clicks "Mejorar con IA") ── -->
-      @if (showInstructions()) {
-        <div class="px-4 py-3 border-b border-line bg-soft shrink-0 flex flex-col gap-2">
-          <label class="text-[12px] font-medium text-ink-2" for="improve-instructions">
-            Instrucciones para la IA (opcional)
-          </label>
-          <textarea
-            id="improve-instructions"
-            rows="2"
-            class="w-full text-[12.5px] border border-line rounded-lg px-3 py-2 resize-none bg-white focus:outline-none focus:ring-2 focus:ring-brand"
-            placeholder="Ej: Hacelo más conciso, agrega una sección de recomendaciones…"
-            [value]="instructionsInput()"
-            (input)="instructionsInput.set($any($event.target).value)"
-          ></textarea>
-          <div class="flex justify-end gap-2">
-            <button
-              type="button"
-              class="text-[12px] px-3 py-1.5 rounded-lg border border-line text-ink-2 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              (click)="cancelImprove()"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              class="text-[12px] px-3 py-1.5 rounded-lg bg-brand text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              (click)="confirmImprove()"
-            >
-              Mejorar
-            </button>
-          </div>
-        </div>
-      }
 
       <!-- ── Edit toolbar (only in edit mode) ── -->
       @if (editMode()) {
@@ -206,11 +188,6 @@ import { slugify } from '../utils/message-to-markdown';
           No se pudo generar el archivo Word. Intentá de nuevo.
         </div>
       }
-      @if (improveError()) {
-        <div class="px-4 pb-3 text-[11.5px] text-red-500 shrink-0">
-          No se pudo mejorar el documento. Intentá de nuevo.
-        </div>
-      }
     </div>
   `,
   styles: [
@@ -240,12 +217,14 @@ import { slugify } from '../utils/message-to-markdown';
 export class DocumentCanvasPanel implements OnChanges {
   /** The document attachment to display. Changes reset the view to the new content. */
   readonly doc = input.required<ConversationDocument>();
+  /** CHANGE 2 — PNG data URL of the latest chart; null hides the "Incluir gráfico" option. */
+  readonly chartImage = input<string | null>(null);
 
   readonly close = output<void>();
   /** Emitted on "Aplicar" with the edited content converted back to markdown. */
   readonly apply = output<string>();
-  /** Emitted on "Mejorar" with optional instructions — the page calls the store. */
-  readonly improve = output<{ instrucciones: string | null }>();
+  /** CHANGE 1 — "Mejorar con IA": the page prefills the MAIN chat input with this doc. */
+  readonly improveInMainChat = output<{ titulo: string; contenidoMarkdown: string }>();
 
   private readonly agentApi = inject(AgentApi);
   private readonly editable = viewChild<ElementRef<HTMLDivElement>>('editable');
@@ -253,10 +232,8 @@ export class DocumentCanvasPanel implements OnChanges {
   protected readonly editMode = signal(false);
   protected readonly downloading = signal(false);
   protected readonly downloadError = signal(false);
-  protected readonly improving = signal(false);
-  protected readonly improveError = signal(false);
-  protected readonly showInstructions = signal(false);
-  protected readonly instructionsInput = signal('');
+  /** CHANGE 2 — whether to embed the chart image in the downloaded .docx. */
+  protected readonly includeChart = signal(false);
   /** Snapshot of the rendered HTML used to seed the contenteditable on edit entry. */
   protected readonly renderedHtml = signal('');
 
@@ -264,8 +241,6 @@ export class DocumentCanvasPanel implements OnChanges {
     if (changes['doc']) {
       // Switching documents (or an improved version arriving) exits edit mode.
       this.editMode.set(false);
-      this.improving.set(false);
-      this.showInstructions.set(false);
     }
   }
 
@@ -316,10 +291,12 @@ export class DocumentCanvasPanel implements OnChanges {
     this.downloading.set(true);
     this.downloadError.set(false);
     try {
+      const chart = this.chartImage();
       const blob = await firstValueFrom(
         this.agentApi.downloadDocumentDocx({
           titulo: this.doc().titulo,
           contenido_markdown: this.doc().contenidoMarkdown,
+          chart_image_base64: this.includeChart() && chart ? chart : null,
         }),
       );
       const url = URL.createObjectURL(blob);
@@ -335,32 +312,11 @@ export class DocumentCanvasPanel implements OnChanges {
     }
   }
 
-  /** First click: show the optional instructions bar. */
+  /** CHANGE 1 — hand off to the page, which prefills + focuses the MAIN chat input. */
   protected onImprove(): void {
-    if (this.improving()) return;
-    this.improveError.set(false);
-    this.instructionsInput.set('');
-    this.showInstructions.set(true);
-  }
-
-  protected cancelImprove(): void {
-    this.showInstructions.set(false);
-    this.instructionsInput.set('');
-  }
-
-  /** Confirm: delegate to the page → store, which appends a chat reference. */
-  protected confirmImprove(): void {
-    this.showInstructions.set(false);
-    this.improving.set(true);
-    this.improveError.set(false);
-    const instrucciones = this.instructionsInput().trim() || null;
-    this.instructionsInput.set('');
-    this.improve.emit({ instrucciones });
-  }
-
-  /** Called by the page when the improve request fails, to reset the spinner. */
-  improveFailed(): void {
-    this.improving.set(false);
-    this.improveError.set(true);
+    this.improveInMainChat.emit({
+      titulo: this.doc().titulo,
+      contenidoMarkdown: this.doc().contenidoMarkdown,
+    });
   }
 }

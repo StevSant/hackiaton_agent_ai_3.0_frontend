@@ -487,6 +487,23 @@ export interface paths {
         patch: operations["patch_claim_resumen_route_api_v1_claims__claim_id__resumen_patch"];
         trace?: never;
     };
+    "/api/v1/claims/{claim_id}/panel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Claim Panel */
+        post: operations["claim_panel_api_v1_claims__claim_id__panel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/antifraude/inbox": {
         parameters: {
             query?: never;
@@ -607,6 +624,23 @@ export interface paths {
         put?: never;
         /** Create Provider Route */
         post: operations["create_provider_route_api_v1_network_providers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/network/relations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Network Relations Route */
+        get: operations["network_relations_route_api_v1_network_relations_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -784,6 +818,7 @@ export interface components {
             context_provider_id?: string | null;
             /** Context Asegurado Id */
             context_asegurado_id?: string | null;
+            document_context?: components["schemas"]["DocumentContext"] | null;
             /**
              * History
              * @default []
@@ -1026,10 +1061,6 @@ export interface components {
         /**
          * ClaimAlert
          * @description UI projection of a `RuleActivation`, rendered as a chip in the breakdown.
-         *
-         *     `detalle` is the rule's generic description; `evidence` carries the
-         *     per-claim variables that made *this* rule fire (e.g. {"demora_denuncia_horas": 56}).
-         *     The detail dialog renders `evidence` as the "en este caso" explanation.
          */
         ClaimAlert: {
             /** Code */
@@ -1043,10 +1074,6 @@ export interface components {
             severidad: "high" | "med" | "low";
             /** Detalle */
             detalle: string;
-            /** Evidence */
-            evidence?: {
-                [key: string]: unknown;
-            };
         };
         /**
          * ClaimDetail
@@ -1375,12 +1402,28 @@ export interface components {
              */
             justificacion: string;
         };
+        /**
+         * DocumentContext
+         * @description A document the analyst is editing in the canvas, attached to a chat turn.
+         *
+         *     Rides in its own field (NOT in `query`/`message`) so the full markdown can be
+         *     large without hitting the 4000-char chat cap. When present, the agent improves
+         *     THIS document via `crear_documento` instead of inventing one from scratch.
+         */
+        DocumentContext: {
+            /** Titulo */
+            titulo: string;
+            /** Contenido Markdown */
+            contenido_markdown: string;
+        };
         /** DocxRequest */
         DocxRequest: {
             /** Titulo */
             titulo: string;
             /** Contenido Markdown */
             contenido_markdown: string;
+            /** Chart Image Base64 */
+            chart_image_base64?: string | null;
         };
         /** EscalateRequest */
         EscalateRequest: {
@@ -1595,6 +1638,74 @@ export interface components {
             transparency_metadata?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * NetworkEdge
+         * @description A provider↔insured link built from the claims they share.
+         *
+         *     A repeated pair (high `casos_compartidos`) is the core collusion signal —
+         *     the same provider servicing the same insured across many claims.
+         */
+        NetworkEdge: {
+            /** Proveedor Id */
+            proveedor_id: string;
+            /** Asegurado Id */
+            asegurado_id: string;
+            /** Casos Compartidos */
+            casos_compartidos: number;
+            /** Alertas */
+            alertas: number;
+            /** Monto */
+            monto: number;
+        };
+        /**
+         * NetworkNode
+         * @description A node in the relationship graph — a provider or an insured.
+         */
+        NetworkNode: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "proveedor" | "asegurado";
+            /** Ciudad */
+            ciudad: string;
+            /** Casos */
+            casos: number;
+            /** Alertas */
+            alertas: number;
+            /** Monto */
+            monto: number;
+            /**
+             * Lista Restrictiva
+             * @default false
+             */
+            lista_restrictiva: boolean;
+            /**
+             * Ramos
+             * @default []
+             */
+            ramos: string[];
+        };
+        /**
+         * NetworkRelations
+         * @description Bipartite relationship graph: provider + insured nodes joined by claims.
+         */
+        NetworkRelations: {
+            /**
+             * Nodes
+             * @default []
+             */
+            nodes: components["schemas"]["NetworkNode"][];
+            /**
+             * Edges
+             * @default []
+             */
+            edges: components["schemas"]["NetworkEdge"][];
         };
         /** Page[ClaimSummary] */
         Page_ClaimSummary_: {
@@ -2766,6 +2877,37 @@ export interface operations {
             };
         };
     };
+    claim_panel_api_v1_claims__claim_id__panel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     antifraude_inbox_route_api_v1_antifraude_inbox_get: {
         parameters: {
             query?: {
@@ -2982,6 +3124,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    network_relations_route_api_v1_network_relations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkRelations"];
                 };
             };
         };

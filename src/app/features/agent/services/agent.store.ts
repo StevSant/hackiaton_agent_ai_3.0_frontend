@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { AgentApi } from '@core/api/clients/agent.api';
+import type { DocumentContext } from '@core/api/clients/agent.api';
 import { ConversationsApi } from '@core/api/clients/conversations.api';
 import { environment } from '@core/config/env';
 import { AppError } from '@core/errors/app-error';
@@ -253,7 +253,6 @@ export class AgentStore {
   private readonly sse = inject(SseClient);
   private readonly conversationsApi = inject(ConversationsApi);
   private readonly conversationsStore = inject(ConversationsStore);
-  private readonly agentApi = inject(AgentApi);
 
   private readonly _messages = signal<AgentMessage[]>([
     {
@@ -271,6 +270,17 @@ export class AgentStore {
   private readonly _documents = signal<ConversationDocument[]>([]);
   /** Id of the document currently open in the right-side canvas panel, if any. */
   private readonly _activeDocumentId = signal<string | null>(null);
+  /**
+   * CHANGE 1 — document the analyst chose to improve via the MAIN chat. Stashed
+   * when "Mejorar con IA" prefills the input; the next `ask()` reads & clears it
+   * so the full markdown rides in `document_context` (not capped by the message).
+   */
+  private readonly _pendingDocumentContext = signal<DocumentContext | null>(null);
+  /**
+   * CHANGE 2 — PNG data URL of the most recent chart rendered in this conversation.
+   * Set by `agent-chart.ts` on render; read by the canvas panel to embed in the .docx.
+   */
+  private readonly _latestChartImage = signal<string | null>(null);
 
   readonly messages = this._messages.asReadonly();
   readonly thinking = this._thinking.asReadonly();
@@ -278,6 +288,7 @@ export class AgentStore {
   readonly conversationId = this._conversationId.asReadonly();
   readonly chatContext = this._chatContext.asReadonly();
   readonly documents = this._documents.asReadonly();
+  readonly latestChartImage = this._latestChartImage.asReadonly();
 
   /** The document open in the panel, resolved from the active id. */
   readonly activeDocument = computed<ConversationDocument | null>(() => {
@@ -339,40 +350,18 @@ export class AgentStore {
   }
 
   /**
-   * CHANGE 3 — "Mejorar con IA" as a chat reference (attachment lineage).
-   * Calls the improve endpoint, then:
-   *  - appends a NEW document attachment marked as a derivative (parentId/version),
-   *  - posts a lightweight assistant message carrying it as a documentPayload so it
-   *    shows a `chat-document-card` in the thread (the original card stays above),
-   *  - opens the improved version in the canvas.
-   * Stays client-side: never calls `ask` (no new agent turn, no 500).
+   * CHANGE 1 — "Mejorar con IA" routes through the MAIN chat. The panel calls this
+   * to stash the document the analyst wants improved; the next `ask()` reads it,
+   * attaches the full markdown via `document_context`, then clears it. One improve
+   * turn = one document_context — subsequent turns don't carry it.
    */
-  async improveDocument(id: string, instrucciones: string | null): Promise<void> {
-    const source = this._documents().find((d) => d.id === id);
-    if (!source) return;
-    const result = await firstValueFrom(
-      this.agentApi.improveDocument({
-        titulo: source.titulo,
-        contenido_markdown: source.contenidoMarkdown,
-        instrucciones,
-      }),
-    );
-    const messageId = newId();
-    const improved = this.addDocument(result, {
-      messageId,
-      parentId: source.id,
-      version: (source.version ?? 1) + 1,
-    });
-    this._messages.update((messages) => [
-      ...messages,
-      {
-        id: messageId,
-        role: 'assistant',
-        content: `📎 Documento actualizado: «${result.titulo}»`,
-        documentPayload: result,
-      },
-    ]);
-    this._activeDocumentId.set(improved.id);
+  setPendingDocumentContext(ctx: DocumentContext): void {
+    this._pendingDocumentContext.set(ctx);
+  }
+
+  /** CHANGE 2 — register the latest chart's PNG data URL (called by agent-chart). */
+  setLatestChartImage(dataUrl: string): void {
+    this._latestChartImage.set(dataUrl);
   }
 
   /** Backward-compat wrapper — maps claim id to ChatContext union. */
@@ -405,6 +394,8 @@ export class AgentStore {
   private clearDocuments(): void {
     this._documents.set([]);
     this._activeDocumentId.set(null);
+    this._latestChartImage.set(null);
+    this._pendingDocumentContext.set(null);
   }
 
   startNewConversation(
@@ -637,6 +628,9 @@ export class AgentStore {
 
     const url = `${environment.backendUrl}${environment.apiPrefix}/agent/ask`;
     const ctx = this._chatContext();
+    // CHANGE 1 — one improve turn carries the full document; clear after reading.
+    const documentContext = this._pendingDocumentContext();
+    this._pendingDocumentContext.set(null);
 
     this.sse
       .stream<AgentStreamEvent>({
@@ -648,6 +642,7 @@ export class AgentStore {
           context_claim_id:     ctx?.kind === 'claim'     ? ctx.id : null,
           context_provider_id:  ctx?.kind === 'provider'  ? ctx.id : null,
           context_asegurado_id: ctx?.kind === 'asegurado' ? ctx.id : null,
+          document_context: documentContext,
         },
       })
       .subscribe({

@@ -92,7 +92,11 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
           @if (chart(); as chartData) {
             @if (uiPrefs.showCharts()) {
               @if (chartAccepted()) {
-                <agent-chart [payload]="chartData" (openCase)="openCase.emit($event)" />
+                <agent-chart
+                  [payload]="chartData"
+                  (openCase)="openCase.emit($event)"
+                  (chartRendered)="chartRendered.emit($event)"
+                />
               }
               <button
                 type="button"
@@ -154,6 +158,8 @@ export class ChatMessage {
   readonly toggleChart = output<string>();
   /** Opens the artifact side panel — payload is { titulo, contenidoMarkdown }. */
   readonly openCanvas = output<{ titulo: string; contenidoMarkdown: string }>();
+  /** CHANGE 2 — bubbles the rendered chart's PNG data URL up to the page → store. */
+  readonly chartRendered = output<string>();
 
   protected readonly uiPrefs = inject(ChatUiPrefsStore);
 
