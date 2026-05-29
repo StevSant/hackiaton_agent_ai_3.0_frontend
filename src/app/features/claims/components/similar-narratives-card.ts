@@ -31,8 +31,8 @@ import type { Claim, SimilarClaim } from '../models';
       </div>
       @if (similar().length === 0) {
         <ui-empty-state
-          title="Sin narrativas similares"
-          sub="No se encontraron descripciones cercanas en la cartera histórica."
+          title="Comparación no aplicable a este caso"
+          sub="Este siniestro no cumple los requisitos para buscar narrativas similares en la cartera histórica."
         />
       } @else {
         <div class="px-5 py-4 flex flex-col gap-2.5">
