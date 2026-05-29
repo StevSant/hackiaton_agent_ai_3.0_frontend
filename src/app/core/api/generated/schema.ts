@@ -634,7 +634,14 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Patch Rule
+         * @description Pause/reactivate a rule or retune its thresholds, then rescore all claims.
+         *
+         *     Antifraude-only. Persists the edit, re-hydrates the engine, logs the change to
+         *     the history, and runs a full rescore so existing claims reflect the change.
+         */
+        patch: operations["patch_rule_api_v1_rules__code__patch"];
         trace?: never;
     };
     "/api/v1/network/providers": {
@@ -1156,6 +1163,8 @@ export interface components {
             fecha_fin_poliza?: string | null;
             /** Monto Reclamado */
             monto_reclamado: number;
+            /** Monto Estimado */
+            monto_estimado?: number | null;
             /** Suma Asegurada */
             suma_asegurada: number;
             /** Estado */
@@ -1315,6 +1324,11 @@ export interface components {
             proveedor?: string | null;
             /** Proveedor Id */
             proveedor_id?: string | null;
+            dictamen_outcome?: components["schemas"]["DictamenOutcome"] | null;
+            /** Dictamen Justificacion */
+            dictamen_justificacion?: string | null;
+            /** Dictaminado At */
+            dictaminado_at?: string | null;
             /**
              * Panel Revisado
              * @default false
@@ -1746,6 +1760,37 @@ export interface components {
             resumen_narrativa: string;
         };
         /**
+         * NetworkClaim
+         * @description A claim (siniestro) that links a provider to an insured.
+         *
+         *     Surfaced so the frontend can render case-centric relationship views
+         *     (provider↔caso, asegurado↔caso, and the tripartite provider—caso—insured
+         *     chain) without a second round-trip. Only claims belonging to a surfaced
+         *     suspicious provider↔insured pair are included, capped for readability.
+         */
+        NetworkClaim: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Proveedor Id */
+            proveedor_id?: string | null;
+            /** Asegurado Id */
+            asegurado_id: string;
+            /** Ramo */
+            ramo: string;
+            /** Ciudad */
+            ciudad: string;
+            /** Monto */
+            monto: number;
+            /** Score */
+            score: number;
+            /** Tier */
+            tier: string;
+            /** Alerta */
+            alerta: boolean;
+        };
+        /**
          * NetworkEdge
          * @description A provider↔insured link built from the claims they share.
          *
@@ -1799,7 +1844,8 @@ export interface components {
         };
         /**
          * NetworkRelations
-         * @description Bipartite relationship graph: provider + insured nodes joined by claims.
+         * @description Relationship graph: provider + insured nodes joined by claims, plus the
+         *     claims themselves so the UI can pivot between provider, insured and case views.
          */
         NetworkRelations: {
             /**
@@ -1812,6 +1858,11 @@ export interface components {
              * @default []
              */
             edges: components["schemas"]["NetworkEdge"][];
+            /**
+             * Casos
+             * @default []
+             */
+            casos: components["schemas"]["NetworkClaim"][];
         };
         /** Page[ClaimSummary] */
         Page_ClaimSummary_: {
@@ -2061,6 +2112,26 @@ export interface components {
             activaciones_30d: number;
             /** Enabled */
             enabled: boolean;
+            /** Thresholds */
+            thresholds?: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * RuleConfigPatch
+         * @description Body of PATCH /rules/{code} — at least one field must be provided.
+         *
+         *     ``enabled`` pauses / reactivates the rule. ``thresholds`` is a partial overlay
+         *     on the rule's config block; only known numeric keys are accepted (the use case
+         *     rejects unknown keys and non-numeric values).
+         */
+        RuleConfigPatch: {
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Thresholds */
+            thresholds?: {
+                [key: string]: number;
+            } | null;
         };
         /**
          * RuleKind
@@ -3355,6 +3426,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RuleMetaOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_rule_api_v1_rules__code__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleConfigPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleConfigOut"];
                 };
             };
             /** @description Validation Error */
