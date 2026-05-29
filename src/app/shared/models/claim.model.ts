@@ -9,6 +9,15 @@ export interface SavingsEstimate {
   valor_en_riesgo: number;
   prob_fraude_usada: number;
   ahorro_potencial_estimado: number;
+  /** Raw amounts used to derive the estimate (added in v2). */
+  monto_reclamado: number;
+  suma_asegurada: number;
+  monto_pagado: number;
+  deducible: number;
+  /** Fraction of at-risk amount expected to be recovered (0-1). */
+  tasa_recuperacion: number;
+  /** Where prob_fraude_usada came from — ML model or the rule score. */
+  prob_source: 'ml' | 'score';
 }
 
 import type { ClaimAlert } from './claim-alert.model';
