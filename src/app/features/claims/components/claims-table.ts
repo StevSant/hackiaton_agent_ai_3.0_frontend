@@ -39,7 +39,7 @@ import type { Claim } from '../models';
               </td>
               <td>
                 <div class="flex items-center gap-2">
-                  <ui-icon [name]="ramoIcon(c.ramo)" [size]="16" />
+                  <ui-icon [name]="ramoIcon(c.ramo)" [cacheKey]="c.id" [size]="16" />
                   <div>
                     <div class="font-mono text-[12px] text-ink-2">{{ c.id }}</div>
                     <div class="text-[11.5px] text-ink-3">{{ ramoLabel(c.ramo) }} · {{ c.fecha_ocurrencia }}</div>

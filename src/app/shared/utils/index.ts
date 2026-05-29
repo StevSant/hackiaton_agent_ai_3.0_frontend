@@ -30,6 +30,12 @@ export {
   resolveClaimBackNavigation,
 } from './claim-back-navigation';
 export {
+  navigateToClaimDetail,
+  claimDetailQueryParams,
+} from './navigate-to-claim';
+export { navigateToProviderDetail } from './navigate-to-provider';
+export { navigateToAseguradoDetail } from './navigate-to-asegurado';
+export {
   bindDetailKeyboardNav,
   bindRecordSwapPulse,
   scrollAppMainToTop,

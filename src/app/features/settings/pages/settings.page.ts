@@ -22,9 +22,9 @@ import { ThemeStore } from '@core/theme/theme.store';
       <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
         <h3 class="text-[13px] font-semibold m-0">Apariencia</h3>
       </div>
-      <div class="px-5 py-4 flex items-center justify-between gap-4">
+      <div class="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div class="text-[13.5px] font-medium">Modo oscuro</div>
+          <div class="text-[13.5px] font-medium">{{ theme.dark() ? 'Modo oscuro' : 'Modo claro' }}</div>
           <div class="text-[12.5px] text-ink-3 mt-0.5">
             Cambia los colores de la interfaz para sesiones largas o luz baja.
           </div>
@@ -60,7 +60,7 @@ import { ThemeStore } from '@core/theme/theme.store';
           <div class="text-[12.5px] text-ink-3">{{ user()?.email ?? '—' }}</div>
         </div>
       </div>
-      <div class="px-5 py-5 grid grid-cols-2 gap-y-3.5 gap-x-6">
+      <div class="px-5 py-5 grid grid-cols-1 sm:grid-cols-2 gap-y-3.5 gap-x-6">
         <div>
           <div class="text-[11px] text-ink-3 uppercase tracking-wider font-medium mb-1">Rol</div>
           <div class="text-[13.5px] font-medium">{{ user()?.role ?? '—' }}</div>

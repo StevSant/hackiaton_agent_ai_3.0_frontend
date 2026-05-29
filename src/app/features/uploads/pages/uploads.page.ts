@@ -44,7 +44,7 @@ const DEMO_VEHICLE_DOCUMENTS: readonly { file: string; tipo: string }[] = [
   providers: [UploadStreamStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="mx-auto max-w-4xl px-6 py-8">
+    <section class="mx-auto max-w-4xl py-2 md:py-4">
       <div class="mb-8">
         <h1 class="text-[26px] font-semibold tracking-tight m-0">Importar casos</h1>
         <p class="mt-2 text-[13.5px] text-ink-3 m-0">
@@ -57,7 +57,7 @@ const DEMO_VEHICLE_DOCUMENTS: readonly { file: string; tipo: string }[] = [
       <div class="grid gap-5">
         <!-- ─── Paso 1: archivo de casos ─── -->
         <div class="bg-surface border border-line rounded-lg shadow-1 p-5">
-          <div class="flex items-start justify-between gap-4 mb-4">
+          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
             <div>
               <h2 class="text-[15px] font-semibold m-0">1. Archivo de casos</h2>
               <p class="text-[13px] text-ink-3 mt-1 mb-0">

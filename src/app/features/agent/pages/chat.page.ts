@@ -79,15 +79,17 @@ function generateUuid(): string {
       [class.lg:max-w-[50%]]="store.activeDocument() !== null"
     >
       <header class="chat-panel__toolbar shrink-0">
-        <button
-          type="button"
-          class="chat-panel__tool-btn"
-          (click)="historyOpen.set(true)"
-          aria-label="Abrir historial de conversaciones"
-          title="Historial"
-        >
-          <ui-icon name="history" [size]="18" />
-        </button>
+        <div class="chat-panel__toolbar-start">
+          <button
+            type="button"
+            class="chat-panel__tool-btn"
+            (click)="historyOpen.set(true)"
+            aria-label="Abrir historial de conversaciones"
+            title="Historial"
+          >
+            <ui-icon name="history" [size]="18" />
+          </button>
+        </div>
 
         <div class="chat-panel__toolbar-actions">
           <button

@@ -18,11 +18,17 @@ import { SidebarNav } from './sidebar-nav';
     <div class="h-screen bg-canvas text-ink flex flex-col md:grid md:grid-cols-[248px_1fr] md:grid-rows-1 relative min-h-0">
       <button
         type="button"
-        class="md:hidden fixed top-3 left-3 z-30 w-10 h-10 rounded-md bg-surface border border-line shadow-pop grid place-items-center text-ink-2 hover:text-ink hover:bg-hover"
+        class="md:hidden fixed z-30 grid place-items-center bg-surface border border-line shadow-pop text-ink-2 hover:text-ink hover:bg-hover"
+        [class.top-3]="!fullBleed()"
+        [class.left-3]="!fullBleed()"
+        [class.w-10]="!fullBleed()"
+        [class.h-10]="!fullBleed()"
+        [class.rounded-md]="!fullBleed()"
+        [class.centinela-shell-menu--fullbleed]="fullBleed()"
         (click)="sidebarOpen.set(true)"
         aria-label="Abrir menú"
       >
-        <ui-icon name="menu" [size]="20" />
+        <ui-icon name="menu" [size]="fullBleed() ? 18 : 20" />
       </button>
 
       @if (sidebarOpen()) {

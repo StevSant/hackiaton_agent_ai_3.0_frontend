@@ -1,4 +1,4 @@
-export type { Claim } from './claim.model';
+export type { Claim, ConfianzaNivel } from './claim.model';
 export type { ClaimAlert, AlertSeverity } from './claim-alert.model';
 export type { ClaimDocument } from './claim-document.model';
 export type {

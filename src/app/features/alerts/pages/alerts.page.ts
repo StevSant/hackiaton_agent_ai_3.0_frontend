@@ -5,6 +5,7 @@ import { Button } from '@shared/ui/button';
 import { Chip } from '@shared/ui/chip';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
+import { PageHeader } from '@shared/ui/page-header';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
 import { NewRuleModal } from '../components/new-rule-modal';
@@ -18,24 +19,19 @@ type Filter = 'todas' | RiskTier;
 @Component({
   selector: 'page-alerts',
   standalone: true,
-  imports: [Button, Chip, Icon, KpiSmall, Pagination, SkeletonTable, NewRuleModal, RuleHistoryModal, RuleRow],
+  imports: [Button, Chip, Icon, KpiSmall, PageHeader, Pagination, SkeletonTable, NewRuleModal, RuleHistoryModal, RuleRow],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-end justify-between gap-6 py-2 pb-6">
-      <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">
-          {{ canEdit() ? 'Reglas y alertas' : 'Catálogo de reglas' }}
-        </h1>
-        <p class="text-ink-3 text-[13.5px] m-0">
-          @if (canEdit()) {
-            Configura los umbrales de las 14 señales y revisa el histórico de activaciones.
-          } @else {
-            Consulta el catálogo de las 14 señales y reglas críticas activas. La edición está reservada al equipo Antifraude.
-          }
-        </p>
-      </div>
+    <ui-page-header [title]="canEdit() ? 'Reglas y alertas' : 'Catálogo de reglas'">
+      <p class="centinela-page-header__desc" ngProjectAs="[description]">
+        @if (canEdit()) {
+          Configura los umbrales de las 14 señales y revisa el histórico de activaciones.
+        } @else {
+          Consulta el catálogo de las 14 señales y reglas críticas activas. La edición está reservada al equipo Antifraude.
+        }
+      </p>
       @if (canEdit()) {
-        <div class="flex gap-2">
+        <div ngProjectAs="[actions]" class="flex flex-wrap items-center gap-2">
           <ui-button (click)="historyOpen.set(true)">
             <ui-icon name="history" [size]="14" />
             Historial de cambios
@@ -46,27 +42,30 @@ type Filter = 'todas' | RiskTier;
           </ui-button>
         </div>
       } @else {
-        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-ink-3 bg-soft border border-line">
+        <span
+          ngProjectAs="[actions]"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-ink-3 bg-soft border border-line"
+        >
           <ui-icon name="visibility" [size]="13" />
           Vista de consulta
         </span>
       }
-    </div>
+    </ui-page-header>
 
-    <div class="grid grid-cols-4 gap-3 mb-5">
+    <div class="centinela-kpi-row">
       <ui-kpi-small label="Reglas activas" [value]="stats().activas + ' / ' + stats().total" icon="rule" tone="brand" />
       <ui-kpi-small label="Reglas críticas" [value]="stats().criticas" icon="warning" tone="red" />
       <ui-kpi-small label="Activaciones 30 días" [value]="stats().activaciones" icon="flag" tone="yellow" />
       <ui-kpi-small label="Falsos positivos est." value="12%" icon="filter_alt" />
     </div>
 
-    <div class="bg-surface border border-line rounded-lg shadow-1">
-      <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
-        <div class="flex items-center gap-3.5">
+    <div class="bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
+      <div class="centinela-panel-head">
+        <div class="centinela-panel-head__title">
           <h3 class="text-[13px] font-semibold m-0">Catálogo de reglas</h3>
           <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line">{{ filtered().length }} reglas</span>
         </div>
-        <div class="flex items-center gap-1.5">
+        <div class="centinela-panel-head__filters">
           <ui-chip [active]="filter() === 'todas'" (click)="setFilter('todas')">Todas</ui-chip>
           <ui-chip [active]="filter() === 'rojo'" (click)="setFilter('rojo')">
             <span class="tier-dot tier-dot-r" style="box-shadow: none"></span> Rojo
@@ -80,6 +79,8 @@ type Filter = 'todas' | RiskTier;
         </div>
       </div>
 
+      <div class="overflow-x-auto">
+        <div class="min-w-[640px]">
       <div class="grid grid-cols-[96px_1fr_120px_72px_120px_72px] gap-4 px-5 py-2.5 bg-soft border-b border-line text-[11.5px] text-ink-3 font-medium tracking-wide">
         <span>Código</span>
         <span>Nombre / Descripción</span>
@@ -105,6 +106,8 @@ type Filter = 'todas' | RiskTier;
           (pageSizeChange)="onPageSize($event)"
         />
       }
+        </div>
+      </div>
     </div>
 
     @if (canEdit()) {

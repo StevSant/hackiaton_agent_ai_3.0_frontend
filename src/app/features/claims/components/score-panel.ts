@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 
 import { RiskRing } from '@shared/ui/risk-ring';
 import { ALERT_CATALOG } from '@shared/models';
+import { RiskSignalBadges } from './risk-signal-badges';
 import { suggestedAction } from '../utils/ai-explanation';
 import { hardRuleOverride } from '../utils/hard-rule-override';
 import type { Claim, ClaimAlert } from '../models';
@@ -9,7 +10,7 @@ import type { Claim, ClaimAlert } from '../models';
 @Component({
   selector: 'claim-score-panel',
   standalone: true,
-  imports: [RiskRing],
+  imports: [RiskRing, RiskSignalBadges],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bg-surface border border-line rounded-lg shadow-1">
@@ -18,6 +19,7 @@ import type { Claim, ClaimAlert } from '../models';
         <div class="flex-1">
           <div class="text-ink-3 text-[11px] uppercase tracking-wider font-medium">Score de posible fraude</div>
           <div class="text-[22px] font-semibold mt-1 tracking-tight">{{ headline() }}</div>
+          <claim-risk-signal-badges class="block mt-2" [claim]="claim()" />
           <p class="text-ink-3 text-[12.5px] mt-2 mb-0 max-w-[520px]">
             {{ suggestedAction(claim()) }}
             @if (claim().alertas.length > 0) {
