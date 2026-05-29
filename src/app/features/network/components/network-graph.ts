@@ -204,10 +204,15 @@ export class NetworkGraph {
 
   /** Top providers by alerts, then the insured each connects to (capped). */
   private readonly visible = computed(() => {
+    // The force cloud needs more empty space per node than the columnar/radial
+    // layouts, so it shows fewer to stay readable on smaller screens.
+    const maxProv = this.layout() === 'fuerza' ? 6 : MAX_PROVIDERS;
+    const maxInsured = this.layout() === 'fuerza' ? 8 : MAX_INSURED;
+
     const providers = this.nodes()
       .filter((n) => n.kind === 'proveedor')
       .sort((a, b) => b.alertas - a.alertas || b.casos - a.casos)
-      .slice(0, MAX_PROVIDERS);
+      .slice(0, maxProv);
     const provIds = new Set(providers.map((p) => p.id));
 
     // Insured linked to a visible provider, ranked by total alerts on those links.
@@ -223,7 +228,7 @@ export class NetworkGraph {
       .map((id) => insuredById.get(id))
       .filter((n): n is NetworkNodeDto => n != null)
       .sort((a, b) => (insuredAlertas.get(b.id) ?? 0) - (insuredAlertas.get(a.id) ?? 0))
-      .slice(0, MAX_INSURED);
+      .slice(0, maxInsured);
 
     return { providers, insured };
   });
@@ -286,8 +291,10 @@ export class NetworkGraph {
       const t = idx.get(e.asegurado_id);
       if (s != null && t != null) links.push([s, t]);
     }
-    const k = Math.sqrt((100 * 100) / n) * 0.55; // ideal edge length
-    let temp = 16;
+    // Ideal edge length must exceed node diameter (~10 viewBox units) or
+    // connected pairs collapse on top of each other. Floor it at 20.
+    const k = Math.max(20, Math.sqrt((100 * 100) / n) * 0.9);
+    let temp = 18;
     for (let it = 0; it < 340; it++) {
       const disp = pos.map(() => ({ x: 0, y: 0 }));
       for (let i = 0; i < n; i++) {
@@ -329,9 +336,35 @@ export class NetworkGraph {
     const minY = Math.min(...ys);
     const sx = Math.max(...xs) - minX || 1;
     const sy = Math.max(...ys) - minY || 1;
-    return all.map((node, i) =>
-      this.toPlaced(node, 8 + ((pos[i].x - minX) / sx) * 84, 8 + ((pos[i].y - minY) / sy) * 84),
-    );
+    const norm = pos.map((p) => ({ x: 8 + ((p.x - minX) / sx) * 84, y: 8 + ((p.y - minY) / sy) * 84 }));
+
+    // Collision resolution: the square canvas is ~520px → ~5.2px per viewBox
+    // unit, so a 44-60px node has a ~4.5-6 unit radius. Push any overlapping
+    // pair apart by their combined radii + padding. Guarantees no overlap
+    // regardless of how the force sim settled.
+    const radius = all.map((node) => (44 + Math.min(16, Math.round(node.casos * 0.9))) / 2 / 5.2);
+    for (let pass = 0; pass < 30; pass++) {
+      for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+          const dx = norm[i].x - norm[j].x;
+          const dy = norm[i].y - norm[j].y;
+          const dist = Math.hypot(dx, dy) || 0.01;
+          const minD = radius[i] + radius[j] + 2.5;
+          if (dist < minD) {
+            const push = (minD - dist) / 2;
+            norm[i].x += (dx / dist) * push;
+            norm[i].y += (dy / dist) * push;
+            norm[j].x -= (dx / dist) * push;
+            norm[j].y -= (dy / dist) * push;
+          }
+        }
+      }
+      for (let i = 0; i < n; i++) {
+        norm[i].x = Math.min(94, Math.max(6, norm[i].x));
+        norm[i].y = Math.min(94, Math.max(6, norm[i].y));
+      }
+    }
+    return all.map((node, i) => this.toPlaced(node, norm[i].x, norm[i].y));
   }
 
   private placeColumns(): PlacedNode[] {

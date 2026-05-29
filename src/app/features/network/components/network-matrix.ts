@@ -47,7 +47,7 @@ function edgeRisk(e: NetworkEdgeDto): Risk {
                     <span
                       class="origin-bottom-left rotate-[-60deg] translate-x-2 whitespace-nowrap text-ink-3 font-medium"
                       [title]="c.label"
-                    >{{ firstName(c.label) }}</span>
+                    >{{ colLabel(c.label) }}</span>
                   </div>
                 </th>
               }
@@ -64,11 +64,11 @@ function edgeRisk(e: NetworkEdgeDto): Risk {
                   {{ r.label }}
                 </th>
                 @for (c of cols(); track c.id; let ci = $index) {
-                  <td class="p-[2px]">
+                  <td class="p-0">
                     @if (cell(r.id, c.id); as cl) {
                       <button
                         type="button"
-                        class="w-[22px] h-[22px] rounded-[5px] grid place-items-center text-[9px] font-semibold tabular-nums transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                        class="w-[26px] h-[26px] grid place-items-center text-[9px] font-semibold tabular-nums border border-line/50 transition-transform hover:scale-110 hover:z-10 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                         [style.background]="cellBg(cl)"
                         [style.color]="cl.intensity > 0.55 ? 'white' : 'var(--ink-2)'"
                         [attr.aria-label]="r.label + ' ↔ ' + c.label"
@@ -79,7 +79,7 @@ function edgeRisk(e: NetworkEdgeDto): Risk {
                         {{ cl.edge.casos_compartidos }}
                       </button>
                     } @else {
-                      <div class="w-[22px] h-[22px] rounded-[5px] bg-soft/40"></div>
+                      <div class="w-[26px] h-[26px] border border-line/25"></div>
                     }
                   </td>
                 }
@@ -119,7 +119,8 @@ export class NetworkMatrix {
 
   protected readonly hovered = signal<{ cl: Cell; r: string; c: string } | null>(null);
 
-  protected readonly rows = computed<NetworkNodeDto[]>(() =>
+  /** Candidate providers (top by alerts) before dropping rows with no visible cell. */
+  private readonly candidateRows = computed<NetworkNodeDto[]>(() =>
     this.nodes()
       .filter((n) => n.kind === 'proveedor')
       .sort((a, b) => b.alertas - a.alertas || b.casos - a.casos)
@@ -127,7 +128,7 @@ export class NetworkMatrix {
   );
 
   protected readonly cols = computed<NetworkNodeDto[]>(() => {
-    const rowIds = new Set(this.rows().map((r) => r.id));
+    const rowIds = new Set(this.candidateRows().map((r) => r.id));
     const linked = new Map<string, number>();
     for (const e of this.edges()) {
       if (!rowIds.has(e.proveedor_id)) continue;
@@ -139,6 +140,14 @@ export class NetworkMatrix {
       .filter((n): n is NetworkNodeDto => n != null)
       .sort((a, b) => (linked.get(b.id) ?? 0) - (linked.get(a.id) ?? 0))
       .slice(0, MAX_COLS);
+  });
+
+  /** Drop providers that have no cell among the visible columns — kills empty rows. */
+  protected readonly rows = computed<NetworkNodeDto[]>(() => {
+    const colIds = new Set(this.cols().map((c) => c.id));
+    return this.candidateRows().filter((r) =>
+      this.edges().some((e) => e.proveedor_id === r.id && colIds.has(e.asegurado_id)),
+    );
   });
 
   private readonly cellMap = computed<Map<string, Cell>>(() => {
@@ -165,8 +174,12 @@ export class NetworkMatrix {
     return `color-mix(in oklch, ${color} ${pct}%, transparent)`;
   }
 
-  protected firstName(label: string): string {
-    return label.split(/\s+/)[0] ?? label;
+  /** First name + last initial, so two "Rosa"s are distinguishable in a column header. */
+  protected colLabel(label: string): string {
+    const parts = label.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return label;
+    if (parts.length === 1) return parts[0];
+    return `${parts[0]} ${parts[1][0]}.`;
   }
 
   protected money(amount: number): string {
