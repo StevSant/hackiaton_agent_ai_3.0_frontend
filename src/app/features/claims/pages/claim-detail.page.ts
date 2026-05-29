@@ -205,8 +205,8 @@ import { ProvidersStore } from '@core/state/providers.store';
             <claim-revisado-card [review]="c.review" />
           }
           @if (detailLoaded()) {
+            <claim-panel-summary-card [claim]="c" [running]="panelRunning()" />
             <claim-summary-canvas [claim]="c" (saved)="onSummarysaved()" />
-            <claim-panel-summary-card [claim]="c" />
             <claim-alerts-list [alerts]="c.alertas" />
             <claim-ml-factors-card [claim]="c" />
             <claim-anomaly-indicator-card [claim]="c" />
@@ -298,6 +298,9 @@ export class ClaimDetailPage {
   protected readonly detailLoaded = computed(() =>
     this.claims.detailLoadedIds().has(this.id()),
   );
+  protected readonly panelRunning = computed(() =>
+    this.claims.panelRunningIds().has(this.id()),
+  );
 
   constructor() {
     bindRecordSwapPulse(() => this.id(), this.swapTick);
@@ -307,9 +310,14 @@ export class ClaimDetailPage {
       if (!id) return;
 
       scrollAppMainToTop();
-      // Load detail, then trigger NLP narrative analysis once if not yet cached.
+      // Load detail, then trigger the default enrichments once each (cached after
+      // the first run): NLP narrative analysis + the multi-agent fraud panel. The
+      // panel is the headline analysis — it auto-runs so the analyst always sees a
+      // specialist consensus, not an empty "run it yourself" card.
       void this.claims.loadDetail(id).then((claim) => {
-        if (claim && !claim.narrative_analysis) void this.claims.analyzeNarrative(id);
+        if (!claim) return;
+        if (!claim.narrative_analysis) void this.claims.analyzeNarrative(id);
+        if (!claim.panel_analysis) void this.claims.analyzePanel(id);
       });
 
       const orderedIds = this.claimNavigation.getOrderedIds(this.fallbackNavIds());

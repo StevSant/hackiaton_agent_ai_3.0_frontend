@@ -6,9 +6,11 @@ import { RiskBadge } from '@shared/ui/risk-badge';
 import type { Claim } from '@shared/models';
 
 /**
- * Inline summary of the multi-agent panel debate on the claim detail. Advisory
- * only — surfaces the consensus + recommended action and links to the full
- * /fraud-panel replay. Empty state invites running the panel.
+ * Inline summary of the multi-agent panel debate on the claim detail. This is
+ * the *headline* analysis surface — the panel auto-runs the first time a claim
+ * opens, so this card shows an "analizando…" state while the specialists debate
+ * and the consensus + recommended action once it lands. Advisory only (never
+ * affects the score). Links to the full /fraud-panel replay.
  */
 @Component({
   selector: 'claim-panel-summary-card',
@@ -28,17 +30,24 @@ import type { Claim } from '@shared/models';
               Análisis multi-agente
             </h3>
             <p class="text-[11px] m-0" style="color: var(--brand-ink); opacity: 0.75">
-              Revisión profunda bajo demanda · 4 especialistas debaten y emiten un consenso
+              Análisis principal · 4 especialistas debaten y emiten un consenso
             </p>
           </div>
         </div>
-        <a
-          [routerLink]="['/fraud-panel', claim().id]"
-          class="inline-flex items-center gap-1 text-[12px] text-brand-ink hover:underline"
-        >
-          {{ consensus() ? 'Ver debate completo' : 'Ejecutar análisis' }}
-          <ui-icon name="arrow_forward" [size]="13" />
-        </a>
+        @if (running() && !consensus()) {
+          <span class="inline-flex items-center gap-1.5 text-[12px] text-brand-ink">
+            <ui-icon name="progress_activity" [size]="14" class="animate-spin" />
+            Analizando…
+          </span>
+        } @else {
+          <a
+            [routerLink]="['/fraud-panel', claim().id]"
+            class="inline-flex items-center gap-1 text-[12px] text-brand-ink hover:underline"
+          >
+            {{ consensus() ? 'Ver debate completo' : 'Ejecutar análisis' }}
+            <ui-icon name="arrow_forward" [size]="13" />
+          </a>
+        }
       </div>
 
       @if (consensus(); as c) {
@@ -84,6 +93,13 @@ import type { Claim } from '@shared/models';
             <span class="text-ink-2"> {{ c.accion_recomendada }}</span>
           </p>
         </div>
+      } @else if (running()) {
+        <div class="px-5 pt-2.5 pb-5 flex items-center gap-2.5 text-[13px] leading-relaxed text-ink-2">
+          <ui-icon name="progress_activity" [size]="16" class="animate-spin" style="color: var(--brand-ink)" />
+          Analizando con multi-agentes — cuatro especialistas de IA (reglas, ML/anomalía,
+          narrativa y documentos/red) están debatiendo este caso. El consenso aparecerá aquí en
+          unos segundos.
+        </div>
       } @else {
         <div class="px-5 pt-2.5 pb-5 text-[13px] leading-relaxed text-ink-3">
           Cuatro especialistas de IA (reglas, ML/anomalía, narrativa y documentos/red) debaten
@@ -96,6 +112,9 @@ import type { Claim } from '@shared/models';
 })
 export class PanelSummaryCard {
   readonly claim = input.required<Claim>();
+  // True while the panel auto-run is in flight for this claim (no cached
+  // consensus yet) — drives the "analizando con multi-agentes…" state.
+  readonly running = input<boolean>(false);
 
   protected readonly consensus = computed(() => this.claim().panel_analysis?.consensus ?? null);
   protected readonly acuerdoPct = computed(() =>

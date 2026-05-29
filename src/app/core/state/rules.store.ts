@@ -1,7 +1,7 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { RulesApi, type RuleConfigDto } from '@core/api/clients/rules.api';
+import { RulesApi, type RuleConfigDto, type RuleConfigPatchDto } from '@core/api/clients/rules.api';
 import { AuthStore } from '@core/auth/auth.store';
 import { AppError } from '@core/errors/app-error';
 import type { FraudRule } from '@shared/models';
@@ -19,6 +19,7 @@ function dtoToRule(dto: RuleConfigDto): FraudRule {
     maxPts: dto.max_pts,
     activaciones30d: dto.activaciones_30d,
     enabled: dto.enabled,
+    thresholds: dto.thresholds ?? {},
   };
 }
 
@@ -52,10 +53,14 @@ export class RulesStore {
   private readonly _loading = signal<boolean>(false);
   private readonly _error = signal<AppError | null>(null);
   private readonly _hydratedFromCache = signal<boolean>(readCache() !== null);
+  // Rule code currently being saved (PATCH in flight); null when idle. A PATCH
+  // triggers a full backend rescore, so this gates UI affordances meanwhile.
+  private readonly _saving = signal<string | null>(null);
 
   readonly rules = this._rules.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
+  readonly saving = this._saving.asReadonly();
   // True while we have no data (no cache, no fetched payload yet) AND a fetch
   // is in flight — the page uses this to decide whether to show a skeleton vs.
   // render the (possibly stale) cached rows while a background revalidate runs.
@@ -106,10 +111,45 @@ export class RulesStore {
     }
   }
 
-  toggle(code: string): void {
-    // Optimistic local toggle — persistence endpoint not yet implemented.
-    this._rules.update((list) =>
-      list.map((r) => (r.code === code ? { ...r, enabled: !r.enabled } : r)),
-    );
+  /** Pause/reactivate a rule. Optimistic flip, reverted if the PATCH fails. */
+  async toggle(code: string): Promise<void> {
+    const current = this._rules().find((r) => r.code === code);
+    if (!current || this._saving()) return;
+    const next = !current.enabled;
+    this.applyLocal(code, { enabled: next });
+    await this.patch(code, { enabled: next }, { enabled: current.enabled });
+  }
+
+  /** Retune a rule's thresholds. Optimistic, reverted if the PATCH fails. */
+  async updateThresholds(code: string, thresholds: Record<string, number>): Promise<void> {
+    const current = this._rules().find((r) => r.code === code);
+    if (!current || this._saving()) return;
+    this.applyLocal(code, { thresholds: { ...current.thresholds, ...thresholds } });
+    await this.patch(code, { thresholds }, { thresholds: current.thresholds });
+  }
+
+  private applyLocal(code: string, patch: Partial<FraudRule>): void {
+    this._rules.update((list) => list.map((r) => (r.code === code ? { ...r, ...patch } : r)));
+  }
+
+  private async patch(
+    code: string,
+    body: RuleConfigPatchDto,
+    rollback: Partial<FraudRule>,
+  ): Promise<void> {
+    this._saving.set(code);
+    this._error.set(null);
+    try {
+      const dto = await firstValueFrom(this.api.patchRule(code, body));
+      this.applyLocal(code, dtoToRule(dto));
+      writeCache(this._rules());
+      // The PATCH rescored every claim — refresh counts/enabled across the table.
+      void this.loadList();
+    } catch (err) {
+      this.applyLocal(code, rollback); // revert the optimistic change
+      this._error.set(err instanceof AppError ? err : new AppError('unknown', String(err)));
+    } finally {
+      this._saving.set(null);
+    }
   }
 }

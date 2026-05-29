@@ -11,7 +11,9 @@ import { SkeletonTable } from '@shared/ui/skeleton-table';
 import { NewRuleModal } from '../components/new-rule-modal';
 import { RuleHistoryModal } from '../components/rule-history-modal';
 import { RuleRow } from '../components/rule-row';
+import { RuleThresholdModal } from '../components/rule-threshold-modal';
 import { RulesStore } from '@core/state/rules.store';
+import type { FraudRule } from '@shared/models';
 import type { RiskTier } from '@shared/utils';
 
 type Filter = 'todas' | RiskTier;
@@ -19,7 +21,7 @@ type Filter = 'todas' | RiskTier;
 @Component({
   selector: 'page-alerts',
   standalone: true,
-  imports: [Button, Chip, Icon, KpiSmall, PageHeader, Pagination, SkeletonTable, NewRuleModal, RuleHistoryModal, RuleRow],
+  imports: [Button, Chip, Icon, KpiSmall, PageHeader, Pagination, SkeletonTable, NewRuleModal, RuleHistoryModal, RuleThresholdModal, RuleRow],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ui-page-header [title]="canEdit() ? 'Reglas y alertas' : 'Catálogo de reglas'">
@@ -96,7 +98,14 @@ type Filter = 'todas' | RiskTier;
         </div>
       } @else {
         @for (r of paged(); track r.code) {
-          <alerts-rule-row [rule]="r" [maxActivations]="maxActivations()" [readonly]="!canEdit()" (toggle)="onToggle($event)" />
+          <alerts-rule-row
+            [rule]="r"
+            [maxActivations]="maxActivations()"
+            [readonly]="!canEdit()"
+            [busy]="saving() === r.code"
+            (toggle)="onToggle($event)"
+            (edit)="onEdit($event)"
+          />
         }
         <ui-pagination
           [page]="page()"
@@ -113,6 +122,13 @@ type Filter = 'todas' | RiskTier;
     @if (canEdit()) {
       <alerts-rule-history-modal [open]="historyOpen()" (close)="historyOpen.set(false)" />
       <alerts-new-rule-modal [open]="newRuleOpen()" (close)="newRuleOpen.set(false)" />
+      <alerts-rule-threshold-modal
+        [open]="editing() !== null"
+        [rule]="editing()"
+        [saving]="saving() !== null"
+        (close)="editing.set(null)"
+        (save)="onSaveThresholds($event)"
+      />
     }
   `,
 })
@@ -123,6 +139,8 @@ export class AlertsPage {
   protected readonly filter = signal<Filter>('todas');
   protected readonly historyOpen = signal<boolean>(false);
   protected readonly newRuleOpen = signal<boolean>(false);
+  protected readonly editing = signal<FraudRule | null>(null);
+  protected readonly saving = this.store.saving;
   protected readonly stats = this.store.stats;
   protected readonly initialLoading = this.store.initialLoading;
   protected readonly page = signal<number>(0);
@@ -157,6 +175,15 @@ export class AlertsPage {
   }
 
   protected onToggle(code: string): void {
-    this.store.toggle(code);
+    void this.store.toggle(code);
+  }
+
+  protected onEdit(code: string): void {
+    this.editing.set(this.store.rules().find((r) => r.code === code) ?? null);
+  }
+
+  protected onSaveThresholds(thresholds: Record<string, number>): void {
+    const code = this.editing()?.code;
+    if (code) void this.store.updateThresholds(code, thresholds);
   }
 }

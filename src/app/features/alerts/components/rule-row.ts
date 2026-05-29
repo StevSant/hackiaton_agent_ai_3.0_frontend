@@ -37,15 +37,29 @@ import type { FraudRule } from '../models';
           {{ rule().enabled ? 'Activa' : 'Pausada' }}
         </span>
       } @else {
-        <button
-          type="button"
-          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-[12px] border"
-          [class]="toggleClass()"
-          (click)="toggle.emit(rule().code)"
-        >
-          <ui-icon [name]="rule().enabled ? 'toggle_on' : 'toggle_off'" [size]="16" [fill]="rule().enabled" />
-          {{ rule().enabled ? 'Activa' : 'Pausada' }}
-        </button>
+        <div class="flex items-center justify-end gap-1.5">
+          @if (hasThresholds()) {
+            <button
+              type="button"
+              title="Editar umbrales"
+              class="inline-flex items-center justify-center w-7 h-7 rounded-sm border border-line text-ink-3 hover:bg-hover disabled:opacity-50"
+              [disabled]="busy()"
+              (click)="edit.emit(rule().code)"
+            >
+              <ui-icon name="tune" [size]="15" />
+            </button>
+          }
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-[12px] border disabled:opacity-50"
+            [class]="toggleClass()"
+            [disabled]="busy()"
+            (click)="toggle.emit(rule().code)"
+          >
+            <ui-icon [name]="rule().enabled ? 'toggle_on' : 'toggle_off'" [size]="16" [fill]="rule().enabled" />
+            {{ rule().enabled ? 'Activa' : 'Pausada' }}
+          </button>
+        </div>
       }
     </div>
   `,
@@ -53,8 +67,14 @@ import type { FraudRule } from '../models';
 export class RuleRow {
   readonly rule = input.required<FraudRule>();
   readonly toggle = output<string>();
+  readonly edit = output<string>();
   readonly maxActivations = input<number>(20);
   readonly readonly = input<boolean>(false);
+  readonly busy = input<boolean>(false);
+
+  protected readonly hasThresholds = computed(
+    () => Object.keys(this.rule().thresholds ?? {}).length > 0,
+  );
 
   protected readonly activationPct = computed(() =>
     Math.min(100, Math.round((this.rule().activaciones30d / this.maxActivations()) * 100)),

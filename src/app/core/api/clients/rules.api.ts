@@ -16,6 +16,13 @@ export interface RuleConfigDto {
   max_pts: number;
   activaciones_30d: number;
   enabled: boolean;
+  thresholds: Record<string, number>;
+}
+
+/** Body of PATCH /rules/{code} — provide enabled and/or thresholds. */
+export interface RuleConfigPatchDto {
+  enabled?: boolean;
+  thresholds?: Record<string, number>;
 }
 
 export type RuleChangeKindDto = 'creada' | 'editada' | 'pausada' | 'reactivada' | 'umbral';
@@ -59,5 +66,10 @@ export class RulesApi {
 
   listCatalog(): Observable<RuleMetaDto[]> {
     return this.http.get<RuleMetaDto[]>(`${this.base}/rules/catalog`);
+  }
+
+  /** Pause/reactivate a rule or retune its thresholds (antifraude only). */
+  patchRule(code: string, body: RuleConfigPatchDto): Observable<RuleConfigDto> {
+    return this.http.patch<RuleConfigDto>(`${this.base}/rules/${code}`, body);
   }
 }

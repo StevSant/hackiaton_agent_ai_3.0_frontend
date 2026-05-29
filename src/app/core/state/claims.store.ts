@@ -1,10 +1,12 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, lastValueFrom } from 'rxjs';
 
 import { ClaimsApi } from '@core/api/clients/claims.api';
 import type { ClaimDto, ClaimSummaryDto } from '@core/api/clients/claim.dto';
 import { AuthStore } from '@core/auth/auth.store';
+import { environment } from '@core/config/env';
 import { AppError } from '@core/errors/app-error';
+import { SseClient } from '@core/realtime/sse.client';
 import type { Claim, ClaimReview, DictamenOutcome } from '@shared/models';
 
 /**
@@ -59,22 +61,33 @@ function dropCache(userId: string): void {
 export class ClaimsStore {
   private readonly api = inject(ClaimsApi);
   private readonly auth = inject(AuthStore);
+  private readonly sse = inject(SseClient);
 
   private readonly _claims = signal<Claim[]>([]);
   private readonly _loading = signal<boolean>(false);
   private readonly _error = signal<AppError | null>(null);
   private readonly _detailLoads = new Map<string, Promise<Claim | null>>();
+  // In-flight full-list fetch, shared so concurrent callers (route inits, the
+  // auth effect, post-import refresh) await the SAME request instead of each
+  // firing a redundant `GET /claims?page_size=500` and piling pressure on the
+  // connection pool. Cleared when the fetch settles.
+  private _listLoad: Promise<void> | null = null;
   // Tracks which claim ids have had their full detail fetched (alertas, ML
   // factors, anomaly score, documents, similar narratives). Signal-backed so
   // detail pages can render loading skeletons until the detail call resolves —
   // without this, the page falls back to "Modelo no cargado" empty states
   // while the data is genuinely still in flight.
   private readonly _detailLoadedIds = signal<ReadonlySet<string>>(new Set());
+  // Claim ids with a multi-agent panel run in flight (auto-triggered on first
+  // detail view). Lets the panel card render an "analizando…" state so the
+  // analyst knows the case is being reviewed by the specialist panel.
+  private readonly _panelRunningIds = signal<ReadonlySet<string>>(new Set());
 
   readonly claims = this._claims.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
   readonly detailLoadedIds = this._detailLoadedIds.asReadonly();
+  readonly panelRunningIds = this._panelRunningIds.asReadonly();
   private initialized = false;
   private lastUserId: string | null = null;
 
@@ -132,7 +145,17 @@ export class ClaimsStore {
    * state for the rest of the session.
    */
   async loadList(): Promise<void> {
-    if (this._loading()) return;
+    // Share the in-flight fetch: concurrent callers get the same promise (and
+    // the same fresh result) instead of one of them no-op'ing or a duplicate
+    // request going out.
+    if (this._listLoad) return this._listLoad;
+    this._listLoad = this._runLoadList().finally(() => {
+      this._listLoad = null;
+    });
+    return this._listLoad;
+  }
+
+  private async _runLoadList(): Promise<void> {
     this._loading.set(true);
     this._error.set(null);
     let attempt = 0;
@@ -252,6 +275,41 @@ export class ClaimsStore {
       this._detailLoadedIds.update((s) => (s.has(id) ? s : new Set([...s, id])));
     } catch {
       // NLP is an enrichment — never block the detail view on its failure.
+    }
+  }
+
+  /**
+   * Run the multi-agent fraud panel for a claim and refresh the detail with the
+   * persisted consensus. The panel is the *default* deep analysis: it kicks off
+   * automatically the first time a claim's detail opens (no cached run yet).
+   *
+   * We drain the existing panel SSE — the backend's `run_and_persist` caches the
+   * `PanelAnalysis` on `claim_scores.panel_analysis` once the stream completes —
+   * then reload the detail to pick up the cached consensus. We don't render the
+   * live token-by-token debate here (that's the dedicated /fraud-panel page);
+   * the detail card only needs the final consensus plus an "analizando…" state.
+   * Best-effort: failures never block the detail view.
+   */
+  async analyzePanel(id: string): Promise<void> {
+    if (this._panelRunningIds().has(id)) return;
+    if (this.findById(id)?.panel_analysis) return; // already cached — nothing to do
+    this._panelRunningIds.update((s) => new Set([...s, id]));
+    try {
+      const url = `${environment.backendUrl}${environment.apiPrefix}/claims/${id}/panel`;
+      // Drain to completion; events are ignored, we only await the final `done`.
+      await lastValueFrom(this.sse.stream<unknown>({ url, method: 'POST', body: {} }), {
+        defaultValue: null,
+      });
+      await this.reloadDetail(id);
+    } catch {
+      // Panel is advisory enrichment — never block the detail view on its failure.
+    } finally {
+      this._panelRunningIds.update((s) => {
+        if (!s.has(id)) return s;
+        const next = new Set(s);
+        next.delete(id);
+        return next;
+      });
     }
   }
 

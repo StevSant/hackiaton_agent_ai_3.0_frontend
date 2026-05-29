@@ -11,4 +11,6 @@ export interface FraudRule {
   maxPts: number;
   activaciones30d: number;
   enabled: boolean;
+  /** Effective tunable thresholds (e.g. { tier1_days: 10 }); empty when none. */
+  thresholds: Record<string, number>;
 }
