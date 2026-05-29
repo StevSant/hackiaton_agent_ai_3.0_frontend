@@ -83,7 +83,21 @@ interface NavItem {
         </nav>
       </div>
 
-      <div class="centinela-sidebar__foot shrink-0 px-3 pb-3 pt-3 flex flex-col gap-3">
+      <div class="centinela-sidebar__foot shrink-0 px-3 pb-3 pt-3 flex flex-col gap-3 min-h-0">
+        <button
+          type="button"
+          class="centinela-sidebar-kbd"
+          (click)="onOpenShortcuts()"
+          aria-label="Ver atajos de teclado"
+          title="Atajos de teclado — pulsa ?"
+        >
+          <span class="centinela-sidebar-kbd__icon" aria-hidden="true">
+            <ui-icon name="keyboard" [size]="15" />
+          </span>
+          <span>Atajos</span>
+          <kbd class="centinela-sidebar-kbd__badge">?</kbd>
+        </button>
+
         @if (roleCode(); as r) {
           <button
             type="button"
@@ -136,20 +150,6 @@ interface NavItem {
               <span>Salir</span>
             </button>
           </div>
-
-          <button
-            type="button"
-            class="centinela-sidebar-kbd"
-            (click)="onOpenShortcuts()"
-            aria-label="Ver atajos de teclado"
-            title="Atajos de teclado — pulsa ?"
-          >
-            <span class="centinela-sidebar-kbd__icon" aria-hidden="true">
-              <ui-icon name="keyboard" [size]="15" />
-            </span>
-            <span>Atajos</span>
-            <kbd class="centinela-sidebar-kbd__badge">?</kbd>
-          </button>
         </div>
       </div>
     </aside>
