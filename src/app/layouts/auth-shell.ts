@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 
-import { ThemeToggle } from '@shared/ui/theme-toggle';
 
 interface AuthOrbitAgent {
   id: string;
@@ -34,7 +33,7 @@ interface AuthOrbitAgent {
 @Component({
   selector: 'auth-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, ThemeToggle],
+  imports: [RouterOutlet, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [`
     :host {
@@ -440,9 +439,6 @@ interface AuthOrbitAgent {
 
       <!-- Right — form -->
       <main class="auth-panel-main relative flex min-h-screen items-center justify-center p-6 sm:p-10 lg:p-14 overflow-hidden">
-        <div class="absolute top-5 right-5 sm:top-6 sm:right-6 z-20">
-          <ui-theme-toggle [compact]="true" />
-        </div>
         <div class="absolute inset-0 auth-panel-haze pointer-events-none" aria-hidden="true"></div>
         <div class="absolute inset-0 auth-panel-grid pointer-events-none" aria-hidden="true"></div>
         <div class="relative w-full max-w-[440px]">

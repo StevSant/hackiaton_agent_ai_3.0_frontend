@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+
+import { ThemeRouteSync } from '@core/theme/theme-route.sync';
 
 @Component({
   selector: 'app-root',
@@ -8,4 +10,6 @@ import { RouterOutlet } from '@angular/router';
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class App {}
+export class App {
+  private readonly _themeRouteSync = inject(ThemeRouteSync);
+}

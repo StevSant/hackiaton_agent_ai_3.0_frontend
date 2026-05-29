@@ -6,9 +6,23 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Centinela — detección, triaje y dictamen automatizado de siniestros mediante Inteligencia Artificial.">
-  <meta name="theme-color" content="#e8edf4">
+  <meta name="theme-color" content="#05070d">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="manifest" href="site.webmanifest">
+  <script>
+    (function () {
+      var path = location.pathname;
+      var marketing = path === '/' || path === '/landing' || path.indexOf('/auth') === 0;
+      var appDark = !marketing && localStorage.getItem('centinela:app-dark') === '1';
+      if (marketing || appDark) {
+        document.documentElement.classList.add('dark');
+      }
+      if (marketing) {
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', '#05070d');
+      }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

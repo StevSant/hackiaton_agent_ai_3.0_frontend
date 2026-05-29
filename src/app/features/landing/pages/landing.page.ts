@@ -16,7 +16,6 @@ import { Router, RouterLink } from '@angular/router';
 
 import { AuthStore } from '@core/auth/auth.store';
 import { Icon } from '@shared/ui/icon';
-import { ThemeToggle } from '@shared/ui/theme-toggle';
 
 type Perspective = 'analista' | 'antifraude';
 
@@ -63,7 +62,7 @@ interface MultiAgentPersona {
 @Component({
   selector: 'page-landing',
   standalone: true,
-  imports: [RouterLink, Icon, ThemeToggle],
+  imports: [RouterLink, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [`
     :host {
@@ -686,7 +685,6 @@ interface MultiAgentPersona {
         </a>
 
         <div class="flex items-center gap-2.5">
-          <ui-theme-toggle [compact]="true" />
           <a routerLink="/auth/login" class="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-mkt-btn-ink bg-mkt-btn-bg px-3.5 py-2 rounded-lg glow-button">
             Iniciar sesión
             <span aria-hidden="true">→</span>
