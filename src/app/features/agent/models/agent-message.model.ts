@@ -6,6 +6,12 @@ export type AgentRole = 'user' | 'assistant';
 /** A single row in a tabular tool result. Keys are Spanish field names from the backend. */
 export type TableRow = Record<string, string | number | boolean | null>;
 
+/** Payload from the `document` SSE event — agent-generated Word document content. */
+export interface DocumentPayload {
+  titulo: string;
+  contenido_markdown: string;
+}
+
 export interface AgentMessage {
   id: string;
   role: AgentRole;
@@ -27,4 +33,9 @@ export interface AgentMessage {
    * Set by the store on `tool_result` events where the result is an array of objects.
    */
   tablePayload?: TableRow[] | null;
+  /**
+   * Agent-generated Word document payload (from `document` SSE event or restored from
+   * transparency_metadata). When present, renders a `chat-document-canvas` artifact.
+   */
+  documentPayload?: DocumentPayload | null;
 }

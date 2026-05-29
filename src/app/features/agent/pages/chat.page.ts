@@ -219,6 +219,7 @@ function generateUuid(): string {
             (openCase)="openCase($event)"
             (ttsToggle)="onTtsToggle($event)"
             (toggleChart)="store.toggleChart($event)"
+            (improve)="onImproveRequest($event)"
           />
         }
         @if (store.thinking()) {
@@ -674,6 +675,13 @@ export class ChatPage implements AfterViewChecked {
     const convId = this.activeConversationId() ?? undefined;
     if (convId) this._freshIds.delete(convId);
     void this.store.ask(text, convId);
+  }
+
+  /** Handle "Mejorar con IA" from a document canvas — re-sends the document text as a new turn. */
+  protected onImproveRequest(currentText: string): void {
+    const convId = this.activeConversationId() ?? undefined;
+    if (convId) this._freshIds.delete(convId);
+    void this.store.ask(`Mejorá este documento:\n\n${currentText}`, convId);
   }
 
   protected scrollSuggestions(direction: 'prev' | 'next'): void {

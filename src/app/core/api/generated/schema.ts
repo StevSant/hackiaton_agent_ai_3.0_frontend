@@ -97,6 +97,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/document/docx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agent Document Docx
+         * @description Convert markdown content to a .docx file and return it as a download.
+         *
+         *     The frontend calls this after receiving a `document` SSE event from `/ask`
+         *     to let the analyst download the agent-generated Word document.
+         */
+        post: operations["agent_document_docx_api_v1_agent_document_docx_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/ask": {
         parameters: {
             query?: never;
@@ -1061,6 +1084,17 @@ export interface components {
             anomaly_score?: number | null;
             /** Nearest Normal Claim Id */
             nearest_normal_claim_id?: string | null;
+            /**
+             * Posible Falso Positivo
+             * @default false
+             */
+            posible_falso_positivo: boolean;
+            /**
+             * Confianza
+             * @default alta
+             * @enum {string}
+             */
+            confianza: "alta" | "media" | "baja";
             /** Latitude */
             latitude?: number | null;
             /** Longitude */
@@ -1308,6 +1342,13 @@ export interface components {
              * @description Justificación mínima de 20 caracteres
              */
             justificacion: string;
+        };
+        /** DocxRequest */
+        DocxRequest: {
+            /** Titulo */
+            titulo: string;
+            /** Contenido Markdown */
+            contenido_markdown: string;
         };
         /** EscalateRequest */
         EscalateRequest: {
@@ -1909,6 +1950,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["TtsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    agent_document_docx_api_v1_agent_document_docx_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocxRequest"];
             };
         };
         responses: {

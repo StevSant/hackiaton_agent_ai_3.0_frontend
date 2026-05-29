@@ -5,7 +5,7 @@ import { ConversationsApi } from '@core/api/clients/conversations.api';
 import { environment } from '@core/config/env';
 import { AppError } from '@core/errors/app-error';
 import { SseClient } from '@core/realtime/sse.client';
-import type { AgentMessage, AgentStep, ChartPayload, TableRow } from '../models';
+import type { AgentMessage, AgentStep, ChartPayload, DocumentPayload, TableRow } from '../models';
 import type { ChatContext } from '../models/chat-context';
 import { ConversationsStore } from './conversations.store';
 import { buildCaseWelcomeMessage } from '../utils/case-context-message';
@@ -54,6 +54,11 @@ interface ChartEvent {
   data: ChartPayload;
 }
 
+interface DocumentEvent {
+  type: 'document';
+  data: DocumentPayload;
+}
+
 type AgentStreamEvent =
   | TokenEvent
   | DoneEvent
@@ -61,7 +66,8 @@ type AgentStreamEvent =
   | AgentStepEvent
   | ToolCallEvent
   | ToolResultEvent
-  | ChartEvent;
+  | ChartEvent
+  | DocumentEvent;
 
 // Shape of the transparency_metadata JSONB column persisted by the backend.
 interface StoredScratchpadEntry {
@@ -80,6 +86,7 @@ interface TransparencyMetadata {
   steps?: StoredScratchpadEntry[];
   tool_calls?: StoredToolCall[];
   citations?: { claim_id: string }[];
+  document?: DocumentPayload | null;
 }
 
 /**
@@ -335,6 +342,8 @@ export class AgentStore {
             (acc, tc) => acc ?? (extractTableRows(tc.result) ?? undefined),
             undefined,
           );
+          // Restore document payload if the agent called crear_documento during this turn.
+          const documentPayload = raw.transparency_metadata?.document ?? null;
           return {
             id: m.id,
             role: m.role,
@@ -344,6 +353,7 @@ export class AgentStore {
             // Already-rendered charts skip the "Ver como gráfico" affordance.
             chartAccepted: chart !== undefined ? true : undefined,
             tablePayload: tablePayload ?? null,
+            documentPayload,
           };
         }),
       );
@@ -461,6 +471,15 @@ export class AgentStore {
       );
     };
 
+    const attachDocument = (documentPayload: DocumentPayload): void => {
+      ensureAssistantBubble();
+      this._messages.update((messages) =>
+        messages.map((msg) =>
+          msg.id === assistantId ? { ...msg, documentPayload } : msg,
+        ),
+      );
+    };
+
     const url = `${environment.backendUrl}${environment.apiPrefix}/agent/ask`;
     const ctx = this._chatContext();
 
@@ -504,6 +523,9 @@ export class AgentStore {
             }
             case 'chart':
               attachChart(event.data);
+              break;
+            case 'document':
+              attachDocument(event.data);
               break;
             case 'token':
               ensureAssistantBubble();

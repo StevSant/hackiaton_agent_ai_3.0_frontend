@@ -1,4 +1,4 @@
-export type { AgentMessage, AgentRole, TableRow } from './agent-message.model';
+export type { AgentMessage, AgentRole, DocumentPayload, TableRow } from './agent-message.model';
 export type { AgentStep, AgentStepKind } from './agent-step.model';
 export type {
   ConversationDeleted,

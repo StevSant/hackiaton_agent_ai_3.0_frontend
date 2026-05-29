@@ -1,5 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
+import { AgentApi } from '@core/api/clients/agent.api';
 import type { TtsState } from '@core/tts/text-to-speech.service';
 import { MarkdownPipe } from '@shared/pipes';
 import { Icon } from '@shared/ui/icon';
@@ -7,13 +17,15 @@ import { AgentChart } from './agent-chart';
 import { AgentEyeIcon } from './agent-eye-icon';
 import { AgentSteps } from './agent-steps';
 import { AgentTable } from './agent-table';
+import { ChatDocumentCanvas } from './chat-document-canvas';
 import type { AgentMessage } from '../models';
+import { messageToMarkdown, messageTitulo, slugify } from '../utils/message-to-markdown';
 import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
 
 @Component({
   selector: 'agent-chat-message',
   standalone: true,
-  imports: [AgentSteps, MarkdownPipe, Icon, AgentChart, AgentEyeIcon, AgentTable],
+  imports: [AgentSteps, MarkdownPipe, Icon, AgentChart, AgentEyeIcon, AgentTable, ChatDocumentCanvas],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="w-full flex gap-3 items-start" [class.justify-end]="isUser()">
@@ -54,21 +66,67 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
             }
           </div>
 
-          @if (hasContent() && ttsSupported()) {
-            <button
-              type="button"
-              class="inline-flex items-center gap-1 text-[11.5px] text-ink-3 px-1.5 py-0.5 rounded hover:text-brand hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-soft disabled:opacity-60"
-              [disabled]="ttsActive() && ttsState() === 'loading'"
-              [attr.aria-label]="listenLabel()"
-              (click)="ttsToggle.emit(message().id)"
-            >
-              <ui-icon
-                [name]="listenIcon()"
-                [size]="14"
-                [class.animate-spin]="ttsActive() && ttsState() === 'loading'"
-              />
-              {{ listenLabel() }}
-            </button>
+          <!-- Footer action row -->
+          <div class="flex flex-wrap items-center gap-1">
+            @if (hasContent() && ttsSupported()) {
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 text-[11.5px] text-ink-3 px-1.5 py-0.5 rounded hover:text-brand hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-soft disabled:opacity-60"
+                [disabled]="ttsActive() && ttsState() === 'loading'"
+                [attr.aria-label]="listenLabel()"
+                (click)="ttsToggle.emit(message().id)"
+              >
+                <ui-icon
+                  [name]="listenIcon()"
+                  [size]="14"
+                  [class.animate-spin]="ttsActive() && ttsState() === 'loading'"
+                />
+                {{ listenLabel() }}
+              </button>
+            }
+
+            <!-- Feature B: per-message Word download (deterministic, no agent tool needed) -->
+            @if (hasContent()) {
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 text-[11.5px] text-ink-3 px-1.5 py-0.5 rounded hover:text-brand hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-soft disabled:opacity-50"
+                [disabled]="msgDownloading()"
+                (click)="onMsgDownload()"
+                aria-label="Descargar Word"
+              >
+                <ui-icon name="download" [size]="14" />
+                {{ msgDownloading() ? 'Generando…' : '📄 Word' }}
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 text-[11.5px] text-ink-3 px-1.5 py-0.5 rounded hover:text-brand hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-soft"
+                [class.text-brand]="inlineCanvasOpen()"
+                [attr.aria-pressed]="inlineCanvasOpen()"
+                (click)="inlineCanvasOpen.update(v => !v)"
+                aria-label="Abrir canvas editable"
+              >
+                <ui-icon name="edit_note" [size]="14" />
+                ✏️ Canvas
+              </button>
+            }
+          </div>
+
+          <!-- Feature A: agent document canvas (from SSE document event) -->
+          @if (documentPayload(); as doc) {
+            <chat-document-canvas
+              [titulo]="doc.titulo"
+              [contenidoMarkdown]="doc.contenido_markdown"
+              (improve)="improve.emit($event)"
+            />
+          }
+
+          <!-- Feature B: inline canvas for per-message editing -->
+          @if (inlineCanvasOpen() && !documentPayload() && hasContent()) {
+            <chat-document-canvas
+              [titulo]="inlineTitulo()"
+              [contenidoMarkdown]="inlineMarkdown()"
+              (improve)="improve.emit($event)"
+            />
           }
 
           @if (chart(); as chartData) {
@@ -135,7 +193,10 @@ export class ChatMessage {
   readonly openCase = output<string>();
   readonly ttsToggle = output<string>();
   readonly toggleChart = output<string>();
+  /** Emitted when the user clicks "Mejorar con IA" on a document canvas. */
+  readonly improve = output<string>();
 
+  private readonly agentApi = inject(AgentApi);
   protected readonly uiPrefs = inject(ChatUiPrefsStore);
 
   protected readonly isUser = computed(() => this.message().role === 'user');
@@ -146,6 +207,16 @@ export class ChatMessage {
   protected readonly chartAccepted = computed(() => this.message().chartAccepted === true);
   protected readonly chartPending = computed(() => this.message().chartPending === true);
   protected readonly tablePayload = computed(() => this.message().tablePayload ?? null);
+  protected readonly documentPayload = computed(() => this.message().documentPayload ?? null);
+
+  /** Feature B: per-message inline canvas toggle. */
+  protected readonly inlineCanvasOpen = signal(false);
+  /** Feature B: downloading state for the per-message Word button. */
+  protected readonly msgDownloading = signal(false);
+
+  /** Markdown derived from this message for Feature B actions. */
+  protected readonly inlineMarkdown = computed(() => messageToMarkdown(this.message()));
+  protected readonly inlineTitulo = computed(() => messageTitulo(this.message()));
 
   protected readonly listenIcon = computed(() => {
     if (this.ttsActive() && this.ttsState() === 'loading') return 'progress_activity';
@@ -171,5 +242,29 @@ export class ChatMessage {
     if (!chip) return;
     const id = chip.getAttribute('data-sin-id');
     if (id) this.openCase.emit(id);
+  }
+
+  /** Feature B: download Word directly from the message text + table (no agent tool). */
+  protected async onMsgDownload(): Promise<void> {
+    if (this.msgDownloading()) return;
+    this.msgDownloading.set(true);
+    try {
+      const blob = await firstValueFrom(
+        this.agentApi.downloadDocumentDocx({
+          titulo: this.inlineTitulo(),
+          contenido_markdown: this.inlineMarkdown(),
+        }),
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${slugify(this.inlineTitulo()) || 'informe'}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Silent — backend unreachable; user sees no response, can retry.
+    } finally {
+      this.msgDownloading.set(false);
+    }
   }
 }
