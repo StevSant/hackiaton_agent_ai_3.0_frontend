@@ -6,7 +6,7 @@ import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
 import { Icon } from '@shared/ui/icon';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { RAMOS, reviewStatusLabel, type RamoKey, type RiskTier } from '@shared/utils';
+import { byTriagePriority, RAMOS, reviewStatusLabel, type RamoKey, type RiskTier } from '@shared/utils';
 import type { Claim } from '@shared/models';
 import { InvestigacionTable } from '../components/investigacion-table';
 import { SavedFiltersModal } from '../components/saved-filters-modal';
@@ -312,7 +312,7 @@ export class InvestigacionPage {
 
     return list
       .filter((claim) => this.matchesFilters(claim, filterState))
-      .sort((a, b) => b.score - a.score);
+      .sort(byTriagePriority);
   });
 
   protected readonly paged = computed(() => {

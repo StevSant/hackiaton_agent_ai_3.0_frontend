@@ -19,7 +19,7 @@ import { ClaimsTable } from '../components/claims-table';
 import { BandejaFilters, type BandejaFilterState } from '../components/bandeja-filters';
 import { ClaimsStore } from '@core/state/claims.store';
 import type { Claim } from '@shared/models';
-import type { RiskTier } from '@shared/utils';
+import { byTriagePriority, type RiskTier } from '@shared/utils';
 
 type TabKey = 'activos' | 'historico';
 type TierFilter = 'todos' | RiskTier | 'rebotados';
@@ -253,7 +253,7 @@ export class ClaimsListPage {
         }
         return true;
       })
-      .sort((a, b) => b.score - a.score);
+      .sort(byTriagePriority);
   });
 
   protected readonly paged = computed(() => {

@@ -1,4 +1,5 @@
 export { riskTier, riskTierLabel, type RiskTier } from './risk-tier';
+export { byTriagePriority } from './triage-order';
 export { formatMoney, formatMoneyShort } from './format-money';
 export { initials } from './initials';
 export { hashHue } from './hash-hue';

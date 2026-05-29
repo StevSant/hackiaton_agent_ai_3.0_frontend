@@ -262,7 +262,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download the CSV template for bulk claim import */
+        /** Download the import template (CSV or JSON skeleton) */
         get: operations["download_import_template_route_api_v1_claims_import_template_get"];
         put?: never;
         post?: never;
@@ -376,6 +376,26 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/{claim_id}/resumen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Claim Resumen Route
+         * @description Persist an analyst-edited case summary override on a claim.
+         */
+        patch: operations["patch_claim_resumen_route_api_v1_claims__claim_id__resumen_patch"];
         trace?: never;
     };
     "/api/v1/antifraude/inbox": {
@@ -917,6 +937,10 @@ export interface components {
         /**
          * ClaimAlert
          * @description UI projection of a `RuleActivation`, rendered as a chip in the breakdown.
+         *
+         *     `detalle` is the rule's generic description; `evidence` carries the
+         *     per-claim variables that made *this* rule fire (e.g. {"demora_denuncia_horas": 56}).
+         *     The detail dialog renders `evidence` as the "en este caso" explanation.
          */
         ClaimAlert: {
             /** Code */
@@ -930,6 +954,10 @@ export interface components {
             severidad: "high" | "med" | "low";
             /** Detalle */
             detalle: string;
+            /** Evidence */
+            evidence?: {
+                [key: string]: unknown;
+            };
         };
         /**
          * ClaimDetail
@@ -977,6 +1005,8 @@ export interface components {
             proveedor?: string | null;
             /** Descripcion */
             descripcion: string;
+            /** Resumen Editado */
+            resumen_editado?: string | null;
             /** Score */
             score: number;
             nivel: components["schemas"]["Tier"];
@@ -997,6 +1027,17 @@ export interface components {
             anomaly_score?: number | null;
             /** Nearest Normal Claim Id */
             nearest_normal_claim_id?: string | null;
+            /**
+             * Posible Falso Positivo
+             * @default false
+             */
+            posible_falso_positivo: boolean;
+            /**
+             * Confianza
+             * @default alta
+             * @enum {string}
+             */
+            confianza: "alta" | "media" | "baja";
             /** Latitude */
             latitude?: number | null;
             /** Longitude */
@@ -1556,6 +1597,14 @@ export interface components {
             region: string;
             /** Value */
             value: number;
+        };
+        /**
+         * ResumenPatch
+         * @description Analyst-edited case summary.
+         */
+        ResumenPatch: {
+            /** Resumen Editado */
+            resumen_editado: string;
         };
         /**
          * ReviewStatus
@@ -2201,7 +2250,10 @@ export interface operations {
     };
     download_import_template_route_api_v1_claims_import_template_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Response format: 'csv' (default) or 'json' */
+                format?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2215,6 +2267,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2386,6 +2447,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_claim_resumen_route_api_v1_claims__claim_id__resumen_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResumenPatch"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
