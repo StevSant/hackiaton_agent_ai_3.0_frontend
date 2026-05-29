@@ -41,6 +41,11 @@ export {
   bindRecordSwapPulse,
   scrollAppMainToTop,
 } from './detail-navigation';
+export { type SortDirection } from './sort/sort-direction';
+export { type SortAccessors } from './sort/sort-accessors';
+export { compareValues } from './sort/compare-values';
+export { sortRows } from './sort/sort-rows';
+export { TableSortController } from './sort/table-sort-controller';
 export { bindListKeyboardNav } from './list-keyboard-nav';
 export { bindSectionKeyboardNav } from './section-keyboard-nav';
 export {

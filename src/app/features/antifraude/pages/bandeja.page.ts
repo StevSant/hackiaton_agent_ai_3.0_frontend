@@ -11,7 +11,16 @@ import { PageHeader } from '@shared/ui/page-header';
 import { Pagination } from '@shared/ui/pagination';
 import { SegmentedTabs, type SegmentedTab } from '@shared/ui/segmented-tabs';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { bindListKeyboardNav, formatDateTime, ramoIcon, ramoLabel } from '@shared/utils';
+import {
+  bindListKeyboardNav,
+  formatDateTime,
+  ramoIcon,
+  ramoLabel,
+  sortRows,
+  TableSortController,
+  type RiskTier,
+  type SortAccessors,
+} from '@shared/utils';
 import { AntifraudeInboxStore } from '../services/antifraude-inbox.store';
 import { InboxTable } from '../components/inbox-table';
 
@@ -91,6 +100,7 @@ type TabKey = 'activos' | 'historico';
             <div class="centinela-panel__scroll">
               <antifraude-inbox-table
                 [rows]="activePage()"
+                [sort]="sort"
                 [focusedId]="focusedRowId()"
                 (open)="openCase($event)"
               />
@@ -174,6 +184,7 @@ export class BandejaPage {
   private readonly shortcuts = inject(KeyboardShortcutsService);
 
   protected readonly tab = signal<TabKey>('activos');
+  protected readonly sort = new TableSortController();
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(10);
   protected readonly listFocusIndex = signal(-1);
@@ -191,6 +202,19 @@ export class BandejaPage {
 
   protected readonly activeRows = computed<InboxRowDto[]>(() => this.store.items());
 
+  // Default order = tier (rojo first) then FIFO by escalation; a clicked column
+  // overrides it. Sorting the full list here (not inside the table) keeps
+  // pagination correct — the table only ever sees one page.
+  protected readonly sortedActiveRows = computed<InboxRowDto[]>(() => {
+    const base = [...this.activeRows()].sort((a, b) => {
+      const ta = TIER_RANK[a.nivel as RiskTier] ?? 9;
+      const tb = TIER_RANK[b.nivel as RiskTier] ?? 9;
+      if (ta !== tb) return ta - tb;
+      return (a.escalated_at ?? '').localeCompare(b.escalated_at ?? '');
+    });
+    return sortRows(base, this.sort.key(), this.sort.dir(), INBOX_SORT);
+  });
+
   protected readonly historicoRows = computed<ClaimSummaryDto[]>(() => this.store.historico());
 
   protected readonly tabs = computed<SegmentedTab[]>(() => [
@@ -199,7 +223,7 @@ export class BandejaPage {
   ]);
 
   protected readonly activePage = computed(() => {
-    const list = this.activeRows();
+    const list = this.sortedActiveRows();
     const start = this.page() * this.pageSize();
     return list.slice(start, start + this.pageSize());
   });
@@ -228,6 +252,12 @@ export class BandejaPage {
       rows: () => this.listRows(),
       focusedIndex: this.listFocusIndex,
       onOpen: (id) => this.openCase(id),
+    });
+
+    effect(() => {
+      this.sort.key(); // re-sorting jumps back to the first page
+      this.sort.dir();
+      this.page.set(0);
     });
 
     effect(() => {
@@ -265,3 +295,14 @@ export class BandejaPage {
     }
   }
 }
+
+const TIER_RANK: Record<RiskTier, number> = { rojo: 0, amarillo: 1, verde: 2 };
+
+const INBOX_SORT: SortAccessors<InboxRowDto> = {
+  score: (r) => r.score,
+  claim_id: (r) => r.claim_id,
+  dueno: (r) => r.assigned_to_name ?? '',
+  recibido: (r) => r.escalated_at ?? '',
+  estado: (r) => (r.assigned_to_name ? 1 : 0),
+  rework: (r) => r.bounce_count,
+};

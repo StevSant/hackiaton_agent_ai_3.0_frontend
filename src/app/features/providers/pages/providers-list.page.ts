@@ -18,10 +18,13 @@ import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
 import {
   PROVIDER_EXPORT_COLUMNS,
+  TableSortController,
   bindListKeyboardNav,
   exportProviders,
   formatMoney,
   projectProvider,
+  sortRows,
+  type SortAccessors,
 } from '@shared/utils';
 import { ProviderFormModal, type ProviderFormValue } from '../components/provider-form-modal';
 import { ProvidersTable } from '../components/providers-table';
@@ -85,6 +88,7 @@ import { ProvidersTable } from '../components/providers-table';
     } @else {
       <providers-table
         [providers]="paged()"
+        [sort]="sort"
         [focusedId]="focusedRowId()"
         (open)="openProvider($event)"
         (edit)="openEdit($event)"
@@ -173,6 +177,7 @@ export class ProvidersListPage {
     uniqueSorted(this.store.providers().map((p) => p.tipo)),
   );
 
+  protected readonly sort = new TableSortController();
   protected readonly page = signal<number>(1);
   protected readonly pageSize = signal<number>(20);
   protected readonly listFocusIndex = signal(-1);
@@ -216,12 +221,18 @@ export class ProvidersListPage {
 
     effect(() => {
       this.filters(); // track
+      this.sort.key(); // re-sorting jumps the analyst back to the first page
+      this.sort.dir();
       this.page.set(1);
     });
   }
 
+  protected readonly sorted = computed(() =>
+    sortRows(this.filtered(), this.sort.key(), this.sort.dir(), PROVIDER_SORT),
+  );
+
   protected readonly paged = computed(() => {
-    const list = this.filtered();
+    const list = this.sorted();
     const size = this.pageSize();
     const start = (this.page() - 1) * size;
     return list.slice(start, start + size);
@@ -305,6 +316,16 @@ export class ProvidersListPage {
 
   protected readonly formatMoney = formatMoney;
 }
+
+const PROVIDER_SORT: SortAccessors<Provider> = {
+  nombre: (p) => p.nombre,
+  tipo: (p) => p.tipo,
+  ciudad: (p) => p.ciudad,
+  casos: (p) => p.casos,
+  alertas: (p) => p.alertas,
+  monto: (p) => p.monto,
+  restrictiva: (p) => (p.listaRestrictiva ? 1 : 0),
+};
 
 function todayStamp(): string {
   const d = new Date();

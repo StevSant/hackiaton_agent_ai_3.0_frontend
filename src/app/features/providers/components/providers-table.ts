@@ -1,13 +1,14 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
-import { formatMoney, initials } from '@shared/utils';
+import { formatMoney, initials, TableSortController } from '@shared/utils';
 import type { Provider } from '@shared/models';
 import { Icon } from '@shared/ui/icon';
+import { SortableHeader } from '@shared/ui/sortable-header';
 
 @Component({
   selector: 'providers-table',
   standalone: true,
-  imports: [Icon],
+  imports: [Icon, SortableHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
@@ -15,13 +16,13 @@ import { Icon } from '@shared/ui/icon';
         <table class="w-full text-[13px] border-collapse">
           <thead>
             <tr class="bg-soft">
-              <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Proveedor</th>
-              <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Tipo</th>
-              <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Ciudad</th>
-              <th class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Casos</th>
-              <th class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Alertas</th>
-              <th class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Monto</th>
-              <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Estado</th>
+              <th sortKey="nombre" [sort]="sort()" class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Proveedor</th>
+              <th sortKey="tipo" [sort]="sort()" class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Tipo</th>
+              <th sortKey="ciudad" [sort]="sort()" class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Ciudad</th>
+              <th sortKey="casos" [sort]="sort()" class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Casos</th>
+              <th sortKey="alertas" [sort]="sort()" class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Alertas</th>
+              <th sortKey="monto" [sort]="sort()" class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Monto</th>
+              <th sortKey="restrictiva" [sort]="sort()" class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Estado</th>
               <th class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Acciones</th>
             </tr>
           </thead>
@@ -99,6 +100,7 @@ import { Icon } from '@shared/ui/icon';
 })
 export class ProvidersTable {
   readonly providers = input.required<Provider[]>();
+  readonly sort = input.required<TableSortController>();
   readonly focusedId = input<string | null>(null);
   readonly open = output<string>();
   readonly edit = output<Provider>();

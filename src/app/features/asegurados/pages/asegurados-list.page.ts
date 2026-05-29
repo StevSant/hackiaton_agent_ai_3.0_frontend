@@ -16,7 +16,13 @@ import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { formatMoney, bindListKeyboardNav } from '@shared/utils';
+import {
+  formatMoney,
+  bindListKeyboardNav,
+  sortRows,
+  TableSortController,
+  type SortAccessors,
+} from '@shared/utils';
 import {
   AseguradoFormModal,
   type AseguradoFormValue,
@@ -87,6 +93,7 @@ import {
     } @else {
       <asegurados-table
         [asegurados]="paged()"
+        [sort]="sort"
         [focusedId]="focusedRowId()"
         (open)="openAsegurado($event)"
         (edit)="openEdit($event)"
@@ -177,6 +184,7 @@ export class AseguradosListPage {
     uniqueSorted(this.store.asegurados().map((a) => a.segmento ?? '')),
   );
 
+  protected readonly sort = new TableSortController();
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(25);
   protected readonly listFocusIndex = signal(-1);
@@ -199,6 +207,8 @@ export class AseguradosListPage {
 
     effect(() => {
       this.filters(); // track
+      this.sort.key(); // re-sorting jumps the analyst back to the first page
+      this.sort.dir();
       this.page.set(0);
     });
   }
@@ -224,8 +234,12 @@ export class AseguradosListPage {
     });
   });
 
+  protected readonly sorted = computed(() =>
+    sortRows(this.filtered(), this.sort.key(), this.sort.dir(), ASEGURADO_SORT),
+  );
+
   protected readonly paged = computed(() => {
-    const list = this.filtered();
+    const list = this.sorted();
     const size = this.pageSize();
     const start = this.page() * size;
     return list.slice(start, start + size);
@@ -306,6 +320,16 @@ export class AseguradosListPage {
 
   protected readonly formatMoney = formatMoney;
 }
+
+const ASEGURADO_SORT: SortAccessors<Asegurado> = {
+  nombre: (a) => a.nombre,
+  segmento: (a) => a.segmento ?? '',
+  ciudad: (a) => a.ciudad,
+  casos: (a) => a.casos,
+  alertas: (a) => a.alertas,
+  monto: (a) => a.monto,
+  mora: (a) => (a.mora_actual ? 1 : 0),
+};
 
 function todayStamp(): string {
   const d = new Date();

@@ -2,11 +2,13 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 
 import { Avatar } from '@shared/ui/avatar';
 import { Icon } from '@shared/ui/icon';
+import { SortableHeader } from '@shared/ui/sortable-header';
 import {
   formatMoney,
   ramoLabel,
   reviewStatusBadgeClass,
   reviewStatusLabel,
+  TableSortController,
   type RiskTier,
 } from '@shared/utils';
 import type { Claim } from '@shared/models';
@@ -14,21 +16,21 @@ import type { Claim } from '@shared/models';
 @Component({
   selector: 'investigacion-table',
   standalone: true,
-  imports: [Avatar, Icon],
+  imports: [Avatar, Icon, SortableHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="overflow-x-auto">
       <table class="w-full text-[13px] border-collapse">
         <thead>
           <tr class="border-b border-line">
-            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">ID siniestro</th>
-            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Asegurado</th>
-            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Cobertura</th>
-            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Ciudad</th>
-            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Monto estimado</th>
-            <th class="text-center font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Alertas IA</th>
-            <th class="text-center font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Riesgo IA</th>
-            <th class="text-center font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Estado</th>
+            <th sortKey="id" [sort]="sort()" class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">ID siniestro</th>
+            <th sortKey="asegurado" [sort]="sort()" class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Asegurado</th>
+            <th sortKey="cobertura" [sort]="sort()" class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Cobertura</th>
+            <th sortKey="ciudad" [sort]="sort()" class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Ciudad</th>
+            <th sortKey="monto" [sort]="sort()" class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Monto estimado</th>
+            <th sortKey="alertas" [sort]="sort()" class="text-center font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Alertas IA</th>
+            <th sortKey="score" [sort]="sort()" class="text-center font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Riesgo IA</th>
+            <th sortKey="estado" [sort]="sort()" class="text-center font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Estado</th>
             <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4 w-16">Acciones</th>
           </tr>
         </thead>
@@ -112,6 +114,7 @@ import type { Claim } from '@shared/models';
 })
 export class InvestigacionTable {
   readonly claims = input.required<readonly Claim[]>();
+  readonly sort = input.required<TableSortController>();
   readonly focusedId = input<string | null>(null);
   readonly open = output<string>();
 
