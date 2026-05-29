@@ -117,7 +117,7 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
               <div class="w-full h-[280px] rounded-lg bg-soft animate-pulse"></div>
             </div>
           }
-          @if (!documentPayload() && tablePayload(); as rows) {
+          @if (!documentPayload() && !proseHasTable() && tablePayload(); as rows) {
             @if (tableAccepted()) {
               <agent-table [rows]="rows" (openCase)="openCase.emit($event)" />
             }
@@ -185,6 +185,12 @@ export class ChatMessage {
   protected readonly tablePayload = computed(() => this.message().tablePayload ?? null);
   // Tables are shown by default; only an explicit toggle to false hides them.
   protected readonly tableAccepted = computed(() => this.message().tableAccepted !== false);
+  // True when the agent already wrote a Markdown table in its prose — detected by
+  // a GFM delimiter row (e.g. |---|---|). In that case we suppress the redundant
+  // auto-extracted <agent-table> so the message shows ONE table (the nice inline one).
+  protected readonly proseHasTable = computed(() =>
+    /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/m.test(this.message().content),
+  );
   protected readonly documentPayload = computed(() => this.message().documentPayload ?? null);
 
   protected readonly listenIcon = computed(() => {
