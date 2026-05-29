@@ -30,7 +30,7 @@ import type { Claim } from '@shared/models';
               Análisis multi-agente
             </h3>
             <p class="text-[11px] m-0" style="color: var(--brand-ink); opacity: 0.75">
-              Análisis principal · 4 especialistas debaten y emiten un consenso
+              Análisis principal · 5 agentes debaten y emiten un consenso
             </p>
           </div>
         </div>
@@ -96,15 +96,15 @@ import type { Claim } from '@shared/models';
       } @else if (running()) {
         <div class="px-5 pt-2.5 pb-5 flex items-center gap-2.5 text-[13px] leading-relaxed text-ink-2">
           <ui-icon name="progress_activity" [size]="16" class="animate-spin" style="color: var(--brand-ink)" />
-          Analizando con multi-agentes — cuatro especialistas de IA (reglas, ML/anomalía,
-          narrativa y documentos/red) están debatiendo este caso. El consenso aparecerá aquí en
-          unos segundos.
+          Analizando con multi-agentes — cinco agentes de IA (reglas, ML/anomalía, narrativa,
+          documentos/red y un moderador de consenso) están debatiendo este caso. El consenso
+          aparecerá aquí en unos segundos.
         </div>
       } @else {
         <div class="px-5 pt-2.5 pb-5 text-[13px] leading-relaxed text-ink-3">
-          Cuatro especialistas de IA (reglas, ML/anomalía, narrativa y documentos/red) debaten
-          este caso y emiten un consenso con acción recomendada. Aún no se ha ejecutado para este
-          siniestro.
+          Cinco agentes de IA — reglas, ML/anomalía, narrativa, documentos/red y un moderador de
+          consenso — debaten este caso y emiten una alerta con acción recomendada. Aún no se ha
+          ejecutado para este siniestro.
         </div>
       }
     </div>

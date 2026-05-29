@@ -90,8 +90,8 @@ import { RulesStore } from '@core/state/rules.store';
     }
   `],
   template: `
-    <div>
-      <div class="mb-6 flex items-center justify-between gap-3">
+    <div class="min-w-0">
+      <div class="mb-4 sm:mb-6 flex items-center justify-between gap-3">
         <a routerLink="/"
            class="inline-flex items-center gap-1.5 text-[12.5px] text-mkt-ink-2 hover:text-mkt-accent px-2 py-1 -ml-2 rounded-lg hover:bg-mkt-accent-muted transition-colors"
            aria-label="Volver al inicio">
@@ -111,13 +111,13 @@ import { RulesStore } from '@core/state/rules.store';
         </div>
       </div>
 
-      <div class="text-mkt-accent-ink text-[11px] uppercase tracking-[0.18em] mb-2 font-bold">Iniciar sesión</div>
-      <h1 class="text-[26px] sm:text-[28px] font-bold tracking-tight text-mkt-ink m-0 mb-1.5">Bienvenido de vuelta</h1>
-      <p class="auth-muted text-[14px] m-0 mb-6 leading-relaxed">
+      <div class="text-mkt-accent-ink text-[11px] uppercase tracking-[0.18em] mb-1.5 sm:mb-2 font-bold">Iniciar sesión</div>
+      <h1 class="text-[22px] sm:text-[28px] font-bold tracking-tight text-mkt-ink m-0 mb-1">Bienvenido de vuelta</h1>
+      <p class="auth-muted text-[13px] sm:text-[14px] m-0 mb-4 sm:mb-6 leading-relaxed">
         Abre tu bandeja con correo corporativo o entra directo con una perspectiva demo.
       </p>
 
-      <form (submit)="onSubmit($event)" class="flex flex-col gap-3.5">
+      <form (submit)="onSubmit($event)" class="flex flex-col gap-3 sm:gap-3.5">
         <div>
           <label class="auth-label block text-[11px] uppercase tracking-[0.14em] font-bold mb-1.5">Correo corporativo</label>
           <div class="auth-field">
@@ -174,44 +174,44 @@ import { RulesStore } from '@core/state/rules.store';
           {{ auth.loading() ? 'Verificando…' : 'Iniciar sesión' }}
         </button>
 
-        <div class="flex items-center gap-2 my-1">
+        <div class="flex items-center gap-2 my-0.5 sm:my-1">
           <div class="flex-1 h-px auth-divider"></div>
-          <span class="text-[10px] auth-muted uppercase tracking-[0.14em] font-semibold">Demo · elige perspectiva</span>
+          <span class="text-[10px] auth-muted uppercase tracking-[0.14em] font-semibold whitespace-nowrap">Demo · perspectiva</span>
           <div class="flex-1 h-px auth-divider"></div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <div class="grid grid-cols-2 gap-2 sm:gap-2.5">
           <button type="button"
-                  class="auth-demo-card flex items-center gap-2.5 text-left px-3 py-3 rounded-xl"
+                  class="auth-demo-card flex items-center gap-2.5 text-left px-3 py-2.5 sm:py-3 rounded-xl"
                   (click)="onDemo('analista')">
             <span class="w-8 h-8 rounded-full shrink-0 grid place-items-center bg-mkt-accent-muted border border-mkt-accent-border text-mkt-accent">
               <ui-icon name="badge" [size]="15" />
             </span>
             <span class="flex-1 leading-tight min-w-0">
-              <span class="block text-[13px] font-semibold text-mkt-ink">Analista de siniestros</span>
+              <span class="block text-[12.5px] sm:text-[13px] font-semibold text-mkt-ink">Analista</span>
               <span class="block text-[11px] auth-muted mt-0.5 truncate">Ana Lema · triaje</span>
             </span>
           </button>
 
           <button type="button"
-                  class="auth-demo-card auth-demo-card--antifraude flex items-center gap-2.5 text-left px-3 py-3 rounded-xl"
+                  class="auth-demo-card auth-demo-card--antifraude flex items-center gap-2.5 text-left px-3 py-2.5 sm:py-3 rounded-xl"
                   (click)="onDemo('antifraude')">
             <span class="w-8 h-8 rounded-full shrink-0 grid place-items-center bg-rose-400/12 border border-rose-400/30 text-rose-500 dark:text-rose-200">
               <ui-icon name="shield_person" [size]="15" />
             </span>
             <span class="flex-1 leading-tight min-w-0">
-              <span class="block text-[13px] font-semibold text-mkt-ink">Especialista antifraude</span>
+              <span class="block text-[12.5px] sm:text-[13px] font-semibold text-mkt-ink">Antifraude</span>
               <span class="block text-[11px] auth-muted mt-0.5 truncate">Lucía Vélez · dictamen</span>
             </span>
           </button>
         </div>
 
-        <p class="text-[11px] auth-muted text-center mt-0.5">
+        <p class="hidden sm:block text-[11px] auth-muted text-center mt-0.5">
           Puedes cambiar de perspectiva desde el panel lateral.
         </p>
       </form>
 
-      <p class="text-[11px] auth-muted mt-5 leading-relaxed">
+      <p class="hidden sm:block text-[11px] auth-muted mt-5 leading-relaxed">
         Prototipo Centinela — autenticación JWT local. Credenciales demo en
         <code class="font-mono text-mkt-ink-3 bg-mkt-auth-field-bg px-1 py-0.5 rounded">AUTH_SEED_USERS</code> del backend.
       </p>

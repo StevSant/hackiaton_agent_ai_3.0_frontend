@@ -26,7 +26,6 @@ interface AuthOrbitAgent {
   browCrease?: string;
   lidPath?: string;
   browAnimClass: string;
-  blinkDelay: string;
   breatheDelay: string;
 }
 
@@ -38,6 +37,7 @@ interface AuthOrbitAgent {
   styles: [`
     :host {
       display: block;
+      min-height: 100dvh;
       background: var(--mkt-bg);
       color: var(--mkt-ink);
       font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -110,13 +110,15 @@ interface AuthOrbitAgent {
       color: var(--mkt-ink-2);
     }
 
-    :host-context(html:not(.dark)) .auth-satellite-label--centinela { color: #5b21b6; }
-    :host-context(html:not(.dark)) .auth-satellite-label--vigia { color: #b45309; }
-    :host-context(html:not(.dark)) .auth-satellite-label--rastreador { color: #be123c; }
+    :host-context(html:not(.dark)) .auth-satellite-label--reglas { color: #1e40af; }
+    :host-context(html:not(.dark)) .auth-satellite-label--ml { color: #5b21b6; }
+    :host-context(html:not(.dark)) .auth-satellite-label--narrativa { color: #b45309; }
+    :host-context(html:not(.dark)) .auth-satellite-label--documentos { color: #be123c; }
 
-    :host-context(html.dark) .auth-satellite-label--centinela { color: #a78bfa; }
-    :host-context(html.dark) .auth-satellite-label--vigia { color: #fbbf24; }
-    :host-context(html.dark) .auth-satellite-label--rastreador { color: #fb7185; }
+    :host-context(html.dark) .auth-satellite-label--reglas { color: #60a5fa; }
+    :host-context(html.dark) .auth-satellite-label--ml { color: #a78bfa; }
+    :host-context(html.dark) .auth-satellite-label--narrativa { color: #fbbf24; }
+    :host-context(html.dark) .auth-satellite-label--documentos { color: #fb7185; }
 
     .auth-orbit-stage {
       width: 100%;
@@ -151,9 +153,10 @@ interface AuthOrbitAgent {
       to { offset-distance: calc(var(--orbit-start) + 100%); }
     }
 
-    .auth-satellite--centinela { --orbit-start: 75%; }
-    .auth-satellite--vigia { --orbit-start: 8.333%; }
-    .auth-satellite--rastreador { --orbit-start: 41.666%; }
+    .auth-satellite--reglas { --orbit-start: 0%; }
+    .auth-satellite--ml { --orbit-start: 25%; }
+    .auth-satellite--narrativa { --orbit-start: 50%; }
+    .auth-satellite--documentos { --orbit-start: 75%; }
 
     .auth-mini-eye {
       width: 64px;
@@ -196,8 +199,20 @@ interface AuthOrbitAgent {
     }
 
     .auth-eye-iris {
-      transition: transform 90ms linear;
       will-change: transform;
+    }
+
+    .auth-eye-blink {
+      transform-origin: 200px 135px;
+      transform: scaleY(0);
+      animation: authEyeBlink 6.4s ease-in-out infinite;
+      will-change: transform;
+    }
+
+    @keyframes authEyeBlink {
+      0%, 92%, 100% { transform: scaleY(0); }
+      95% { transform: scaleY(1); }
+      98% { transform: scaleY(0); }
     }
 
     .auth-mini-brow {
@@ -209,6 +224,7 @@ interface AuthOrbitAgent {
     .auth-mini-brows--calm { animation: authBrowCalm 4.8s ease-in-out infinite; transform-origin: 50px 20px; transform-box: fill-box; }
     .auth-mini-brows--vigia { animation: authBrowVigia 2.6s ease-in-out infinite; transform-origin: 50px 20px; transform-box: fill-box; }
     .auth-mini-brows--rastreador { animation: authBrowRastreador 3.2s ease-in-out infinite; transform-origin: 50px 20px; transform-box: fill-box; }
+    .auth-mini-brows--sorpresa { animation: authBrowSorpresa 3.8s ease-in-out infinite; transform-origin: 50px 20px; transform-box: fill-box; }
 
     @keyframes authBrowCalm {
       0%, 100% { transform: translateY(0); }
@@ -225,6 +241,11 @@ interface AuthOrbitAgent {
       40% { transform: translateY(-1.8px); }
     }
 
+    @keyframes authBrowSorpresa {
+      0%, 100% { transform: translateY(0); }
+      45% { transform: translateY(-1px); }
+    }
+
     .auth-mini-gaze {
       transform-origin: 50px 50px;
       transform-box: fill-box;
@@ -237,19 +258,6 @@ interface AuthOrbitAgent {
     @keyframes authMiniGazePulse {
       0%, 100% { opacity: 0.92; }
       50% { opacity: 1; }
-    }
-
-    .auth-mini-blink {
-      transform-origin: 50px 32px;
-      transform-box: fill-box;
-      transform: scaleY(0);
-      animation: authMiniBlink 7s ease-in-out infinite;
-    }
-
-    @keyframes authMiniBlink {
-      0%, 93%, 100% { transform: scaleY(0); }
-      96% { transform: scaleY(1); }
-      97.5% { transform: scaleY(0); }
     }
 
     .auth-mini-lid {
@@ -269,11 +277,12 @@ interface AuthOrbitAgent {
       .auth-mini-eye,
       .auth-iris-ring,
       .auth-ray-scan,
+      .auth-eye-blink,
       .auth-mini-brows--calm,
       .auth-mini-brows--vigia,
       .auth-mini-brows--rastreador,
+      .auth-mini-brows--sorpresa,
       .auth-mini-gaze-pulse,
-      .auth-mini-blink,
       .auth-mini-lid {
         animation: none !important;
       }
@@ -284,7 +293,7 @@ interface AuthOrbitAgent {
     }
   `],
   template: `
-    <div class="auth-shell-grid min-h-screen grid lg:grid-cols-[1.05fr_1fr]">
+    <div class="auth-shell-grid min-h-dvh h-dvh lg:min-h-screen lg:h-auto grid lg:grid-cols-[1.05fr_1fr] overflow-x-hidden">
 
       <!-- Left — cyber eye + orbiting agents (desktop) -->
       <aside class="hidden lg:flex relative min-h-screen overflow-hidden flex-col">
@@ -355,10 +364,6 @@ interface AuthOrbitAgent {
                       @if (agent.lidPath) {
                         <path [attr.d]="agent.lidPath" fill="var(--mkt-eye-socket)" class="auth-mini-lid" [style.animation-delay]="agent.breatheDelay"/>
                       }
-                      <path d="M18 50 Q50 22 82 50 Q50 78 18 50 Z"
-                            fill="var(--mkt-eye-lid)"
-                            class="auth-mini-blink"
-                            [style.animation-delay]="agent.blinkDelay"/>
                     </g>
                   </svg>
                 </div>
@@ -371,6 +376,9 @@ interface AuthOrbitAgent {
               <div class="auth-eye-wrap w-[52%] max-w-[220px] aspect-square">
                 <svg viewBox="0 0 400 400" class="w-full h-full" aria-hidden="true">
                   <defs>
+                    <clipPath id="auth-eye-clip">
+                      <path d="M70 200 Q200 70 330 200 Q200 330 70 200 Z"/>
+                    </clipPath>
                     <radialGradient id="auth-iris" cx="38%" cy="32%" r="68%">
                       <stop offset="0%" stop-color="#a5f3fc"/>
                       <stop offset="22%" stop-color="#22d3ee"/>
@@ -406,6 +414,13 @@ interface AuthOrbitAgent {
                     <circle cx="200" cy="200" r="20" fill="url(#auth-pupil)"/>
                     <ellipse cx="188" cy="190" rx="8" ry="5" fill="white" opacity="0.62" transform="rotate(-22 188 190)"/>
                   </g>
+
+                  <g clip-path="url(#auth-eye-clip)">
+                    <path d="M70 200 Q200 70 330 200 Q200 330 70 200 Z"
+                          fill="var(--mkt-eye-socket-fill)"
+                          class="auth-eye-blink auth-eye-stroke"
+                          stroke-width="1.6"/>
+                  </g>
                 </svg>
               </div>
             </div>
@@ -414,12 +429,12 @@ interface AuthOrbitAgent {
 
         <div class="relative z-10 px-10 xl:px-12 pb-8 space-y-4">
           <div>
-            <div class="text-mkt-accent-ink text-[11px] uppercase tracking-[0.18em] mb-2 font-semibold mkt-eyebrow">Arquitectura multiagente</div>
+            <div class="text-mkt-accent-ink text-[11px] uppercase tracking-[0.18em] mb-2 font-semibold mkt-eyebrow">Panel multiagente</div>
             <p class="text-[22px] font-semibold text-mkt-ink tracking-tight leading-snug max-w-[320px]">
-              Tres especialistas, un acceso
+              Cinco agentes, un acceso
             </p>
             <p class="text-mkt-ink-2 text-[14px] mt-2 max-w-[340px] leading-relaxed font-medium">
-              Vigía, Rastreador y Centinela orbitan el mismo núcleo. Ingresa y elige tu perspectiva.
+              Leslie, Naomi, Ámbar, Iris y Naelis — la moderadora de consenso — analizan el mismo caso. Ingresa y elige tu perspectiva.
             </p>
           </div>
           <div class="flex flex-wrap gap-2">
@@ -438,11 +453,11 @@ interface AuthOrbitAgent {
       </aside>
 
       <!-- Right — form -->
-      <main class="auth-panel-main relative flex min-h-screen items-center justify-center p-6 sm:p-10 lg:p-14 overflow-hidden">
+      <main class="auth-panel-main relative flex min-h-0 h-full lg:min-h-screen items-center justify-center px-4 py-5 sm:p-10 lg:p-14 overflow-y-auto overflow-x-hidden scroll-pretty">
         <div class="absolute inset-0 auth-panel-haze pointer-events-none" aria-hidden="true"></div>
         <div class="absolute inset-0 auth-panel-grid pointer-events-none" aria-hidden="true"></div>
-        <div class="relative w-full max-w-[440px]">
-          <div class="auth-form-shell rounded-2xl p-6 sm:p-8">
+        <div class="relative w-full max-w-[440px] my-auto py-2 sm:py-0">
+          <div class="auth-form-shell rounded-2xl p-5 sm:p-8">
             <router-outlet/>
           </div>
         </div>
@@ -454,36 +469,36 @@ export class AuthShell implements AfterViewInit, OnDestroy {
   private readonly doc = inject(DOCUMENT);
   private readonly zone = inject(NgZone);
 
-  private readonly mouseX = signal(0);
-  private readonly mouseY = signal(0);
+  // Smoothed iris position (spring output), normalised to roughly [-0.5, 0.5].
+  private readonly irisX = signal(0);
+  private readonly irisY = signal(0);
 
   protected readonly irisTransform = computed(() => {
-    const mx = (this.mouseX() * 22).toFixed(1);
-    const my = (this.mouseY() * 14).toFixed(1);
+    const mx = (this.irisX() * 22).toFixed(2);
+    const my = (this.irisY() * 14).toFixed(2);
     return `translate(${mx}, ${my})`;
   });
 
   protected readonly orbitAgents: readonly AuthOrbitAgent[] = [
     {
-      id: 'centinela',
-      name: 'Centinela',
-      accent: '#a78bfa',
-      irisInner: '#5b21b6',
+      id: 'reglas',
+      name: 'Leslie',
+      accent: '#60a5fa',
+      irisInner: '#1e40af',
       gazeTransform: 'translate(0, 4.5)',
       highlightX: 47.2,
       highlightY: 48,
       irisRadius: 11.5,
-      browLeft: 'M 24 18 L 41 16',
-      browRight: 'M 76 18 L 59 16',
+      browLeft: 'M 23 20 L 42 19',
+      browRight: 'M 77 20 L 58 19',
       browAnimClass: 'auth-mini-brows--calm',
-      blinkDelay: '0s',
       breatheDelay: '0ms',
     },
     {
-      id: 'vigia',
-      name: 'Vigía',
-      accent: '#fbbf24',
-      irisInner: '#b45309',
+      id: 'ml',
+      name: 'Naomi',
+      accent: '#a78bfa',
+      irisInner: '#5b21b6',
       gazeTransform: 'translate(4.5, -3.5)',
       highlightX: 48.8,
       highlightY: 46.2,
@@ -492,12 +507,25 @@ export class AuthShell implements AfterViewInit, OnDestroy {
       browRight: 'M 79 15 L 61 23',
       lidPath: 'M 24 41 Q 50 35 76 41 L 72 47 Q 50 43 28 47 Z',
       browAnimClass: 'auth-mini-brows--vigia',
-      blinkDelay: '2.2s',
       breatheDelay: '800ms',
     },
     {
-      id: 'rastreador',
-      name: 'Rastreador',
+      id: 'narrativa',
+      name: 'Ámbar',
+      accent: '#fbbf24',
+      irisInner: '#b45309',
+      gazeTransform: 'translate(4, -0.5)',
+      highlightX: 48.5,
+      highlightY: 47,
+      irisRadius: 12,
+      browLeft: 'M 24 18 L 41 17',
+      browRight: 'M 76 11 L 59 13',
+      browAnimClass: 'auth-mini-brows--sorpresa',
+      breatheDelay: '1200ms',
+    },
+    {
+      id: 'documentos',
+      name: 'Iris',
       accent: '#fb7185',
       irisInner: '#be123c',
       gazeTransform: 'translate(-4.5, -3.5)',
@@ -507,35 +535,88 @@ export class AuthShell implements AfterViewInit, OnDestroy {
       browLeft: 'M 20 12 Q 34 8 43 11',
       browRight: 'M 77 17 L 59 16',
       browAnimClass: 'auth-mini-brows--rastreador',
-      blinkDelay: '4.4s',
-      breatheDelay: '1600ms',
+      breatheDelay: '2000ms',
     },
   ];
 
+  // Spring state — target is where the cursor points, cur/vel glide toward it.
+  private targetX = 0;
+  private targetY = 0;
+  private curX = 0;
+  private curY = 0;
+  private velX = 0;
+  private velY = 0;
   private rafId = 0;
-  private pendingX = 0;
-  private pendingY = 0;
+  private lastFrame = 0;
+  private settled = true;
+  private reducedMotion = false;
   private unlisten?: () => void;
 
   ngAfterViewInit(): void {
+    this.reducedMotion =
+      this.doc.defaultView?.matchMedia('(prefers-reduced-motion: reduce)').matches ?? false;
+
     this.zone.runOutsideAngular(() => {
       const onMouse = (event: MouseEvent): void => {
         const w = window.innerWidth || 1;
         const h = window.innerHeight || 1;
-        this.pendingX = event.clientX / w - 0.5;
-        this.pendingY = event.clientY / h - 0.5;
+        this.targetX = event.clientX / w - 0.5;
+        this.targetY = event.clientY / h - 0.5;
 
-        cancelAnimationFrame(this.rafId);
-        this.rafId = requestAnimationFrame(() => {
-          this.mouseX.set(this.pendingX);
-          this.mouseY.set(this.pendingY);
-        });
+        if (this.reducedMotion) {
+          this.curX = this.targetX;
+          this.curY = this.targetY;
+          this.irisX.set(this.curX);
+          this.irisY.set(this.curY);
+          return;
+        }
+        this.startSpring();
       };
 
       this.doc.addEventListener('mousemove', onMouse, { passive: true });
       this.unlisten = () => this.doc.removeEventListener('mousemove', onMouse);
     });
   }
+
+  private startSpring(): void {
+    if (!this.settled) return;
+    this.settled = false;
+    this.lastFrame = 0;
+    this.rafId = requestAnimationFrame(this.tick);
+  }
+
+  // Critically-near spring: a touch underdamped for a natural, loose glide.
+  private readonly tick = (now: number): void => {
+    const dt = this.lastFrame ? Math.min((now - this.lastFrame) / 1000, 0.032) : 0.016;
+    this.lastFrame = now;
+
+    const stiffness = 130;
+    const damping = 20;
+
+    this.velX += ((this.targetX - this.curX) * stiffness - this.velX * damping) * dt;
+    this.velY += ((this.targetY - this.curY) * stiffness - this.velY * damping) * dt;
+    this.curX += this.velX * dt;
+    this.curY += this.velY * dt;
+
+    this.irisX.set(this.curX);
+    this.irisY.set(this.curY);
+
+    const offset = Math.hypot(this.targetX - this.curX, this.targetY - this.curY);
+    const speed = Math.hypot(this.velX, this.velY);
+    if (offset > 0.0006 || speed > 0.002) {
+      this.rafId = requestAnimationFrame(this.tick);
+      return;
+    }
+
+    this.curX = this.targetX;
+    this.curY = this.targetY;
+    this.velX = 0;
+    this.velY = 0;
+    this.irisX.set(this.curX);
+    this.irisY.set(this.curY);
+    this.settled = true;
+    this.lastFrame = 0;
+  };
 
   ngOnDestroy(): void {
     cancelAnimationFrame(this.rafId);

@@ -40,13 +40,11 @@ interface MultiAgentPersona {
   id: string;
   name: string;
   role: string;
-  personality: string;
-  duty: string;
+  tag: string;
   accent: string;
   irisInner: string;
   gazeClass: string;
   browAnimClass: string;
-  blinkDelay: string;
   highlightX: number;
   highlightY: number;
   irisRadius: number;
@@ -150,6 +148,18 @@ interface MultiAgentPersona {
       8%   { opacity: 0.55; }
       92%  { opacity: 0.55; }
       100% { transform: rotate(360deg); opacity: 0.0; }
+    }
+
+    .lp-eye-blink {
+      transform-origin: 200px 135px;
+      transform: scaleY(0);
+      animation: lpEyeBlink 6.4s ease-in-out infinite;
+      will-change: transform;
+    }
+    @keyframes lpEyeBlink {
+      0%, 92%, 100% { transform: scaleY(0); }
+      95% { transform: scaleY(1); }
+      98% { transform: scaleY(0); }
     }
 
     .node-pulse { animation: nodePulse 2.8s ease-in-out infinite; }
@@ -348,8 +358,8 @@ interface MultiAgentPersona {
 
     .multiagent-orbit {
       position: relative;
-      width: min(100%, 720px);
-      height: clamp(430px, 58vw, 520px);
+      width: min(100%, 900px);
+      height: clamp(440px, 52vw, 520px);
       margin-inline: auto;
     }
 
@@ -359,23 +369,30 @@ interface MultiAgentPersona {
     }
 
     .agent-link {
-      stroke: rgba(103, 232, 249, 0.28);
-      stroke-width: 1.3;
-      stroke-dasharray: 5 7;
-      animation: agentLinkFlow 2.8s linear infinite;
+      fill: none;
+      stroke-width: 1.4;
+      stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
+      animation: agentLinkPulse 3.6s ease-in-out infinite;
     }
 
-    .agent-link--warm { stroke: rgba(251, 191, 36, 0.35); animation-delay: -0.9s; }
-    .agent-link--rose { stroke: rgba(251, 113, 133, 0.35); animation-delay: -1.8s; }
+    .agent-link--d1 { animation-delay: -0.9s; }
+    .agent-link--d2 { animation-delay: -1.8s; }
+    .agent-link--d3 { animation-delay: -2.7s; }
 
-    @keyframes agentLinkFlow {
-      0% { stroke-dashoffset: 24; opacity: 0.35; }
-      50% { opacity: 0.85; }
-      100% { stroke-dashoffset: 0; opacity: 0.35; }
+    @keyframes agentLinkPulse {
+      0%, 100% { opacity: 0.45; }
+      50% { opacity: 0.9; }
     }
 
     .agent-packet {
-      filter: drop-shadow(0 0 4px currentColor);
+      filter: drop-shadow(0 0 5px currentColor);
+      animation: agentPacketFade 2.6s ease-in-out infinite;
+    }
+
+    @keyframes agentPacketFade {
+      0%, 100% { opacity: 0.55; }
+      50% { opacity: 1; }
     }
 
     .multiagent-hub-pulse {
@@ -397,10 +414,10 @@ interface MultiAgentPersona {
       position: absolute;
       z-index: 2;
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
-      gap: 0.65rem;
-      width: min(12.5rem, 31vw);
+      gap: 0.55rem;
+      width: clamp(16.5rem, 37%, 20.5rem);
       animation: agentNodeIn 0.85s cubic-bezier(0.22, 1, 0.36, 1) backwards;
     }
 
@@ -409,25 +426,16 @@ interface MultiAgentPersona {
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    .multiagent-node--top {
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      animation-name: agentNodeInTop;
-    }
-
-    @keyframes agentNodeInTop {
-      from { opacity: 0; transform: translateX(-50%) translateY(-14px) scale(0.94); }
-      to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-    }
-
-    .multiagent-node--left { bottom: 0; left: 0; }
-    .multiagent-node--right { bottom: 0; right: 0; }
+    .multiagent-node--tl { top: 0; left: 0; flex-direction: row; }
+    .multiagent-node--tr { top: 0; right: 0; flex-direction: row-reverse; }
+    .multiagent-node--bl { bottom: 0; left: 0; flex-direction: row; }
+    .multiagent-node--br { bottom: 0; right: 0; flex-direction: row-reverse; }
 
     .multiagent-eye-shell {
       position: relative;
-      width: clamp(76px, 17vw, 112px);
-      height: clamp(76px, 17vw, 112px);
+      flex-shrink: 0;
+      width: clamp(62px, 12vw, 88px);
+      height: clamp(62px, 12vw, 88px);
       animation: agentFloat 5.5s ease-in-out infinite;
     }
 
@@ -486,6 +494,7 @@ interface MultiAgentPersona {
     .ma-brows--calm { animation: browCalm 4.8s ease-in-out infinite; }
     .ma-brows--vigia { animation: browVigia 2.6s ease-in-out infinite; }
     .ma-brows--rastreador { animation: browRastreador 3.2s ease-in-out infinite; }
+    .ma-brows--sorpresa { animation: browSorpresa 3.8s ease-in-out infinite; }
 
     @keyframes browCalm {
       0%, 100% { transform: translateY(0); }
@@ -504,6 +513,11 @@ interface MultiAgentPersona {
       65% { transform: translateY(-0.5px); }
     }
 
+    @keyframes browSorpresa {
+      0%, 100% { transform: translateY(0); }
+      45% { transform: translateY(-1px); }
+    }
+
     .ma-gaze {
       transform-origin: 50px 50px;
       transform-box: fill-box;
@@ -512,6 +526,7 @@ interface MultiAgentPersona {
     .ma-gaze--centinela { animation: gazeCentinela 6s ease-in-out infinite; }
     .ma-gaze--vigia { animation: gazeVigia 4.5s ease-in-out infinite; }
     .ma-gaze--rastreador { animation: gazeRastreador 4.8s ease-in-out infinite; }
+    .ma-gaze--relato { animation: gazeRelato 5.4s ease-in-out infinite; }
 
     @keyframes gazeCentinela {
       0%, 100% { transform: translate(0, 4.5px); }
@@ -533,18 +548,10 @@ interface MultiAgentPersona {
       78% { transform: translate(-5.2px, -4.2px); }
     }
 
-    .ma-blink-lid {
-      transform-origin: 50px 32px;
-      transform-box: fill-box;
-      transform: scaleY(0);
-      animation: agentBlink 7s ease-in-out infinite;
-    }
-
-    @keyframes agentBlink {
-      0%, 93%, 100% { transform: scaleY(0); }
-      94.5% { transform: scaleY(0.08); }
-      96% { transform: scaleY(1); }
-      97.5% { transform: scaleY(0.05); }
+    @keyframes gazeRelato {
+      0%, 100% { transform: translate(4px, -0.5px); }
+      40% { transform: translate(5.5px, 0.5px); }
+      75% { transform: translate(3px, 0); }
     }
 
     .ma-lid-squint {
@@ -559,13 +566,20 @@ interface MultiAgentPersona {
     }
 
     .multiagent-card {
-      text-align: center;
-      padding: 0.75rem 0.85rem;
+      flex: 1;
+      min-width: 0;
+      text-align: left;
+      padding: 0.7rem 0.85rem;
       border-radius: 0.85rem;
       background: var(--mkt-glass);
       border: 1px solid var(--mkt-glass-border);
       backdrop-filter: blur(10px);
       transition: border-color 280ms ease, box-shadow 280ms ease, transform 280ms ease;
+    }
+
+    .multiagent-node--tr .multiagent-card,
+    .multiagent-node--br .multiagent-card {
+      text-align: right;
     }
 
     .multiagent-node:hover .multiagent-card {
@@ -585,9 +599,9 @@ interface MultiAgentPersona {
       .ma-scan-arc,
       .ma-brows,
       .ma-gaze,
-      .ma-blink-lid,
       .ma-lid-squint,
-      .multiagent-iris-pulse {
+      .multiagent-iris-pulse,
+      .lp-eye-blink {
         animation: none !important;
       }
     }
@@ -612,10 +626,21 @@ interface MultiAgentPersona {
     .multiagent-hub {
       position: absolute;
       left: 50%;
-      top: 54%;
+      top: 50%;
       transform: translate(-50%, -50%);
       z-index: 1;
       pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .multiagent-mod-eye {
+      width: clamp(108px, 16vw, 156px);
+      aspect-ratio: 1;
+      filter: drop-shadow(0 0 30px rgba(34, 211, 238, 0.28));
+      animation: agentFloat 6s ease-in-out infinite;
     }
 
     @media (max-width: 639px) {
@@ -642,11 +667,18 @@ interface MultiAgentPersona {
         animation: agentNodeIn 0.85s cubic-bezier(0.22, 1, 0.36, 1) backwards;
       }
 
-      .multiagent-node--top,
-      .multiagent-node--left,
-      .multiagent-node--right {
+      .multiagent-node--tl,
+      .multiagent-node--tr,
+      .multiagent-node--bl,
+      .multiagent-node--br {
         transform: none;
         animation-name: agentNodeIn;
+        flex-direction: row;
+      }
+
+      .multiagent-node--tr .multiagent-card,
+      .multiagent-node--br .multiagent-card {
+        text-align: left;
       }
 
       .multiagent-eye-shell {
@@ -760,6 +792,9 @@ interface MultiAgentPersona {
              [style.transform]="eyeTransform()">
           <svg viewBox="0 0 400 400" class="w-full h-full" aria-hidden="true">
             <defs>
+              <clipPath id="lp-eye-clip">
+                <path d="M70 200 Q200 70 330 200 Q200 330 70 200 Z"/>
+              </clipPath>
               <radialGradient id="lp-iris" cx="38%" cy="32%" r="68%">
                 <stop offset="0%"  stop-color="#a5f3fc"/>
                 <stop offset="22%" stop-color="#22d3ee"/>
@@ -798,8 +833,8 @@ interface MultiAgentPersona {
                   stroke="var(--mkt-eye-frame-stroke)"
                   stroke-width="1.6"/>
 
-            <!-- iris (tracks mouse via transform on outer group) -->
-            <g [attr.transform]="irisTransform()" style="transition: transform 90ms linear;">
+            <!-- iris (tracks mouse via a spring-smoothed transform on the outer group) -->
+            <g [attr.transform]="irisTransform()" style="will-change: transform;">
               <circle cx="200" cy="200" r="50" fill="url(#lp-iris)" filter="url(#lp-glow)"/>
               <circle cx="200" cy="200" r="48" fill="none" stroke="rgba(165, 243, 252, 0.45)" stroke-width="1.1" class="iris-pulse"/>
               <circle cx="200" cy="200" r="42" fill="none" stroke="rgba(34, 211, 238, 0.32)" stroke-width="0.8"/>
@@ -807,6 +842,15 @@ interface MultiAgentPersona {
               <circle cx="200" cy="200" r="20" fill="url(#lp-pupil)"/>
               <ellipse cx="188" cy="190" rx="8" ry="5" fill="white" opacity="0.62" transform="rotate(-22 188 190)"/>
               <circle cx="211" cy="197" r="2.6" fill="white" opacity="0.4"/>
+            </g>
+
+            <!-- eyelid (blink) -->
+            <g clip-path="url(#lp-eye-clip)">
+              <path d="M70 200 Q200 70 330 200 Q200 330 70 200 Z"
+                    fill="var(--mkt-eye-socket-fill)"
+                    stroke="var(--mkt-eye-frame-stroke)"
+                    stroke-width="1.6"
+                    class="lp-eye-blink"/>
             </g>
 
             <!-- crosshair ticks -->
@@ -886,36 +930,114 @@ interface MultiAgentPersona {
 
       <div class="relative max-w-[1040px] mx-auto px-4 sm:px-6 lg:px-10">
         <div class="text-center mb-10 sm:mb-14 max-w-2xl mx-auto reveal" #reveal>
-          <div class="text-mkt-accent-ink mkt-eyebrow text-[11px] uppercase tracking-[0.18em] mb-3">Arquitectura multiagente</div>
+          <div class="text-mkt-accent-ink mkt-eyebrow text-[11px] uppercase tracking-[0.18em] mb-3">Panel multiagente</div>
           <h2 class="text-[30px] sm:text-[38px] lg:text-[44px] font-semibold tracking-tight text-mkt-ink leading-[1.12]">
-            Tres ojos, un mismo caso.
+            Cinco agentes, un mismo caso.
           </h2>
           <p class="mt-4 text-mkt-ink-3 text-[15px] sm:text-[15.5px] leading-relaxed">
-            Cada agente tiene su personalidad y especialidad. Se consultan entre sí
-            antes de entregar una respuesta clara al analista.
+            Reglas, modelo, narrativa, documentos y un <span class="text-mkt-accent-ink font-medium">moderador de consenso</span>
+            analizan el reclamo en paralelo, debaten cuando discrepan y sintetizan la alerta
+            — siempre para revisión humana.
           </p>
         </div>
 
         <div class="multiagent-orbit reveal" #reveal>
-          <svg class="multiagent-links absolute inset-0 w-full h-full" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-            <line x1="200" y1="62" x2="92" y2="238" class="agent-link" />
-            <line x1="200" y1="62" x2="308" y2="238" class="agent-link agent-link--warm" />
-            <line x1="92" y1="238" x2="308" y2="238" class="agent-link agent-link--rose" />
-            <circle r="2.5" class="agent-packet" fill="#67e8f9">
-              <animateMotion dur="2.6s" repeatCount="indefinite" path="M200,62 L92,238" />
+          <svg class="multiagent-links absolute inset-0 w-full h-full" viewBox="0 0 900 520" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="ma-link-tl" gradientUnits="userSpaceOnUse" x1="392" y1="188" x2="88" y2="85">
+                <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#60a5fa" stop-opacity="0.18"/>
+              </linearGradient>
+              <linearGradient id="ma-link-tr" gradientUnits="userSpaceOnUse" x1="508" y1="188" x2="812" y2="85">
+                <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#a78bfa" stop-opacity="0.18"/>
+              </linearGradient>
+              <linearGradient id="ma-link-bl" gradientUnits="userSpaceOnUse" x1="392" y1="332" x2="88" y2="435">
+                <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.18"/>
+              </linearGradient>
+              <linearGradient id="ma-link-br" gradientUnits="userSpaceOnUse" x1="508" y1="332" x2="812" y2="435">
+                <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#fb7185" stop-opacity="0.18"/>
+              </linearGradient>
+            </defs>
+
+            <path d="M88,85 C 210,88 318,148 392,188" class="agent-link" stroke="url(#ma-link-tl)" />
+            <path d="M812,85 C 690,88 582,148 508,188" class="agent-link agent-link--d1" stroke="url(#ma-link-tr)" />
+            <path d="M88,435 C 210,432 318,372 392,332" class="agent-link agent-link--d2" stroke="url(#ma-link-bl)" />
+            <path d="M812,435 C 690,432 582,372 508,332" class="agent-link agent-link--d3" stroke="url(#ma-link-br)" />
+
+            <circle r="2.5" class="agent-packet" fill="#60a5fa">
+              <animateMotion dur="3s" repeatCount="indefinite" path="M88,85 C 210,88 318,148 392,188" />
+            </circle>
+            <circle r="2.5" class="agent-packet" fill="#a78bfa">
+              <animateMotion dur="3s" begin="0.75s" repeatCount="indefinite" path="M812,85 C 690,88 582,148 508,188" />
             </circle>
             <circle r="2.5" class="agent-packet" fill="#fbbf24">
-              <animateMotion dur="2.6s" begin="0.8s" repeatCount="indefinite" path="M200,62 L308,238" />
+              <animateMotion dur="3s" begin="1.5s" repeatCount="indefinite" path="M88,435 C 210,432 318,372 392,332" />
             </circle>
             <circle r="2.5" class="agent-packet" fill="#fb7185">
-              <animateMotion dur="2.6s" begin="1.6s" repeatCount="indefinite" path="M92,238 L308,238" />
+              <animateMotion dur="3s" begin="2.25s" repeatCount="indefinite" path="M812,435 C 690,432 582,372 508,332" />
             </circle>
           </svg>
 
           <div class="multiagent-hub">
-            <div class="multiagent-hub-pulse rounded-full border border-mkt-accent-border bg-mkt-chip px-3 py-1.5 text-center backdrop-blur-sm">
-              <div class="badge-mono text-[9px] text-mkt-ink-4 uppercase tracking-wider">Orquestación</div>
-              <div class="text-[11px] font-medium text-mkt-accent-ink mt-0.5">LangGraph</div>
+            <div class="multiagent-mod-eye" aria-hidden="true">
+              <svg viewBox="0 0 400 400" class="w-full h-full">
+                <defs>
+                  <radialGradient id="ma-mod-iris" cx="38%" cy="32%" r="68%">
+                    <stop offset="0%"  stop-color="#a5f3fc"/>
+                    <stop offset="22%" stop-color="#22d3ee"/>
+                    <stop offset="55%" stop-color="#0e7490"/>
+                    <stop offset="100%" stop-color="#082f49"/>
+                  </radialGradient>
+                  <radialGradient id="ma-mod-pupil" cx="36%" cy="30%" r="72%">
+                    <stop offset="0%"  stop-color="#0f172a"/>
+                    <stop offset="100%" stop-color="#000000"/>
+                  </radialGradient>
+                  <filter id="ma-mod-glow" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="b"/>
+                    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                </defs>
+
+                <g class="ray-scan" stroke="var(--mkt-eye-frame-stroke)" stroke-width="1.6" fill="none">
+                  <circle cx="200" cy="200" r="184" stroke-dasharray="2 18"/>
+                </g>
+
+                <circle cx="200" cy="200" r="190" fill="none" stroke="var(--mkt-eye-ring-stroke)" stroke-width="1"/>
+                <circle cx="200" cy="200" r="160" fill="none" stroke="var(--mkt-eye-ring-stroke)" stroke-width="1" stroke-dasharray="6 6"/>
+                <circle cx="200" cy="200" r="130" fill="none" stroke="var(--mkt-eye-ring-stroke)" stroke-width="1"/>
+
+                <polygon points="200,46 320,116 320,284 200,354 80,284 80,116"
+                         fill="none" stroke="var(--mkt-eye-frame-stroke)" stroke-width="1.4"/>
+                <polygon points="200,76 296,131 296,269 200,324 104,269 104,131"
+                         fill="none" stroke="var(--mkt-eye-ring-stroke)" stroke-width="1"/>
+
+                <path d="M70 200 Q200 70 330 200 Q200 330 70 200 Z"
+                      fill="var(--mkt-eye-socket-fill)" stroke="var(--mkt-eye-frame-stroke)" stroke-width="1.6"/>
+
+                <g [attr.transform]="irisTransform()" style="will-change: transform;">
+                  <circle cx="200" cy="200" r="50" fill="url(#ma-mod-iris)" filter="url(#ma-mod-glow)"/>
+                  <circle cx="200" cy="200" r="48" fill="none" stroke="rgba(165, 243, 252, 0.45)" stroke-width="1.1" class="iris-pulse"/>
+                  <circle cx="200" cy="200" r="42" fill="none" stroke="rgba(34, 211, 238, 0.32)" stroke-width="0.8"/>
+                  <circle cx="200" cy="200" r="34" fill="none" stroke="rgba(34, 211, 238, 0.22)" stroke-width="0.6"/>
+                  <circle cx="200" cy="200" r="20" fill="url(#ma-mod-pupil)"/>
+                  <ellipse cx="188" cy="190" rx="8" ry="5" fill="white" opacity="0.62" transform="rotate(-22 188 190)"/>
+                  <circle cx="211" cy="197" r="2.6" fill="white" opacity="0.4"/>
+                </g>
+
+                <g stroke="var(--mkt-eye-frame-stroke)" stroke-width="1.4">
+                  <line x1="200" y1="20" x2="200" y2="40"/>
+                  <line x1="200" y1="360" x2="200" y2="380"/>
+                  <line x1="20" y1="200" x2="40" y2="200"/>
+                  <line x1="360" y1="200" x2="380" y2="200"/>
+                </g>
+              </svg>
+            </div>
+            <div class="multiagent-hub-pulse rounded-xl border border-mkt-accent-border bg-mkt-chip px-4 py-2 text-center backdrop-blur-sm">
+              <div class="text-[16px] sm:text-[17px] font-semibold text-mkt-ink leading-tight tracking-tight">Naelis</div>
+              <div class="text-[11.5px] sm:text-[12px] text-mkt-ink-2 mt-0.5 leading-snug">Moderador de consenso</div>
             </div>
           </div>
 
@@ -944,6 +1066,16 @@ interface MultiAgentPersona {
                   <circle cx="50" cy="50" r="44" fill="none" [attr.stroke]="agent.accent"
                           stroke-width="1.6" stroke-dasharray="2 20" stroke-linecap="round"
                           class="ma-scan-arc" [style.animation-delay]="agent.breatheDelay"/>
+                  <polygon points="50,11 84,30 84,70 50,89 16,70 16,30"
+                           fill="none" [attr.stroke]="agent.accent" stroke-opacity="0.34" stroke-width="0.8"/>
+                  <polygon points="50,18 77,34 77,66 50,82 23,66 23,34"
+                           fill="none" [attr.stroke]="agent.accent" stroke-opacity="0.18" stroke-width="0.6"/>
+                  <g [attr.stroke]="agent.accent" stroke-width="1" stroke-opacity="0.55" stroke-linecap="round">
+                    <line x1="50" y1="4" x2="50" y2="9"/>
+                    <line x1="50" y1="91" x2="50" y2="96"/>
+                    <line x1="4" y1="50" x2="9" y2="50"/>
+                    <line x1="91" y1="50" x2="96" y2="50"/>
+                  </g>
                   <g [class]="'ma-brows ' + agent.browAnimClass" [style.animation-delay]="agent.breatheDelay">
                     <path [attr.d]="agent.browLeft"
                           class="multiagent-brow"
@@ -974,6 +1106,8 @@ interface MultiAgentPersona {
                               [attr.fill]="'url(#ma-iris-' + agent.id + ')'"
                               class="multiagent-iris-pulse"
                               [style.animation-delay]="agent.breatheDelay"/>
+                      <circle cx="50" cy="50" [attr.r]="agent.irisRadius * 0.82" fill="none"
+                              stroke="rgba(165, 243, 252, 0.4)" stroke-width="0.5"/>
                       <circle cx="50" cy="50" [attr.r]="agent.irisRadius * 0.46" fill="#020617"/>
                       <circle [attr.cx]="agent.highlightX" [attr.cy]="agent.highlightY" r="1.8" fill="white" opacity="0.62"/>
                     </g>
@@ -981,20 +1115,15 @@ interface MultiAgentPersona {
                       <path [attr.d]="agent.lidPath" fill="var(--mkt-eye-socket)" class="ma-lid-squint"
                             [style.animation-delay]="agent.breatheDelay"/>
                     }
-                    <path d="M18 50 Q50 22 82 50 Q50 78 18 50 Z"
-                          fill="currentColor"
-                          class="ma-blink-lid"
-                          [style.animation-delay]="agent.blinkDelay"/>
                   </g>
                 </svg>
               </div>
 
               <div class="multiagent-card w-full">
-                <div class="text-[14px] sm:text-[15px] font-semibold text-mkt-ink leading-tight">{{ agent.name }}</div>
-                <div class="text-[10.5px] uppercase tracking-[0.12em] mt-1 font-medium"
-                     [style.color]="agent.accent">{{ agent.role }}</div>
-                <p class="text-[12px] sm:text-[12.5px] text-mkt-ink-2/90 mt-2 leading-snug italic">"{{ agent.personality }}"</p>
-                <p class="text-[11px] sm:text-[11.5px] text-mkt-ink-4 mt-1.5 leading-snug">{{ agent.duty }}</p>
+                <div class="text-[17px] sm:text-[19px] font-semibold text-mkt-ink leading-tight tracking-tight">{{ agent.name }}</div>
+                <div class="text-[12px] sm:text-[12.5px] text-mkt-ink-2 mt-0.5 leading-snug">{{ agent.role }}</div>
+                <div class="text-[10px] uppercase tracking-[0.12em] mt-1.5 font-semibold"
+                     [style.color]="agent.accent">{{ agent.tag }}</div>
               </div>
             </article>
           }
@@ -1371,11 +1500,15 @@ export class LandingPage implements AfterViewInit, OnDestroy {
     () => `translate3d(${this.mouseX() * 18}px, ${this.mouseY() * 18 + this.scrollY() * -0.08}px, 0)`,
   );
 
+  // Spring-smoothed iris position — decoupled from the raw mouse signals so the
+  // parallax layers stay snappy while the iris glides with natural inertia.
+  protected readonly irisX = signal(0);
+  protected readonly irisY = signal(0);
+
   protected readonly irisTransform = computed(() => {
-    // Mouse position is normalised to roughly [-0.5, 0.5]. Scale to a range that
-    // keeps the iris inside the eye almond (radius 50, almond narrows above ~y=135).
-    const mx = (this.mouseX() * 22).toFixed(1);
-    const my = (this.mouseY() * 14).toFixed(1);
+    // Range keeps the iris inside the eye almond (radius 50, almond narrows above ~y=135).
+    const mx = (this.irisX() * 22).toFixed(2);
+    const my = (this.irisY() * 14).toFixed(2);
     return `translate(${mx}, ${my})`;
   });
 
@@ -1528,65 +1661,77 @@ export class LandingPage implements AfterViewInit, OnDestroy {
 
   protected readonly multiAgents: readonly MultiAgentPersona[] = [
     {
-      id: 'centinela',
-      name: 'Centinela',
-      role: 'Orquestador',
-      personality: 'Sereno pero firme: mira el panorama y decide el siguiente paso.',
-      duty: 'Coordina herramientas y compone la respuesta al analista.',
-      accent: '#a78bfa',
-      irisInner: '#5b21b6',
+      id: 'reglas',
+      name: 'Leslie',
+      role: 'Analista de Reglas',
+      tag: 'Reglas FS / RF',
+      accent: '#60a5fa',
+      irisInner: '#1e40af',
       gazeClass: 'ma-gaze--centinela',
       browAnimClass: 'ma-brows--calm',
-      blinkDelay: '0s',
       highlightX: 47.2,
       highlightY: 48,
       irisRadius: 11.5,
-      browLeft: 'M 24 18 L 41 16',
-      browRight: 'M 76 18 L 59 16',
-      slotClass: 'multiagent-node--top',
+      browLeft: 'M 23 20 L 42 19',
+      browRight: 'M 77 20 L 58 19',
+      slotClass: 'multiagent-node--tl',
       breatheDelay: '0ms',
       nodeDelay: '0.15s',
     },
     {
-      id: 'vigia',
-      name: 'Vigía',
-      role: 'Scoring y reglas',
-      personality: 'Escéptico y exigente: frunce el ceño ante cada señal dudosa.',
-      duty: 'Evalúa reglas, ML y anomalías de cada reclamo.',
-      accent: '#fbbf24',
-      irisInner: '#b45309',
+      id: 'ml',
+      name: 'Naomi',
+      role: 'Analista de ML',
+      tag: 'Modelo y anomalía',
+      accent: '#a78bfa',
+      irisInner: '#5b21b6',
       gazeClass: 'ma-gaze--vigia',
       browAnimClass: 'ma-brows--vigia',
-      blinkDelay: '2.2s',
       highlightX: 48.8,
       highlightY: 46.2,
       irisRadius: 10.5,
       browLeft: 'M 21 15 L 39 23',
       browRight: 'M 79 15 L 61 23',
       lidPath: 'M 24 41 Q 50 35 76 41 L 72 47 Q 50 43 28 47 Z',
-      slotClass: 'multiagent-node--left',
+      slotClass: 'multiagent-node--tr',
       breatheDelay: '600ms',
       nodeDelay: '0.35s',
     },
     {
-      id: 'rastreador',
-      name: 'Rastreador',
-      role: 'Patrones y red',
-      personality: 'Curioso e inquieto: escanea conexiones que otros no ven.',
-      duty: 'Detecta similitudes y vínculos sospechosos entre casos.',
+      id: 'narrativa',
+      name: 'Ámbar',
+      role: 'Analista de Narrativa',
+      tag: 'Relato y similares',
+      accent: '#fbbf24',
+      irisInner: '#b45309',
+      gazeClass: 'ma-gaze--relato',
+      browAnimClass: 'ma-brows--sorpresa',
+      highlightX: 48.5,
+      highlightY: 47,
+      irisRadius: 12,
+      browLeft: 'M 24 18 L 41 17',
+      browRight: 'M 76 11 L 59 13',
+      slotClass: 'multiagent-node--bl',
+      breatheDelay: '900ms',
+      nodeDelay: '0.55s',
+    },
+    {
+      id: 'documentos_red',
+      name: 'Iris',
+      role: 'Analista de Documentos',
+      tag: 'Documentos y red',
       accent: '#fb7185',
       irisInner: '#be123c',
       gazeClass: 'ma-gaze--rastreador',
       browAnimClass: 'ma-brows--rastreador',
-      blinkDelay: '4.4s',
       highlightX: 45.2,
       highlightY: 46.2,
       irisRadius: 12.5,
       browLeft: 'M 20 12 Q 34 8 43 11',
       browRight: 'M 77 17 L 59 16',
-      slotClass: 'multiagent-node--right',
+      slotClass: 'multiagent-node--br',
       breatheDelay: '1200ms',
-      nodeDelay: '0.55s',
+      nodeDelay: '0.75s',
     },
   ];
 
@@ -1641,6 +1786,18 @@ export class LandingPage implements AfterViewInit, OnDestroy {
   private observer: IntersectionObserver | null = null;
   private cleanupFns: Array<() => void> = [];
 
+  // Iris spring state — target follows the cursor, cur/vel glide toward it.
+  private irisTargetX = 0;
+  private irisTargetY = 0;
+  private irisCurX = 0;
+  private irisCurY = 0;
+  private irisVelX = 0;
+  private irisVelY = 0;
+  private irisRaf = 0;
+  private irisLastFrame = 0;
+  private irisSettled = true;
+  private reducedMotion = false;
+
   ngAfterViewInit(): void {
     // If the user is already authenticated, send them straight to their bandeja
     // — the landing is meant for visitors that have not signed in yet.
@@ -1649,12 +1806,26 @@ export class LandingPage implements AfterViewInit, OnDestroy {
       return;
     }
 
+    this.reducedMotion =
+      this.doc.defaultView?.matchMedia('(prefers-reduced-motion: reduce)').matches ?? false;
+
     this.zone.runOutsideAngular(() => {
       const onMouse = (event: MouseEvent): void => {
         const w = window.innerWidth || 1;
         const h = window.innerHeight || 1;
         this.pendingX = event.clientX / w - 0.5;
         this.pendingY = event.clientY / h - 0.5;
+
+        this.irisTargetX = this.pendingX;
+        this.irisTargetY = this.pendingY;
+        if (this.reducedMotion) {
+          this.irisCurX = this.irisTargetX;
+          this.irisCurY = this.irisTargetY;
+          this.irisX.set(this.irisCurX);
+          this.irisY.set(this.irisCurY);
+        } else {
+          this.startIrisSpring();
+        }
 
         cancelAnimationFrame(this.rafId);
         this.rafId = requestAnimationFrame(() => {
@@ -1688,8 +1859,49 @@ export class LandingPage implements AfterViewInit, OnDestroy {
     this.doc.querySelectorAll('.reveal').forEach((el) => this.observer?.observe(el));
   }
 
+  private startIrisSpring(): void {
+    if (!this.irisSettled) return;
+    this.irisSettled = false;
+    this.irisLastFrame = 0;
+    this.irisRaf = requestAnimationFrame(this.irisTick);
+  }
+
+  // Slightly underdamped spring → the iris glides in with a soft, natural settle.
+  private readonly irisTick = (now: number): void => {
+    const dt = this.irisLastFrame ? Math.min((now - this.irisLastFrame) / 1000, 0.032) : 0.016;
+    this.irisLastFrame = now;
+
+    const stiffness = 130;
+    const damping = 20;
+
+    this.irisVelX += ((this.irisTargetX - this.irisCurX) * stiffness - this.irisVelX * damping) * dt;
+    this.irisVelY += ((this.irisTargetY - this.irisCurY) * stiffness - this.irisVelY * damping) * dt;
+    this.irisCurX += this.irisVelX * dt;
+    this.irisCurY += this.irisVelY * dt;
+
+    this.irisX.set(this.irisCurX);
+    this.irisY.set(this.irisCurY);
+
+    const offset = Math.hypot(this.irisTargetX - this.irisCurX, this.irisTargetY - this.irisCurY);
+    const speed = Math.hypot(this.irisVelX, this.irisVelY);
+    if (offset > 0.0006 || speed > 0.002) {
+      this.irisRaf = requestAnimationFrame(this.irisTick);
+      return;
+    }
+
+    this.irisCurX = this.irisTargetX;
+    this.irisCurY = this.irisTargetY;
+    this.irisVelX = 0;
+    this.irisVelY = 0;
+    this.irisX.set(this.irisCurX);
+    this.irisY.set(this.irisCurY);
+    this.irisSettled = true;
+    this.irisLastFrame = 0;
+  };
+
   ngOnDestroy(): void {
     cancelAnimationFrame(this.rafId);
+    cancelAnimationFrame(this.irisRaf);
     this.cleanupFns.forEach((fn) => fn());
     this.observer?.disconnect();
   }
