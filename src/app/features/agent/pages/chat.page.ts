@@ -231,6 +231,7 @@ function generateUuid(): string {
             (ttsToggle)="onTtsToggle($event)"
             (toggleChart)="store.toggleChart($event)"
             (openCanvas)="onOpenCanvas($event)"
+            (chartRendered)="store.setLatestChartImage($event)"
           />
         }
         @if (store.thinking()) {
@@ -426,12 +427,12 @@ function generateUuid(): string {
         aria-label="Panel de documento"
       >
         <document-canvas-panel
-          #canvasPanel
           class="flex-1 min-h-0 flex flex-col"
           [doc]="activeDoc"
+          [chartImage]="store.latestChartImage()"
           (close)="store.closeDocument()"
           (apply)="onCanvasApply(activeDoc.id, $event)"
-          (improve)="onCanvasImprove(activeDoc.id, $event.instrucciones, canvasPanel)"
+          (improveInMainChat)="onImproveInMainChat($event)"
         />
       </aside>
     }
@@ -733,16 +734,23 @@ export class ChatPage implements AfterViewChecked {
     this.store.updateDocumentContent(docId, markdown);
   }
 
-  /** "Mejorar con IA" — append a NEW attachment + chat reference card via the store. */
-  protected async onCanvasImprove(
-    docId: string,
-    instrucciones: string | null,
-    panel: DocumentCanvasPanel,
-  ): Promise<void> {
-    try {
-      await this.store.improveDocument(docId, instrucciones);
-    } catch {
-      panel.improveFailed();
+  /**
+   * CHANGE 1 — "Mejorar con IA" routes through the MAIN chat. Prefill + focus the
+   * main composer with an improve prompt; stash the full document so the next
+   * `send()` rides it in `document_context` (the MAIN agent improves it).
+   */
+  protected onImproveInMainChat(doc: { titulo: string; contenidoMarkdown: string }): void {
+    this.store.setPendingDocumentContext({
+      titulo: doc.titulo,
+      contenido_markdown: doc.contenidoMarkdown,
+    });
+    this.input.set(`Mejorá el documento «${doc.titulo}»: `);
+    const textarea = this.textarea()?.nativeElement;
+    if (textarea) {
+      textarea.focus();
+      // Caret at the end so the analyst types their instruction right after the prompt.
+      const len = textarea.value.length;
+      queueMicrotask(() => textarea.setSelectionRange(len, len));
     }
   }
 

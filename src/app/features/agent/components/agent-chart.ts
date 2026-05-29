@@ -298,6 +298,9 @@ function buildOption(payload: ChartPayload, type: ChartType): EChartsOption {
 export class AgentChart implements OnDestroy {
   readonly payload = input.required<ChartPayload>();
   readonly openCase = output<string>();
+  /** CHANGE 2 — emits the chart as a PNG data URL whenever it (re)renders, so the
+   *  page can register it on the store for embedding in the downloaded .docx. */
+  readonly chartRendered = output<string>();
 
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('host');
   protected readonly selectedType = linkedSignal<ChartType>(() => this.payload().chart_type);
@@ -315,6 +318,7 @@ export class AgentChart implements OnDestroy {
       this.echartsModule = echarts;
       this.chart = echarts.init(this.host().nativeElement, undefined, { renderer: 'canvas' });
       this.chart.setOption(this.option());
+      this.emitChartImage();
       this.chart.on('click', (params) => {
         if (params.componentType !== 'series') return;
         let label = String(params.name ?? '');
@@ -344,8 +348,16 @@ export class AgentChart implements OnDestroy {
       this.setOptionRaf = requestAnimationFrame(() => {
         this.setOptionRaf = null;
         this.chart?.setOption(option, { notMerge: true, lazyUpdate: true });
+        this.emitChartImage();
       });
     });
+  }
+
+  /** Capture the current chart as a white-background PNG data URL and emit it. */
+  private emitChartImage(): void {
+    if (!this.chart) return;
+    const dataUrl = this.chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+    if (dataUrl) this.chartRendered.emit(dataUrl);
   }
 
   ngOnDestroy(): void {
