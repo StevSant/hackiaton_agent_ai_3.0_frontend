@@ -83,7 +83,7 @@ import { slugify } from '../utils/message-to-markdown';
               class="inline-flex items-center gap-1.5 text-[12px] text-ink-2 px-2.5 py-1.5 rounded-lg border border-line cursor-pointer hover:bg-hover"
               [class.text-brand-ink]="includeChart()"
               [class.bg-brand-soft]="includeChart()"
-              title="Incluir el gráfico en el documento Word"
+              title="Incluir el gráfico en el documento Word (si lo desactivás, se elimina la referencia)"
             >
               <input
                 type="checkbox"
@@ -94,6 +94,22 @@ import { slugify } from '../utils/message-to-markdown';
               Incluir gráfico
             </label>
           }
+
+          <!-- Ocultar tablas — omit pipe tables from the downloaded Word. -->
+          <label
+            class="inline-flex items-center gap-1.5 text-[12px] text-ink-2 px-2.5 py-1.5 rounded-lg border border-line cursor-pointer hover:bg-hover"
+            [class.text-brand-ink]="hideTables()"
+            [class.bg-brand-soft]="hideTables()"
+            title="No incluir las tablas en el documento Word"
+          >
+            <input
+              type="checkbox"
+              class="accent-brand"
+              [checked]="hideTables()"
+              (change)="hideTables.set($any($event.target).checked)"
+            />
+            Ocultar tablas
+          </label>
 
           <!-- Download -->
           <button
@@ -234,6 +250,8 @@ export class DocumentCanvasPanel implements OnChanges {
   protected readonly downloadError = signal(false);
   /** CHANGE 2 — whether to embed the chart image in the downloaded .docx. */
   protected readonly includeChart = signal(false);
+  /** When true, pipe tables are omitted from the downloaded .docx. */
+  protected readonly hideTables = signal(false);
   /** Snapshot of the rendered HTML used to seed the contenteditable on edit entry. */
   protected readonly renderedHtml = signal('');
 
@@ -297,6 +315,7 @@ export class DocumentCanvasPanel implements OnChanges {
           titulo: this.doc().titulo,
           contenido_markdown: this.doc().contenidoMarkdown,
           chart_image_base64: this.includeChart() && chart ? chart : null,
+          include_tables: !this.hideTables(),
         }),
       );
       const url = URL.createObjectURL(blob);
