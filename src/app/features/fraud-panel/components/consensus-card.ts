@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { RiskBadge } from '@shared/ui/risk-badge';
-import { PanelConsensus } from '../models/panel-stream-event.model';
+import { PanelConsensus } from '../models';
 
 @Component({
   selector: 'app-consensus-card',

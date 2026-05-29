@@ -3,7 +3,8 @@ import { RouterLink } from '@angular/router';
 
 import { Icon } from '@shared/ui/icon';
 import { RiskBadge } from '@shared/ui/risk-badge';
-import type { Claim } from '@shared/models';
+import type { Claim, PanelLiveAgent } from '@shared/models';
+import type { RiskTier } from '@shared/utils';
 
 /**
  * Inline summary of the multi-agent panel debate on the claim detail. This is
@@ -94,11 +95,47 @@ import type { Claim } from '@shared/models';
           </p>
         </div>
       } @else if (running()) {
-        <div class="px-5 pt-2.5 pb-5 flex items-center gap-2.5 text-[13px] leading-relaxed text-ink-2">
-          <ui-icon name="progress_activity" [size]="16" class="animate-spin" style="color: var(--brand-ink)" />
-          Analizando con multi-agentes — cinco agentes de IA (reglas, ML/anomalía, narrativa,
-          documentos/red y un moderador de consenso) están debatiendo este caso. El consenso
-          aparecerá aquí en unos segundos.
+        <div class="px-5 pt-2.5 pb-5 flex flex-col gap-3">
+          @if (liveAgents().length) {
+            <div class="flex flex-wrap gap-2">
+              @for (a of liveAgents(); track a.agentId) {
+                <span
+                  class="inline-flex items-center gap-1.5 text-[12px] px-2 py-1 rounded-full border border-line bg-soft"
+                >
+                  @switch (a.status) {
+                    @case ('voto') {
+                      <span class="w-2 h-2 rounded-full" [class]="dotClass(a.nivel)"></span>
+                    }
+                    @case ('fallo') {
+                      <ui-icon name="error" [size]="13" class="text-tier-red" />
+                    }
+                    @case ('pensando') {
+                      <ui-icon
+                        name="progress_activity"
+                        [size]="13"
+                        class="animate-spin"
+                        style="color: var(--brand-ink)"
+                      />
+                    }
+                    @default {
+                      <ui-icon name="schedule" [size]="13" class="text-ink-3" />
+                    }
+                  }
+                  <span class="text-ink-2">{{ a.displayName }}</span>
+                </span>
+              }
+            </div>
+          }
+          <p class="flex items-center gap-2 text-[12.5px] leading-relaxed text-ink-3">
+            <ui-icon
+              name="progress_activity"
+              [size]="15"
+              class="animate-spin shrink-0"
+              style="color: var(--brand-ink)"
+            />
+            Los agentes (reglas, ML/anomalía, narrativa, documentos/red) debaten este caso; el
+            moderador emitirá el consenso aquí en unos segundos.
+          </p>
         </div>
       } @else {
         <div class="px-5 pt-2.5 pb-5 text-[13px] leading-relaxed text-ink-3">
@@ -115,6 +152,20 @@ export class PanelSummaryCard {
   // True while the panel auto-run is in flight for this claim (no cached
   // consensus yet) — drives the "analizando con multi-agentes…" state.
   readonly running = input<boolean>(false);
+  // Per-agent live status while the panel runs — shows the specialists lighting
+  // up (pendiente → pensando → voto) instead of a static spinner.
+  readonly liveAgents = input<PanelLiveAgent[]>([]);
+
+  protected dotClass(nivel?: RiskTier): string {
+    switch (nivel) {
+      case 'rojo':
+        return 'bg-tier-red';
+      case 'amarillo':
+        return 'bg-tier-yellow';
+      default:
+        return 'bg-tier-green';
+    }
+  }
 
   protected readonly consensus = computed(() => this.claim().panel_analysis?.consensus ?? null);
   protected readonly acuerdoPct = computed(() =>

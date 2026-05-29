@@ -14,5 +14,5 @@ export type {
   PanelErrorEvent,
   PanelDoneEvent,
   PanelStreamEvent,
-} from './panel-stream-event.model';
+} from '@shared/models/panel-stream-event.model';
 export type { SpecialistLane } from './specialist-lane.model';

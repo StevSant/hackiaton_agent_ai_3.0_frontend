@@ -58,6 +58,21 @@ export interface InsightsBundleDto {
   incidents: IncidentDto[];
 }
 
+// Mirrors backend ExplainChartRequest (app/api/v1/agent.py). Hand-written like the
+// rest of this client; fold into generated types via `pnpm gen:api` once the
+// backend exposes /agent/insights/explain in OpenAPI.
+export interface ExplainChartRequestDto {
+  ciudad: string;
+  chart_id: string;
+  chart_kind: string;
+  chart_title: string;
+  resumen: string;
+}
+
+export interface ChartExplanationDto {
+  explicacion_markdown: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class InsightsApi {
   private readonly http = inject(HttpClient);
@@ -69,5 +84,9 @@ export class InsightsApi {
 
   savingsAnalysis(): Observable<SavingsAnalysisDto> {
     return this.http.get<SavingsAnalysisDto>(`${this.base}/reports/savings-analysis`);
+  }
+
+  explainChart(body: ExplainChartRequestDto): Observable<ChartExplanationDto> {
+    return this.http.post<ChartExplanationDto>(`${this.base}/agent/insights/explain`, body);
   }
 }

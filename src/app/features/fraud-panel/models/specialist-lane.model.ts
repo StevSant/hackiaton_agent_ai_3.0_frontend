@@ -1,4 +1,4 @@
-import { PanelConfianza, PanelTier, SpecialistRebuttal, SpecialistVerdict } from './panel-stream-event.model';
+import { PanelConfianza, PanelTier, SpecialistRebuttal, SpecialistVerdict } from '@shared/models/panel-stream-event.model';
 
 export interface SpecialistLane {
   agentId: string;

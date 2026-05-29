@@ -1,4 +1,12 @@
+import type { NarrativeAnalysis, PanelAnalysis } from '@shared/models';
+
 import type { Claim } from '../models';
+
+const PANEL_TIER_LABELS: Record<string, string> = {
+  verde: 'Bajo',
+  amarillo: 'Medio',
+  rojo: 'Alto',
+};
 
 /**
  * Renders a printable HTML view of the claim and triggers the browser's print
@@ -95,6 +103,8 @@ function renderPrintableClaim(c: Claim): string {
     .join('');
 
   const reviewStatus = c.review.status.replace(/_/g, ' ');
+  const narrativeSection = renderNarrativeAnalysis(c.narrative_analysis);
+  const panelSection = renderPanelAnalysis(c.panel_analysis);
 
   return `<!doctype html>
 <html lang="es">
@@ -177,6 +187,10 @@ function renderPrintableClaim(c: Claim): string {
         : ''
     }
 
+    ${narrativeSection}
+
+    ${panelSection}
+
     ${
       documents
         ? `<h2>Documentos</h2>
@@ -194,6 +208,103 @@ function renderPrintableClaim(c: Claim): string {
     </footer>
   </body>
 </html>`;
+}
+
+function renderNarrativeAnalysis(na: NarrativeAnalysis | null | undefined): string {
+  if (!na) return '';
+  const parts: string[] = ['<h2>Análisis NLP del relato</h2>'];
+
+  if (na.resumen_narrativa) {
+    parts.push(`<p>${escapeHtml(na.resumen_narrativa)}</p>`);
+  }
+
+  const incoherencias = na.incoherencias ?? [];
+  if (na.narrativa_ilogica || incoherencias.length > 0) {
+    parts.push('<p style="margin:8px 0 4px;"><strong>Posibles incoherencias detectadas:</strong></p>');
+    parts.push(
+      incoherencias.length > 0
+        ? `<ul style="padding-left:18px;margin:0;">${incoherencias
+            .map((i) => `<li>${escapeHtml(i)}</li>`)
+            .join('')}</ul>`
+        : '<p style="color:#64748b;margin:0;">El análisis marcó la narrativa como posiblemente ilógica.</p>',
+    );
+  } else {
+    parts.push('<p style="color:#64748b;">El relato no presenta incoherencias internas evidentes.</p>');
+  }
+
+  const e = na.entidades ?? {};
+  const grupos: [string, string[] | undefined][] = [
+    ['Personas', e.personas],
+    ['Lugares', e.lugares],
+    ['Fechas', e.fechas],
+    ['Vehículos', e.vehiculos],
+    ['Terceros', e.terceros],
+    ['Montos', e.montos],
+  ];
+  const presentes = grupos.filter(([, v]) => v && v.length > 0);
+  if (presentes.length > 0) {
+    parts.push('<p style="margin:8px 0 4px;"><strong>Entidades extraídas:</strong></p>');
+    parts.push(
+      `<ul style="padding-left:18px;margin:0;">${presentes
+        .map(([label, v]) => `<li><strong>${label}:</strong> ${escapeHtml((v ?? []).join(', '))}</li>`)
+        .join('')}</ul>`,
+    );
+  }
+
+  return parts.join('\n');
+}
+
+function renderPanelAnalysis(panel: PanelAnalysis | null | undefined): string {
+  if (!panel) return '';
+  const parts: string[] = [
+    '<h2>Panel multi-agente</h2>',
+    '<p style="color:#64748b;margin:0 0 8px;">Análisis colaborativo de especialistas. Es advisory — no modifica el score ni constituye una decisión.</p>',
+  ];
+
+  const consensus = panel.consensus;
+  if (consensus) {
+    const nivel = consensus.nivel_final ? PANEL_TIER_LABELS[consensus.nivel_final] ?? consensus.nivel_final : '—';
+    const acuerdo =
+      consensus.nivel_de_acuerdo != null ? `${(consensus.nivel_de_acuerdo * 100).toFixed(0)}%` : '—';
+    parts.push(`<p><strong>Consenso:</strong> nivel ${escapeHtml(nivel)} · acuerdo ${acuerdo}</p>`);
+    if (consensus.resumen) parts.push(`<p>${escapeHtml(consensus.resumen)}</p>`);
+    if (consensus.accion_recomendada) {
+      parts.push(`<p><strong>Acción recomendada:</strong> ${escapeHtml(consensus.accion_recomendada)}</p>`);
+    }
+    if (consensus.posible_falso_positivo) {
+      parts.push('<p style="color:#ca8a04;">El panel señala un posible falso positivo.</p>');
+    }
+    const conflictos = consensus.puntos_de_conflicto ?? [];
+    if (conflictos.length > 0) {
+      parts.push(
+        `<p style="margin:8px 0 4px;"><strong>Puntos de conflicto:</strong></p><ul style="padding-left:18px;margin:0;">${conflictos
+          .map((c) => `<li>${escapeHtml(c)}</li>`)
+          .join('')}</ul>`,
+      );
+    }
+  }
+
+  const lanes = (panel.lanes ?? []).filter((l) => !l.failed);
+  for (const lane of lanes) {
+    parts.push(
+      `<p style="margin:10px 0 2px;"><strong>${escapeHtml(lane.display_name)}</strong> · ${escapeHtml(lane.lens)}</p>`,
+    );
+    const verdict = lane.verdict;
+    if (verdict) {
+      const nivel = verdict.nivel ? PANEL_TIER_LABELS[verdict.nivel] ?? verdict.nivel : '—';
+      parts.push(`<p style="margin:0;"><em>Nivel ${escapeHtml(nivel)}:</em> ${escapeHtml(verdict.dictamen ?? '')}</p>`);
+      const puntos = verdict.puntos_clave ?? [];
+      if (puntos.length > 0) {
+        parts.push(
+          `<ul style="padding-left:18px;margin:2px 0 0;">${puntos
+            .map((p) => `<li>${escapeHtml(p)}</li>`)
+            .join('')}</ul>`,
+        );
+      }
+    }
+  }
+
+  return parts.join('\n');
 }
 
 function escapeHtml(value: string | number | null | undefined): string {

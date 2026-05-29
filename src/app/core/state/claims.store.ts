@@ -1,5 +1,5 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { firstValueFrom, lastValueFrom } from 'rxjs';
+import { firstValueFrom, lastValueFrom, tap } from 'rxjs';
 
 import { ClaimsApi } from '@core/api/clients/claims.api';
 import type { ClaimDto, ClaimSummaryDto } from '@core/api/clients/claim.dto';
@@ -7,7 +7,13 @@ import { AuthStore } from '@core/auth/auth.store';
 import { environment } from '@core/config/env';
 import { AppError } from '@core/errors/app-error';
 import { SseClient } from '@core/realtime/sse.client';
-import type { Claim, ClaimReview, DictamenOutcome } from '@shared/models';
+import type {
+  Claim,
+  ClaimReview,
+  DictamenOutcome,
+  PanelLiveAgent,
+  PanelStreamEvent,
+} from '@shared/models';
 
 /**
  * Default page size for the initial claims fetch. The list-page filtering
@@ -82,12 +88,21 @@ export class ClaimsStore {
   // detail view). Lets the panel card render an "analizando…" state so the
   // analyst knows the case is being reviewed by the specialist panel.
   private readonly _panelRunningIds = signal<ReadonlySet<string>>(new Set());
+  // Per-agent live status while a panel run is in flight, keyed by claim id.
+  // Lets the summary card show the four specialists lighting up (pendiente →
+  // pensando → voto) instead of a static spinner. Cleared once the run lands.
+  private readonly _panelLive = signal<ReadonlyMap<string, PanelLiveAgent[]>>(new Map());
 
   readonly claims = this._claims.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
   readonly detailLoadedIds = this._detailLoadedIds.asReadonly();
   readonly panelRunningIds = this._panelRunningIds.asReadonly();
+
+  /** Live per-agent panel status for a claim (empty until a run starts). */
+  panelLive(id: string): PanelLiveAgent[] {
+    return this._panelLive().get(id) ?? [];
+  }
   private initialized = false;
   private lastUserId: string | null = null;
 
@@ -296,10 +311,15 @@ export class ClaimsStore {
     this._panelRunningIds.update((s) => new Set([...s, id]));
     try {
       const url = `${environment.backendUrl}${environment.apiPrefix}/claims/${id}/panel`;
-      // Drain to completion; events are ignored, we only await the final `done`.
-      await lastValueFrom(this.sse.stream<unknown>({ url, method: 'POST', body: {} }), {
-        defaultValue: null,
-      });
+      // Project each event into the per-agent live status as it streams by, then
+      // await the final `done`. We don't render token-by-token narration here
+      // (that's the dedicated /fraud-panel page) — just the agents lighting up.
+      await lastValueFrom(
+        this.sse
+          .stream<PanelStreamEvent>({ url, method: 'POST', body: {} })
+          .pipe(tap((event) => this.applyPanelLive(id, event))),
+        { defaultValue: null },
+      );
       await this.reloadDetail(id);
     } catch {
       // Panel is advisory enrichment — never block the detail view on its failure.
@@ -310,7 +330,52 @@ export class ClaimsStore {
         next.delete(id);
         return next;
       });
+      this._panelLive.update((m) => {
+        if (!m.has(id)) return m;
+        const next = new Map(m);
+        next.delete(id);
+        return next;
+      });
     }
+  }
+
+  /** Fold one panel SSE event into the claim's live per-agent status. */
+  private applyPanelLive(id: string, event: PanelStreamEvent): void {
+    this._panelLive.update((m) => {
+      const next = new Map(m);
+      if (event.type === 'panel_start') {
+        next.set(
+          id,
+          event.data.roster.map((r) => ({
+            agentId: r.agent_id,
+            displayName: r.display_name,
+            lens: r.lens,
+            status: 'pendiente' as const,
+          })),
+        );
+        return next;
+      }
+      const lanes = next.get(id);
+      if (!lanes) return m;
+      const patch = (agentId: string, change: Partial<PanelLiveAgent>): void => {
+        next.set(
+          id,
+          lanes.map((l) => (l.agentId === agentId ? { ...l, ...change } : l)),
+        );
+      };
+      switch (event.type) {
+        case 'agent_token':
+          if (event.data.round === 1) patch(event.data.agent_id, { status: 'pensando' });
+          break;
+        case 'agent_verdict':
+          patch(event.data.agent_id, { status: 'voto', nivel: event.data.verdict.nivel });
+          break;
+        case 'error':
+          if (event.data.agent_id) patch(event.data.agent_id, { status: 'fallo' });
+          break;
+      }
+      return next;
+    });
   }
 
   async rescore(id: string): Promise<void> {

@@ -1,3 +1,9 @@
+/**
+ * Multi-agent fraud-panel SSE wire events (backend schemas/panel/*). Lives in
+ * shared/models so both the claims detail card (via core ClaimsStore) and the
+ * dedicated /fraud-panel feature can consume the same contract without a
+ * cross-feature import.
+ */
 export type PanelTier = 'verde' | 'amarillo' | 'rojo';
 export type PanelConfianza = 'alta' | 'media' | 'baja';
 

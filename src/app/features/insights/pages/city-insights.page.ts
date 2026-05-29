@@ -27,6 +27,7 @@ import {
 import { CityVisualDashboard } from '../components/city-visual-dashboard';
 import { InsightsPriorityCases } from '../components/insights-priority-cases';
 import { InsightsTopProviders } from '../components/insights-top-providers';
+import { InsightsExplainStore } from '../services/insights-explain.store';
 import { InsightsStore } from '../services/insights.store';
 import {
   buildCityInsights,
@@ -49,6 +50,7 @@ import {
     InsightsTopProviders,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [InsightsExplainStore],
   template: `
     <div
       class="insights-city-page"
@@ -143,7 +145,13 @@ import {
 
         <div class="insights-city-split">
           <div class="insights-city-split__main">
-            <insights-city-visual-dashboard [view]="view" [compareView]="compareSnapshot()" />
+            <insights-city-visual-dashboard
+              [view]="view"
+              [compareView]="compareSnapshot()"
+              [explainState]="explainStore.entries()"
+              (explain)="explainStore.explain($event)"
+              (toggleExplain)="explainStore.toggle($event)"
+            />
 
             <footer class="insights-city-footer" [class.insights-city-footer--compare]="compareSnapshot()">
               @if (!compareSnapshot()) {
@@ -207,6 +215,7 @@ export class CityInsightsPage implements OnInit {
   private readonly router = inject(Router);
   protected readonly claimsStore = inject(ClaimsStore);
   protected readonly store = inject(InsightsStore);
+  protected readonly explainStore = inject(InsightsExplainStore);
 
   protected readonly compareCityName = toSignal(
     this.route.queryParamMap.pipe(
@@ -272,6 +281,12 @@ export class CityInsightsPage implements OnInit {
       if (compare && compare === primary) {
         this.clearCompare();
       }
+    });
+    // Clear AI explanations when the city changes — the page instance is reused
+    // across route params, so stale per-chart explanations would otherwise linger.
+    effect(() => {
+      this.cityName();
+      this.explainStore.reset();
     });
   }
 

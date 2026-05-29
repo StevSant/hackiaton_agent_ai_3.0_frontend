@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 import { formatMoney } from '@shared/utils/format-money';
 
+import { ChartExplainer } from './chart-explainer';
 import { InsightsEchart } from './insights-echart';
+import type { ChartExplainEntry } from '../services/insights-explain.store';
 import type { CitySavingsSnapshot } from '../utils/city-insights';
 import { buildSavingsBarOption, type SavingsBucketChartPoint } from '../utils/city-chart-options';
 import { tierFill, type AlertTier } from '../utils/insights-chart-theme';
@@ -15,7 +17,7 @@ const TIER_LABELS: Readonly<Record<string, string>> = {
 @Component({
   selector: 'insights-city-savings-chart',
   standalone: true,
-  imports: [InsightsEchart],
+  imports: [InsightsEchart, ChartExplainer],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="insights-viz-card insights-viz-card--mini">
@@ -32,11 +34,21 @@ const TIER_LABELS: Readonly<Record<string, string>> = {
       } @else {
         <insights-echart [option]="chartOption()" height="112px" />
       }
+
+      <insights-chart-explainer
+        [entry]="explainEntry()"
+        (explain)="explain.emit()"
+        (toggle)="toggleExplain.emit()"
+      />
     </section>
   `,
 })
 export class CitySavingsChart {
   readonly savings = input.required<CitySavingsSnapshot>();
+  readonly explainEntry = input<ChartExplainEntry | undefined>(undefined);
+
+  readonly explain = output<void>();
+  readonly toggleExplain = output<void>();
 
   protected readonly formatMoney = formatMoney;
 

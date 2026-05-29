@@ -1,9 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 import { Icon } from '@shared/ui/icon';
 
+import { ChartExplainer } from './chart-explainer';
 import { InsightsEchart } from './insights-echart';
 import { CitySavingsChart } from './city-savings-chart';
+import type { ChartExplainEntry } from '../services/insights-explain.store';
+import {
+  buildChartExplainContext,
+  type ChartExplainContext,
+} from '../utils/chart-explain-context';
 import type { CityInsightsSnapshot } from '../utils/city-insights';
 import {
   buildCityBenchmarkOption,
@@ -22,7 +28,7 @@ import {
 @Component({
   selector: 'insights-city-visual-dashboard',
   standalone: true,
-  imports: [Icon, InsightsEchart, CitySavingsChart],
+  imports: [Icon, InsightsEchart, CitySavingsChart, ChartExplainer],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="insights-city-viz" [class.insights-city-viz--comparing]="isComparing()">
@@ -46,6 +52,13 @@ import {
           }
         </header>
         <insights-echart [option]="stackedOption()" [height]="isComparing() ? '380px' : '360px'" />
+        @if (!isComparing()) {
+          <insights-chart-explainer
+            [entry]="explainState()['stacked_trend']"
+            (explain)="onExplain('stacked_trend')"
+            (toggle)="toggleExplain.emit('stacked_trend')"
+          />
+        }
       </section>
 
       @if (isComparing()) {
@@ -82,6 +95,11 @@ import {
               </div>
             </header>
             <insights-echart [option]="scatterOption()" height="340px" />
+            <insights-chart-explainer
+              [entry]="explainState()['exposure_scatter']"
+              (explain)="onExplain('exposure_scatter')"
+              (toggle)="toggleExplain.emit('exposure_scatter')"
+            />
           </section>
 
           <div class="insights-city-viz__side">
@@ -91,6 +109,11 @@ import {
                 <h3 class="insights-viz-card__title">Score promedio</h3>
               </header>
               <insights-echart [option]="gaugeOption()" height="168px" />
+              <insights-chart-explainer
+                [entry]="explainState()['score_gauge']"
+                (explain)="onExplain('score_gauge')"
+                (toggle)="toggleExplain.emit('score_gauge')"
+              />
             </section>
             <section class="insights-viz-card insights-viz-card--mini">
               <header class="insights-viz-card__head insights-viz-card__head--compact">
@@ -98,8 +121,18 @@ import {
                 <h3 class="insights-viz-card__title">Semáforo</h3>
               </header>
               <insights-echart [option]="roseOption()" height="168px" />
+              <insights-chart-explainer
+                [entry]="explainState()['tier_rose']"
+                (explain)="onExplain('tier_rose')"
+                (toggle)="toggleExplain.emit('tier_rose')"
+              />
             </section>
-            <insights-city-savings-chart [savings]="view().savings" />
+            <insights-city-savings-chart
+              [savings]="view().savings"
+              [explainEntry]="explainState()['savings']"
+              (explain)="onExplain('savings')"
+              (toggleExplain)="toggleExplain.emit('savings')"
+            />
           </div>
         </div>
       }
@@ -125,6 +158,13 @@ import {
             </div>
           </header>
           <insights-echart [option]="polarOption()" [height]="isComparing() ? '280px' : '240px'" />
+          @if (!isComparing()) {
+            <insights-chart-explainer
+              [entry]="explainState()['ramo_polar']"
+              (explain)="onExplain('ramo_polar')"
+              (toggle)="toggleExplain.emit('ramo_polar')"
+            />
+          }
         </section>
 
         @if (isComparing()) {
@@ -177,6 +217,11 @@ import {
               </div>
             </header>
             <insights-echart [option]="secondaryOption()" height="240px" />
+            <insights-chart-explainer
+              [entry]="explainState()[secondaryChartId()]"
+              (explain)="onExplain(secondaryChartId())"
+              (toggle)="toggleExplain.emit(secondaryChartId())"
+            />
           </section>
         }
       </div>
@@ -186,10 +231,22 @@ import {
 export class CityVisualDashboard {
   readonly view = input.required<CityInsightsSnapshot>();
   readonly compareView = input<CityInsightsSnapshot | null>(null);
+  readonly explainState = input<Record<string, ChartExplainEntry>>({});
+
+  readonly explain = output<ChartExplainContext>();
+  readonly toggleExplain = output<string>();
 
   protected readonly isComparing = computed(() => this.compareView() !== null);
 
   protected readonly hasSignals = computed(() => this.view().topSignals.length > 0);
+
+  protected readonly secondaryChartId = computed(() =>
+    this.hasSignals() ? 'signal_radar' : 'national_benchmark',
+  );
+
+  protected onExplain(chartId: string): void {
+    this.explain.emit(buildChartExplainContext(chartId, this.view()));
+  }
 
   protected readonly gaugeOption = computed(() => buildCityScoreGaugeOption(this.view()));
 

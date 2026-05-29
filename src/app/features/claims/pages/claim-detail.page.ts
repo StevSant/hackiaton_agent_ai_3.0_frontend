@@ -205,7 +205,11 @@ import { ProvidersStore } from '@core/state/providers.store';
             <claim-revisado-card [review]="c.review" />
           }
           @if (detailLoaded()) {
-            <claim-panel-summary-card [claim]="c" [running]="panelRunning()" />
+            <claim-panel-summary-card
+              [claim]="c"
+              [running]="panelRunning()"
+              [liveAgents]="panelLiveAgents()"
+            />
             <claim-summary-canvas [claim]="c" (saved)="onSummarysaved()" />
             <claim-alerts-list [alerts]="c.alertas" />
             <claim-ml-factors-card [claim]="c" />
@@ -301,6 +305,9 @@ export class ClaimDetailPage {
   protected readonly panelRunning = computed(() =>
     this.claims.panelRunningIds().has(this.id()),
   );
+  // Reading panelLive(id) inside a computed tracks the underlying signal, so the
+  // strip re-renders as each agent transitions pendiente → pensando → voto.
+  protected readonly panelLiveAgents = computed(() => this.claims.panelLive(this.id()));
 
   constructor() {
     bindRecordSwapPulse(() => this.id(), this.swapTick);
