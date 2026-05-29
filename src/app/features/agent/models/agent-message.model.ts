@@ -51,6 +51,8 @@ export interface AgentMessage {
    * Set by the store on `tool_result` events where the result is an array of objects.
    */
   tablePayload?: TableRow[] | null;
+  /** Whether the table is currently shown (default true). Toggled by "Ocultar tabla". */
+  tableAccepted?: boolean;
   /**
    * Agent-generated Word document payload (from `document` SSE event or restored from
    * transparency_metadata). When present, renders a `chat-document-canvas` artifact.

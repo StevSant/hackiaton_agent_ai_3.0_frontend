@@ -230,6 +230,7 @@ function generateUuid(): string {
             (openCase)="openCase($event)"
             (ttsToggle)="onTtsToggle($event)"
             (toggleChart)="store.toggleChart($event)"
+            (toggleTable)="store.toggleTable($event)"
             (openCanvas)="onOpenCanvas($event)"
             (chartRendered)="store.setLatestChartImage($event)"
           />

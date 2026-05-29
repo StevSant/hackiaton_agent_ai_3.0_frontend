@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, input, signal } from '@an
 import { EmptyState } from '@shared/ui/empty-state';
 import { Icon } from '@shared/ui/icon';
 import { ALERT_CATALOG, type ClaimAlert } from '@shared/models';
+import { formatEvidence, type EvidenceRow } from '../utils/evidence-format';
 
 @Component({
   selector: 'claim-alerts-list',
@@ -44,9 +45,32 @@ import { ALERT_CATALOG, type ClaimAlert } from '@shared/models';
             </button>
             @if (isExpanded($index)) {
               <div class="px-5 pb-3.5 -mt-1">
-                <div class="ml-9 border-l-2 border-line pl-3">
-                  <span class="font-mono text-[10.5px] text-ink-4">{{ a.code }} · {{ classificationFor(a.code) }}</span>
-                  <p class="text-[12.5px] text-ink-3 mt-1.5 mb-0 leading-relaxed">{{ a.detalle }}</p>
+                <div class="ml-9 border-l-2 border-line pl-3 space-y-2.5">
+                  <div>
+                    <span class="font-mono text-[10.5px] text-ink-4">{{ a.code }} · {{ classificationFor(a.code) }}</span>
+                    <p class="text-[12.5px] text-ink-3 mt-1.5 mb-0 leading-relaxed">{{ a.detalle }}</p>
+                  </div>
+
+                  @if (evidenceFor(a).length > 0) {
+                    <div>
+                      <div class="text-[10.5px] uppercase tracking-wide text-ink-4 font-semibold mb-1.5">
+                        Por qué se activó en este caso
+                      </div>
+                      <div class="flex flex-wrap gap-x-4 gap-y-1.5">
+                        @for (row of evidenceFor(a); track row.label) {
+                          <span class="inline-flex items-baseline gap-1 text-[12px]">
+                            <span class="text-ink-3">{{ row.label }}:</span>
+                            <span class="text-ink font-semibold font-mono">{{ row.value }}</span>
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  <div class="flex items-start gap-1.5 text-[12px] text-ink-2 pt-0.5">
+                    <ui-icon name="calculate" [size]="13" class="text-ink-4 mt-0.5 shrink-0" />
+                    <span>{{ scoreNote(a) }}</span>
+                  </div>
                 </div>
               </div>
             }
@@ -93,6 +117,20 @@ export class AlertsList {
 
   protected classificationFor(code: string): string {
     return ALERT_CATALOG[code]?.clasificacion?.toUpperCase() ?? '';
+  }
+
+  protected evidenceFor(a: ClaimAlert): EvidenceRow[] {
+    return formatEvidence(a.evidence);
+  }
+
+  /** Explains how the rule contributes to the score (additive FS vs critical RF). */
+  protected scoreNote(a: ClaimAlert): string {
+    if (a.puntos > 0) {
+      return `Aporta +${a.puntos} pts al puntaje acumulado (escala 0–100).`;
+    }
+    const tier = ALERT_CATALOG[a.code]?.clasificacion;
+    const tierLabel = tier === 'rojo' ? 'rojo' : tier === 'amarillo' ? 'al menos amarillo' : 'su nivel';
+    return `Regla crítica: no suma puntos, pero por sí sola clasifica el caso como ${tierLabel} y obliga su revisión.`;
   }
 
   protected iconColor(sev: 'high' | 'med' | 'low'): string {

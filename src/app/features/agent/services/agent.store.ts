@@ -534,6 +534,15 @@ export class AgentStore {
     );
   }
 
+  /** Toggle visibility of the table attached to a message (shown by default). */
+  toggleTable(messageId: string): void {
+    this._messages.update((messages) =>
+      messages.map((msg) =>
+        msg.id === messageId ? { ...msg, tableAccepted: !(msg.tableAccepted !== false) } : msg,
+      ),
+    );
+  }
+
   async ask(text: string, conversationId?: string): Promise<void> {
     const trimmed = text.trim();
     if (!trimmed || this._thinking()) return;
