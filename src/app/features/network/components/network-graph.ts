@@ -90,8 +90,8 @@ function riskFromRatio(alertas: number, casos: number): Risk {
         >
           <div
             class="relative"
-            [class]="layout() === 'estrella' ? 'w-full max-w-[560px] aspect-square mx-auto' : 'w-full'"
-            [style.height.px]="layout() === 'estrella' ? null : canvasHeight()"
+            [class]="layout() === 'columnas' ? 'w-full' : 'w-full max-w-[560px] aspect-square mx-auto'"
+            [style.height.px]="layout() === 'columnas' ? canvasHeight() : null"
           >
             @if (layout() === 'columnas') {
               <div class="absolute top-0 left-0 text-[11px] font-semibold uppercase tracking-wide text-brand-ink">
@@ -191,7 +191,7 @@ function riskFromRatio(alertas: number, casos: number): Risk {
 export class NetworkGraph {
   readonly nodes = input.required<readonly NetworkNodeDto[]>();
   readonly edges = input.required<readonly NetworkEdgeDto[]>();
-  readonly layout = input<'columnas' | 'estrella'>('columnas');
+  readonly layout = input<'columnas' | 'estrella' | 'fuerza'>('columnas');
 
   readonly openNode = output<{ id: string; kind: 'proveedor' | 'asegurado' }>();
 
@@ -253,9 +253,86 @@ export class NetworkGraph {
     return [...insured].sort((a, b) => (bary.get(a.id) ?? 0) - (bary.get(b.id) ?? 0));
   });
 
-  protected readonly placedNodes = computed<PlacedNode[]>(() =>
-    this.layout() === 'estrella' ? this.placeRadial() : this.placeColumns(),
-  );
+  protected readonly placedNodes = computed<PlacedNode[]>(() => {
+    switch (this.layout()) {
+      case 'estrella':
+        return this.placeRadial();
+      case 'fuerza':
+        return this.placeForce();
+      default:
+        return this.placeColumns();
+    }
+  });
+
+  /**
+   * Deterministic force-directed layout (Fruchterman–Reingold) — no dependency,
+   * no live animation. Repulsion between all nodes + attraction along edges +
+   * gravity to center, cooled over a fixed iteration count. Clusters and
+   * collusion rings settle out on their own. Seeded on a circle so the result
+   * is stable across renders.
+   */
+  private placeForce(): PlacedNode[] {
+    const all = [...this.visible().providers, ...this.orderedInsured()];
+    const n = all.length;
+    if (n === 0) return [];
+    const idx = new Map(all.map((node, i) => [node.id, i]));
+    const pos = all.map((_, i) => {
+      const a = (i / n) * Math.PI * 2;
+      return { x: 50 + 30 * Math.cos(a), y: 50 + 30 * Math.sin(a) };
+    });
+    const links: Array<[number, number]> = [];
+    for (const e of this.edges()) {
+      const s = idx.get(e.proveedor_id);
+      const t = idx.get(e.asegurado_id);
+      if (s != null && t != null) links.push([s, t]);
+    }
+    const k = Math.sqrt((100 * 100) / n) * 0.55; // ideal edge length
+    let temp = 16;
+    for (let it = 0; it < 340; it++) {
+      const disp = pos.map(() => ({ x: 0, y: 0 }));
+      for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+          const dx = pos[i].x - pos[j].x;
+          const dy = pos[i].y - pos[j].y;
+          const dist = Math.hypot(dx, dy) || 0.01;
+          const rep = (k * k) / dist;
+          disp[i].x += (dx / dist) * rep;
+          disp[i].y += (dy / dist) * rep;
+          disp[j].x -= (dx / dist) * rep;
+          disp[j].y -= (dy / dist) * rep;
+        }
+      }
+      for (const [s, t] of links) {
+        const dx = pos[s].x - pos[t].x;
+        const dy = pos[s].y - pos[t].y;
+        const dist = Math.hypot(dx, dy) || 0.01;
+        const att = (dist * dist) / k;
+        disp[s].x -= (dx / dist) * att;
+        disp[s].y -= (dy / dist) * att;
+        disp[t].x += (dx / dist) * att;
+        disp[t].y += (dy / dist) * att;
+      }
+      for (let i = 0; i < n; i++) {
+        disp[i].x += (50 - pos[i].x) * 0.025;
+        disp[i].y += (50 - pos[i].y) * 0.025;
+        const d = Math.hypot(disp[i].x, disp[i].y) || 0.01;
+        const m = Math.min(d, temp);
+        pos[i].x += (disp[i].x / d) * m;
+        pos[i].y += (disp[i].y / d) * m;
+      }
+      temp *= 0.985;
+    }
+    // Normalize into an 8..92 box so nodes never clip the edges.
+    const xs = pos.map((p) => p.x);
+    const ys = pos.map((p) => p.y);
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
+    const sx = Math.max(...xs) - minX || 1;
+    const sy = Math.max(...ys) - minY || 1;
+    return all.map((node, i) =>
+      this.toPlaced(node, 8 + ((pos[i].x - minX) / sx) * 84, 8 + ((pos[i].y - minY) / sy) * 84),
+    );
+  }
 
   private placeColumns(): PlacedNode[] {
     const providers = this.visible().providers;
@@ -303,14 +380,16 @@ export class NetworkGraph {
 
   protected readonly placedEdges = computed<PlacedEdge[]>(() => {
     const byId = new Map(this.placedNodes().map((n) => [n.id, n]));
-    const radial = this.layout() === 'estrella';
+    const mode = this.layout();
     const out: PlacedEdge[] = [];
     for (const e of this.edges()) {
       const p = byId.get(e.proveedor_id);
       const a = byId.get(e.asegurado_id);
       if (!p || !a) continue;
       let path: string;
-      if (radial) {
+      if (mode === 'fuerza') {
+        path = `M ${p.x} ${p.y} L ${a.x} ${a.y}`;
+      } else if (mode === 'estrella') {
         // Control point = midpoint pulled toward the center, bending each chord
         // inward so the links fan out like a star instead of a straight web.
         const midX = (p.x + a.x) / 2;

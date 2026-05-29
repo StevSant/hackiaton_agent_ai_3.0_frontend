@@ -25,7 +25,7 @@ import { ProvidersStore } from '@core/state/providers.store';
 
 type RamoFilter = 'todos' | RamoKey;
 type GraphTierFilter = 'todos' | 'rojo' | 'amarillo_rojo' | 'estandar';
-type GraphLayout = 'columnas' | 'estrella' | 'matriz';
+type GraphLayout = 'columnas' | 'estrella' | 'fuerza' | 'matriz';
 
 @Component({
   selector: 'page-network',
@@ -249,6 +249,7 @@ export class NetworkPage {
   protected readonly graphLayoutOptions: ReadonlyArray<{ value: GraphLayout; label: string; icon: string }> = [
     { value: 'columnas', label: 'Columnas', icon: 'view_column' },
     { value: 'estrella', label: 'Estrella', icon: 'hub' },
+    { value: 'fuerza', label: 'Fuerza', icon: 'scatter_plot' },
     { value: 'matriz', label: 'Matriz', icon: 'grid_on' },
   ];
 
@@ -357,9 +358,10 @@ export class NetworkPage {
   });
 
   /** Narrowed layout for the node-link graph (matriz uses a separate component). */
-  protected readonly nodeLayout = computed<'columnas' | 'estrella'>(() =>
-    this.graphLayout() === 'estrella' ? 'estrella' : 'columnas',
-  );
+  protected readonly nodeLayout = computed<'columnas' | 'estrella' | 'fuerza'>(() => {
+    const l = this.graphLayout();
+    return l === 'estrella' || l === 'fuerza' ? l : 'columnas';
+  });
 
   protected readonly graphSubtitle = computed(() => {
     const provs = this.graphNodes().filter((n) => n.kind === 'proveedor').length;
