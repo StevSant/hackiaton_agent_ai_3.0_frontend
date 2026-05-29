@@ -1,7 +1,9 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
+  inject,
   input,
   output,
 } from '@angular/core';
@@ -109,6 +111,13 @@ export class FilterBar {
   readonly reset = output<void>();
 
   private readonly searchTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  constructor() {
+    // Clear any pending debounce timers so a late emit never fires post-destroy.
+    inject(DestroyRef).onDestroy(() => {
+      for (const timer of this.searchTimers.values()) clearTimeout(timer);
+    });
+  }
 
   protected readonly activeTags = computed<FilterTag[]>(() => {
     const tags: FilterTag[] = [];

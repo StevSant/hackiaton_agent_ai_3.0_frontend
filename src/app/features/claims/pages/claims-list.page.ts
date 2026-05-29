@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -120,6 +121,15 @@ export class ClaimsListPage {
     customTo: '',
     tier: 'todos',
   });
+
+  constructor() {
+    // Reset to the first page whenever the filter set changes, so a narrowed
+    // result set never leaves the user stranded on a now-empty page.
+    effect(() => {
+      this.filters();
+      this.page.set(0);
+    });
+  }
 
   protected readonly greeting = computed(() => {
     const name = this.auth.user()?.name?.split(' ')[0] ?? 'Analista';
