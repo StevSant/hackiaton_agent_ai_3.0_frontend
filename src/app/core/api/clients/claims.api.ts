@@ -75,6 +75,27 @@ export class ClaimsApi {
     });
   }
 
+  improveResumen(id: string, instrucciones: string | null): Observable<{ resumen: string }> {
+    return this.http.post<{ resumen: string }>(
+      `${this.base}/claims/${encodeURIComponent(id)}/resumen/improve`,
+      { instrucciones },
+    );
+  }
+
+  patchResumen(id: string, resumen_editado: string): Observable<ClaimDto> {
+    return this.http.patch<ClaimDto>(
+      `${this.base}/claims/${encodeURIComponent(id)}/resumen`,
+      { resumen_editado },
+    );
+  }
+
+  downloadReportDocx(id: string): Observable<Blob> {
+    return this.http.get(
+      `${this.base}/claims/${encodeURIComponent(id)}/report.docx`,
+      { responseType: 'blob' },
+    );
+  }
+
   antifraudeInbox(params: InboxParams = {}): Observable<Page<InboxRowDto>> {
     return this.http.get<Page<InboxRowDto>>(`${this.base}/antifraude/inbox`, {
       params: toHttpParams(params),

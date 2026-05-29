@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { ClaimsStore } from '@core/state/claims.store';
 import { ProvidersStore } from '@core/state/providers.store';
 import { Button } from '@shared/ui/button';
+import { EntityConversations } from '@shared/ui/entity-conversations';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
@@ -15,7 +16,7 @@ import { ProviderClaimsList } from '../components/provider-claims-list';
 @Component({
   selector: 'page-provider-detail',
   standalone: true,
-  imports: [Button, Icon, KpiSmall, Pagination, SkeletonCard, SkeletonTable, ProviderClaimsList],
+  imports: [Button, EntityConversations, Icon, KpiSmall, Pagination, SkeletonCard, SkeletonTable, ProviderClaimsList],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-center gap-2 mb-3.5">
@@ -91,6 +92,9 @@ import { ProviderClaimsList } from '../components/provider-claims-list';
           />
         </div>
       }
+      <div class="mt-5">
+        <ui-entity-conversations kind="provider" [entityId]="p.id" />
+      </div>
     } @else if (providersStore.loading()) {
       <ui-skeleton-card [bodyLines]="3" />
     } @else {

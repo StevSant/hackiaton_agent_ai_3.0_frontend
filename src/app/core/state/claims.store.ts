@@ -360,6 +360,7 @@ function dtoToClaim(dto: ClaimDto): Claim {
     anomaly_score: dto.anomaly_score ?? null,
     nearest_normal_claim_id: dto.nearest_normal_claim_id ?? null,
     similar: dto.similar ?? [],
+    resumen_editado: dto.resumen_editado ?? null,
   };
 }
 

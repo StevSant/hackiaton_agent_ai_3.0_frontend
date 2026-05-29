@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { AseguradosStore } from '@core/state/asegurados.store';
 import { ClaimsStore } from '@core/state/claims.store';
 import { Button } from '@shared/ui/button';
+import { EntityConversations } from '@shared/ui/entity-conversations';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
@@ -15,7 +16,7 @@ import { AseguradoClaimsList } from '../components/asegurado-claims-list';
 @Component({
   selector: 'page-asegurado-detail',
   standalone: true,
-  imports: [Button, Icon, KpiSmall, Pagination, SkeletonCard, SkeletonTable, AseguradoClaimsList],
+  imports: [Button, EntityConversations, Icon, KpiSmall, Pagination, SkeletonCard, SkeletonTable, AseguradoClaimsList],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-center gap-2 mb-3.5">
@@ -104,6 +105,9 @@ import { AseguradoClaimsList } from '../components/asegurado-claims-list';
           />
         </div>
       }
+      <div class="mt-5">
+        <ui-entity-conversations kind="asegurado" [entityId]="a.id" />
+      </div>
     } @else if (store.loading()) {
       <ui-skeleton-card [bodyLines]="3" />
     } @else {

@@ -39,4 +39,5 @@ export interface Claim {
   anomaly_score?: number | null;
   nearest_normal_claim_id?: string | null;
   similar?: SimilarClaim[];
+  resumen_editado?: string | null;
 }

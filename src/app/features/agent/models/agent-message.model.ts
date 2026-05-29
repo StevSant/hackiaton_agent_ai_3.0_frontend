@@ -3,6 +3,9 @@ import type { ChartPayload } from './chart.model';
 
 export type AgentRole = 'user' | 'assistant';
 
+/** A single row in a tabular tool result. Keys are Spanish field names from the backend. */
+export type TableRow = Record<string, string | number | boolean | null>;
+
 export interface AgentMessage {
   id: string;
   role: AgentRole;
@@ -19,4 +22,9 @@ export interface AgentMessage {
    * the compose stream is still finishing.
    */
   chartPending?: boolean;
+  /**
+   * Tabular data from a list-shaped tool result (e.g. query_claims returns ClaimSummary[]).
+   * Set by the store on `tool_result` events where the result is an array of objects.
+   */
+  tablePayload?: TableRow[] | null;
 }

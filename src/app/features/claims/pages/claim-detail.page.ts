@@ -4,12 +4,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 
 import { AuthStore } from '@core/auth/auth.store';
+import { ClaimsApi } from '@core/api/clients/claims.api';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { RiskBadge } from '@shared/ui/risk-badge';
 import { SkeletonCard } from '@shared/ui/skeleton-card';
 import { ramoIcon, ramoLabel, resolveClaimBackNavigation, insightsMapFocusQuery } from '@shared/utils';
-import { AiExplanationCard } from '../components/ai-explanation-card';
+import { EntityConversations } from '@shared/ui/entity-conversations';
 import { AlertsList } from '../components/alerts-list';
 import { AnomalyIndicatorCard } from '../components/anomaly-indicator-card';
 import { CaseMetaCard } from '../components/case-meta-card';
@@ -26,6 +27,7 @@ import { ReviewTimeline } from '../components/review-timeline';
 import { RuleDetailDialog } from '../components/rule-detail-dialog';
 import { ScorePanel } from '../components/score-panel';
 import { SimilarNarrativesCard } from '../components/similar-narratives-card';
+import { SummaryCanvas } from '../components/summary-canvas';
 import { TimelineCard } from '../components/timeline-card';
 import { VehicleCard } from '../components/vehicle-card';
 import type { ClaimAlert, DictamenOutcome } from '@shared/models';
@@ -40,7 +42,7 @@ import { ProvidersStore } from '@core/state/providers.store';
     Icon,
     RiskBadge,
     SkeletonCard,
-    AiExplanationCard,
+    EntityConversations,
     AlertsList,
     AnomalyIndicatorCard,
     CaseMetaCard,
@@ -57,6 +59,7 @@ import { ProvidersStore } from '@core/state/providers.store';
     RuleDetailDialog,
     ScorePanel,
     SimilarNarrativesCard,
+    SummaryCanvas,
     TimelineCard,
     VehicleCard,
   ],
@@ -113,6 +116,10 @@ import { ProvidersStore } from '@core/state/providers.store';
               <ui-icon name="download" [size]="14" />
               PDF
             </ui-button>
+            <ui-button [disabled]="downloadingDocx()" (click)="downloadDocx()">
+              <ui-icon name="description" [size]="14" />
+              {{ downloadingDocx() ? 'Descargando…' : 'Descargar Word' }}
+            </ui-button>
           </div>
           @if (roleCode(); as r) {
             <claim-review-action-bar
@@ -142,7 +149,7 @@ import { ProvidersStore } from '@core/state/providers.store';
             <claim-revisado-card [review]="c.review" />
           }
           @if (detailLoaded()) {
-            <claim-ai-explanation-card [claim]="c" />
+            <claim-summary-canvas [claim]="c" (saved)="onSummarysaved()" />
             <claim-alerts-list [alerts]="c.alertas" />
             <claim-ml-factors-card [claim]="c" />
             <claim-anomaly-indicator-card [claim]="c" />
@@ -179,6 +186,7 @@ import { ProvidersStore } from '@core/state/providers.store';
               <div class="px-5 py-5 text-[13px] leading-relaxed text-ink-2">{{ c.descripcion }}</div>
             </div>
             <claim-recommendation-card [claim]="c" />
+            <ui-entity-conversations kind="claim" [entityId]="c.id" />
           }
         </div>
       </div>
@@ -210,6 +218,7 @@ export class ClaimDetailPage {
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly claimsApi = inject(ClaimsApi);
 
   private readonly returnTo = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('returnTo'))),
@@ -223,6 +232,7 @@ export class ClaimDetailPage {
   protected readonly activeAlert = signal<ClaimAlert | null>(null);
   protected readonly dictamenOpen = signal(false);
   protected readonly reanalyzing = signal(false);
+  protected readonly downloadingDocx = signal(false);
 
   protected readonly claim = computed(() => this.claims.findById(this.id()));
   protected readonly detailLoaded = computed(() =>
@@ -324,6 +334,29 @@ export class ClaimDetailPage {
     const c = this.claim();
     if (!c) return;
     exportClaimPdf(c);
+  }
+
+  protected async downloadDocx(): Promise<void> {
+    if (this.downloadingDocx()) return;
+    this.downloadingDocx.set(true);
+    try {
+      const { firstValueFrom } = await import('rxjs');
+      const blob = await firstValueFrom(this.claimsApi.downloadReportDocx(this.id()));
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `reporte-${this.id()}.docx`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Swallow — the download button returns to its resting state.
+    } finally {
+      this.downloadingDocx.set(false);
+    }
+  }
+
+  protected async onSummarysaved(): Promise<void> {
+    await this.claims.reloadDetail(this.id());
   }
 
   protected async onDocumentsUploaded(): Promise<void> {

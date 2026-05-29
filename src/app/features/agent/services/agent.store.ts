@@ -5,7 +5,7 @@ import { ConversationsApi } from '@core/api/clients/conversations.api';
 import { environment } from '@core/config/env';
 import { AppError } from '@core/errors/app-error';
 import { SseClient } from '@core/realtime/sse.client';
-import type { AgentMessage, AgentStep, ChartPayload } from '../models';
+import type { AgentMessage, AgentStep, ChartPayload, TableRow } from '../models';
 import type { ChatContext } from '../models/chat-context';
 import { ConversationsStore } from './conversations.store';
 import { buildCaseWelcomeMessage } from '../utils/case-context-message';
@@ -163,6 +163,62 @@ function summarizeResult(result: unknown): string | undefined {
   return String(result);
 }
 
+/** Envelope keys returned by backend tools, checked in priority order. */
+const ENVELOPE_ARRAY_KEYS = ['claims', 'rows', 'items', 'results', 'data'] as const;
+
+/** Minimum key count for an object row to qualify as a table row (avoid 1-column string lists). */
+const MIN_ROW_KEYS = 2;
+
+/**
+ * Returns true when `arr` is a non-empty array of objects each having at least
+ * MIN_ROW_KEYS own properties — i.e. it looks like structured tabular data.
+ */
+function isObjectArray(arr: unknown): arr is Record<string, unknown>[] {
+  if (!Array.isArray(arr) || arr.length === 0) return false;
+  const first = arr[0];
+  return (
+    first !== null &&
+    typeof first === 'object' &&
+    !Array.isArray(first) &&
+    Object.keys(first as object).length >= MIN_ROW_KEYS
+  );
+}
+
+/**
+ * Returns structured rows when the tool result is:
+ *  - a bare non-empty array of objects (original behavior), OR
+ *  - an enveloped object whose first matching array-of-objects property is used.
+ *
+ * Backend tools return enveloped results, e.g.:
+ *   query_claims      → { mode: "top_risk", claims: ClaimSummary[] }
+ *   aggregate_by_dim  → { dimension: "...", rows: [...] }
+ *   missing_documents → { tier: "...", claims: [...] }
+ *
+ * Check ENVELOPE_ARRAY_KEYS first; fall back to scanning all values for the
+ * first qualifying array. Returns null when no table-shaped data is found.
+ */
+function extractTableRows(result: unknown): TableRow[] | null {
+  // Fast path: bare array-of-objects.
+  if (isObjectArray(result)) return result as TableRow[];
+
+  // Enveloped object: look for a nested array-of-objects.
+  if (result !== null && typeof result === 'object' && !Array.isArray(result)) {
+    const obj = result as Record<string, unknown>;
+
+    // Check well-known envelope keys first.
+    for (const key of ENVELOPE_ARRAY_KEYS) {
+      if (isObjectArray(obj[key])) return obj[key] as TableRow[];
+    }
+
+    // Fallback: scan all values for the first qualifying array.
+    for (const val of Object.values(obj)) {
+      if (isObjectArray(val)) return val as TableRow[];
+    }
+  }
+
+  return null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AgentStore {
   private readonly sse = inject(SseClient);
@@ -201,6 +257,16 @@ export class AgentStore {
   /** Backward-compat wrapper for existing call sites that pass a claim id. */
   setContextClaimId(claimId: string | null): void {
     this._chatContext.set(claimId ? { kind: 'claim', id: claimId } : null);
+  }
+
+  /**
+   * Resets the store to an empty-messages state for a brand-new conversation
+   * that hasn't been persisted yet. Called by the page when it detects a fresh
+   * UUID so we avoid a backend GET that would 404.
+   */
+  resetToFresh(id: string): void {
+    this._conversationId.set(id);
+    this._messages.set([]);
   }
 
   startNewConversation(
@@ -264,6 +330,11 @@ export class AgentStore {
           };
           const chart = raw.chart_payload ?? undefined;
           const steps = buildStepsFromMetadata(raw.transparency_metadata);
+          // Restore table payload from the first list-shaped tool_call result.
+          const tablePayload = (raw.transparency_metadata?.tool_calls ?? []).reduce<TableRow[] | undefined>(
+            (acc, tc) => acc ?? (extractTableRows(tc.result) ?? undefined),
+            undefined,
+          );
           return {
             id: m.id,
             role: m.role,
@@ -272,6 +343,7 @@ export class AgentStore {
             chart,
             // Already-rendered charts skip the "Ver como gráfico" affordance.
             chartAccepted: chart !== undefined ? true : undefined,
+            tablePayload: tablePayload ?? null,
           };
         }),
       );
@@ -369,6 +441,15 @@ export class AgentStore {
       );
     };
 
+    const attachTable = (rows: TableRow[]): void => {
+      ensureAssistantBubble();
+      this._messages.update((messages) =>
+        messages.map((msg) =>
+          msg.id === assistantId ? { ...msg, tablePayload: rows } : msg,
+        ),
+      );
+    };
+
     const attachChart = (chart: ChartPayload): void => {
       ensureAssistantBubble();
       // Charts now arrive only when the analyst explicitly asked — no intermediate
@@ -415,9 +496,12 @@ export class AgentStore {
                 callId: event.data.call_id,
               });
               break;
-            case 'tool_result':
+            case 'tool_result': {
               attachResult(event.data.call_id, summarizeResult(event.data.result));
+              const rows = extractTableRows(event.data.result);
+              if (rows) attachTable(rows);
               break;
+            }
             case 'chart':
               attachChart(event.data);
               break;

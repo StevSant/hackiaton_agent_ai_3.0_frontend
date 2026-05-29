@@ -262,7 +262,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download the CSV template for bulk claim import */
+        /** Download the import template (CSV or JSON skeleton) */
         get: operations["download_import_template_route_api_v1_claims_import_template_get"];
         put?: never;
         post?: never;
@@ -354,6 +354,48 @@ export interface paths {
         patch: operations["patch_claim_route_api_v1_claims__claim_id__patch"];
         trace?: never;
     };
+    "/api/v1/claims/{claim_id}/report.docx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Claim Report Docx
+         * @description Generate and download a Word report (.docx) for a single claim.
+         */
+        get: operations["download_claim_report_docx_api_v1_claims__claim_id__report_docx_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/{claim_id}/resumen/improve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Improve Claim Resumen Route
+         * @description Use the LLM to improve/regenerate the case summary.
+         *
+         *     Does NOT persist — the frontend calls PATCH /resumen to save after review.
+         */
+        post: operations["improve_claim_resumen_route_api_v1_claims__claim_id__resumen_improve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/claims/{claim_id}/rescore": {
         parameters: {
             query?: never;
@@ -376,6 +418,26 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/{claim_id}/resumen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Claim Resumen Route
+         * @description Persist an analyst-edited case summary override on a claim.
+         */
+        patch: operations["patch_claim_resumen_route_api_v1_claims__claim_id__resumen_patch"];
         trace?: never;
     };
     "/api/v1/antifraude/inbox": {
@@ -977,6 +1039,8 @@ export interface components {
             proveedor?: string | null;
             /** Descripcion */
             descripcion: string;
+            /** Resumen Editado */
+            resumen_editado?: string | null;
             /** Score */
             score: number;
             nivel: components["schemas"]["Tier"];
@@ -1558,6 +1622,14 @@ export interface components {
             value: number;
         };
         /**
+         * ResumenPatch
+         * @description Analyst-edited case summary.
+         */
+        ResumenPatch: {
+            /** Resumen Editado */
+            resumen_editado: string;
+        };
+        /**
          * ReviewStatus
          * @enum {string}
          */
@@ -1699,6 +1771,16 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** _ImproveResumenRequest */
+        _ImproveResumenRequest: {
+            /** Instrucciones */
+            instrucciones?: string | null;
+        };
+        /** _ImproveResumenResponse */
+        _ImproveResumenResponse: {
+            /** Resumen */
+            resumen: string;
         };
     };
     responses: never;
@@ -1887,6 +1969,9 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string | null;
+                context_claim_id?: string | null;
+                context_provider_id?: string | null;
+                context_asegurado_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -2201,7 +2286,10 @@ export interface operations {
     };
     download_import_template_route_api_v1_claims_import_template_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Response format: 'csv' (default) or 'json' */
+                format?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2215,6 +2303,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2376,6 +2473,72 @@ export interface operations {
             };
         };
     };
+    download_claim_report_docx_api_v1_claims__claim_id__report_docx_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    improve_claim_resumen_route_api_v1_claims__claim_id__resumen_improve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_ImproveResumenRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ImproveResumenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rescore_claim_route_api_v1_claims__claim_id__rescore_post: {
         parameters: {
             query?: never;
@@ -2386,6 +2549,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_claim_resumen_route_api_v1_claims__claim_id__resumen_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResumenPatch"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

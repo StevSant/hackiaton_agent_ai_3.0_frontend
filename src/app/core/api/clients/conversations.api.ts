@@ -21,6 +21,18 @@ export class ConversationsApi {
     return this.http.get<ConversationSummary[]>(this.base, { params });
   }
 
+  listByContext(ctx: {
+    context_claim_id?: string;
+    context_provider_id?: string;
+    context_asegurado_id?: string;
+  }): Observable<ConversationSummary[]> {
+    let params = new HttpParams();
+    if (ctx.context_claim_id) params = params.set('context_claim_id', ctx.context_claim_id);
+    if (ctx.context_provider_id) params = params.set('context_provider_id', ctx.context_provider_id);
+    if (ctx.context_asegurado_id) params = params.set('context_asegurado_id', ctx.context_asegurado_id);
+    return this.http.get<ConversationSummary[]>(this.base, { params });
+  }
+
   get(id: string): Observable<ConversationDetail> {
     return this.http.get<ConversationDetail>(`${this.base}/${id}`);
   }

@@ -109,6 +109,7 @@ export interface ClaimDto {
   anomaly_score?: number | null;
   nearest_normal_claim_id?: string | null;
   similar?: SimilarClaimDto[];
+  resumen_editado?: string | null;
 }
 
 export interface ClaimSummaryDto {

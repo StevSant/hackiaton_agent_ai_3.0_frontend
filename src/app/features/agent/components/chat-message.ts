@@ -6,13 +6,14 @@ import { Icon } from '@shared/ui/icon';
 import { AgentChart } from './agent-chart';
 import { AgentEyeIcon } from './agent-eye-icon';
 import { AgentSteps } from './agent-steps';
+import { AgentTable } from './agent-table';
 import type { AgentMessage } from '../models';
 import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
 
 @Component({
   selector: 'agent-chat-message',
   standalone: true,
-  imports: [AgentSteps, MarkdownPipe, Icon, AgentChart, AgentEyeIcon],
+  imports: [AgentSteps, MarkdownPipe, Icon, AgentChart, AgentEyeIcon, AgentTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="w-full flex gap-3 items-start" [class.justify-end]="isUser()">
@@ -94,6 +95,10 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
               <div class="w-full h-[280px] rounded-lg bg-soft animate-pulse"></div>
             </div>
           }
+
+          @if (tablePayload(); as rows) {
+            <agent-table [rows]="rows" (openCase)="openCase.emit($event)" />
+          }
         </div>
       }
     </div>
@@ -140,6 +145,7 @@ export class ChatMessage {
   protected readonly chart = computed(() => this.message().chart ?? null);
   protected readonly chartAccepted = computed(() => this.message().chartAccepted === true);
   protected readonly chartPending = computed(() => this.message().chartPending === true);
+  protected readonly tablePayload = computed(() => this.message().tablePayload ?? null);
 
   protected readonly listenIcon = computed(() => {
     if (this.ttsActive() && this.ttsState() === 'loading') return 'progress_activity';

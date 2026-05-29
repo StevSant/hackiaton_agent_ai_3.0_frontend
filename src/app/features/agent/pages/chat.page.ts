@@ -471,6 +471,9 @@ export class ChatPage implements AfterViewChecked {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
+  /** IDs generated locally (not yet persisted on the backend). Skip GET for these. */
+  private readonly _freshIds = new Set<string>();
+
   protected readonly formatMoneyShort = formatMoneyShort;
   protected readonly ramoLabel = ramoLabel;
   protected readonly riskTierLabel = riskTierLabel;
@@ -562,14 +565,15 @@ export class ChatPage implements AfterViewChecked {
         return;
       }
 
-      const newId = generateUuid();
+      const freshId = generateUuid();
+      this._freshIds.add(freshId);
       const extraParams: Record<string, string> = {};
       if (caseId) extraParams['case'] = caseId;
       else if (providerId) extraParams['provider'] = providerId;
       else if (aseguradoId) extraParams['asegurado'] = aseguradoId;
 
       void this.router.navigate([], {
-        queryParams: { conversation: newId, ...extraParams },
+        queryParams: { conversation: freshId, ...extraParams },
         replaceUrl: true,
       });
     });
@@ -620,6 +624,8 @@ export class ChatPage implements AfterViewChecked {
     if (!text.trim()) return;
     this.input.set('');
     const convId = this.activeConversationId() ?? undefined;
+    // First message sent — conversation will now be created on the backend.
+    if (convId) this._freshIds.delete(convId);
     void this.store.ask(text, convId);
   }
 
@@ -666,6 +672,7 @@ export class ChatPage implements AfterViewChecked {
 
   protected quickSend(text: string): void {
     const convId = this.activeConversationId() ?? undefined;
+    if (convId) this._freshIds.delete(convId);
     void this.store.ask(text, convId);
   }
 
@@ -709,6 +716,7 @@ export class ChatPage implements AfterViewChecked {
     this.suggestionsOpen.set(null);
     this.store.setChatContext(null);
     const id = generateUuid();
+    this._freshIds.add(id);
     this.activeConversationId.set(id);
     this.store.startNewConversation(id);
     void this.router.navigate([], {
@@ -816,7 +824,19 @@ export class ChatPage implements AfterViewChecked {
       this.store.setChatContext(null);
     }
 
-    await this.store.loadConversation(convId);
+    // Skip the backend GET for IDs we just generated locally — the conversation
+    // doesn't exist on the server yet and would 404.
+    if (this._freshIds.has(convId)) {
+      // If the store is already tracking this ID (e.g. newChat() just initialized
+      // it), leave the existing messages so the welcome renders without a flash.
+      // Otherwise reset to blank so the messages.length === 0 branch below
+      // picks the right entity-aware welcome.
+      if (this.store.conversationId() !== convId) {
+        this.store.resetToFresh(convId);
+      }
+    } else {
+      await this.store.loadConversation(convId);
+    }
 
     // After loadConversation, context may have been restored from the persisted conversation.
     // URL params win over restored context when explicitly set.
