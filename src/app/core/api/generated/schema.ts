@@ -1454,6 +1454,11 @@ export interface components {
             contenido_markdown: string;
             /** Chart Image Base64 */
             chart_image_base64?: string | null;
+            /**
+             * Include Tables
+             * @default true
+             */
+            include_tables: boolean;
         };
         /** EscalateRequest */
         EscalateRequest: {
