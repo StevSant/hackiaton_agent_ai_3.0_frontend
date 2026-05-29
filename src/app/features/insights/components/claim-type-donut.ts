@@ -29,8 +29,8 @@ interface DonutSlice {
               cy="18"
               r="16"
               fill="transparent"
-              stroke="var(--bg-soft)"
-              stroke-width="3.5"
+              stroke="var(--border)"
+              stroke-width="3"
             />
             @for (slice of slices(); track slice.label) {
               <circle
@@ -39,7 +39,7 @@ interface DonutSlice {
                 r="16"
                 fill="transparent"
                 [attr.stroke]="slice.color"
-                stroke-width="3.5"
+                stroke-width="3"
                 stroke-linecap="round"
                 [attr.stroke-dasharray]="slice.dasharray"
                 [attr.stroke-dashoffset]="slice.dashoffset"
@@ -48,7 +48,7 @@ interface DonutSlice {
           </svg>
           <div class="absolute inset-0 flex flex-col items-center justify-center">
             <span class="text-[10px] font-medium text-ink-3 uppercase tracking-wider">Total</span>
-            <span class="font-serif text-[22px] leading-none text-ink tabular-nums mt-0.5">
+            <span class="font-mono text-[18px] leading-none text-ink tabular-nums mt-0.5">
               {{ totalLabel() }}
             </span>
           </div>

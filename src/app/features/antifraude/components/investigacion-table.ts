@@ -19,19 +19,19 @@ import type { Claim } from '@shared/models';
   imports: [Avatar, Icon, SortableHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="overflow-x-auto">
-      <table class="w-full text-[13px] border-collapse">
+    <div class="centinela-table-wrap">
+      <table class="centinela-table">
         <thead>
-          <tr class="border-b border-line">
-            <th sortKey="id" [sort]="sort()" class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">ID siniestro</th>
-            <th sortKey="asegurado" [sort]="sort()" class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Asegurado</th>
-            <th sortKey="cobertura" [sort]="sort()" class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Cobertura</th>
-            <th sortKey="ciudad" [sort]="sort()" class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Ciudad</th>
-            <th sortKey="monto" [sort]="sort()" class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Monto estimado</th>
-            <th sortKey="alertas" [sort]="sort()" class="text-center font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Alertas IA</th>
-            <th sortKey="score" [sort]="sort()" class="text-center font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Riesgo IA</th>
-            <th sortKey="estado" [sort]="sort()" class="text-center font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4">Estado</th>
-            <th class="text-left font-semibold text-ink-2 text-[11px] uppercase tracking-wide py-3 px-4 w-16">Acciones</th>
+          <tr>
+            <th sortKey="id" [sort]="sort()" class="hidden md:table-cell">ID siniestro</th>
+            <th sortKey="asegurado" [sort]="sort()">Asegurado</th>
+            <th sortKey="cobertura" [sort]="sort()" class="hidden lg:table-cell">Cobertura</th>
+            <th sortKey="ciudad" [sort]="sort()" class="hidden lg:table-cell">Ciudad</th>
+            <th sortKey="monto" [sort]="sort()" class="hidden xl:table-cell text-right">Monto estimado</th>
+            <th sortKey="alertas" [sort]="sort()" class="text-center">Alertas IA</th>
+            <th sortKey="score" [sort]="sort()" class="text-center">Riesgo IA</th>
+            <th sortKey="estado" [sort]="sort()" class="hidden md:table-cell text-center">Estado</th>
+            <th class="hidden md:table-cell w-16">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -39,29 +39,48 @@ import type { Claim } from '@shared/models';
             <tr
               [attr.data-keyboard-row]="claim.id"
               [class.centinela-table-row--focused]="focusedId() === claim.id"
-              class="border-b border-line hover:bg-soft/60 transition-colors cursor-pointer"
               (click)="open.emit(claim.id)"
             >
-              <td class="px-4 py-3.5 align-middle">
+              <td class="hidden md:table-cell">
                 <span class="font-mono text-[12.5px] font-medium text-brand">#{{ claim.id }}</span>
               </td>
-              <td class="px-4 py-3.5 align-middle">
-                <div class="flex items-center gap-2.5">
-                  <ui-avatar [name]="claim.asegurado" [size]="32" />
-                  <span class="font-medium text-[13px]">{{ claim.asegurado }}</span>
+              <td>
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="shrink-0">
+                    <ui-avatar [name]="claim.asegurado" [size]="32" />
+                  </div>
+                  <div class="min-w-0">
+                    <div class="font-medium text-[13px] truncate">{{ claim.asegurado }}</div>
+                    <div class="md:hidden font-mono text-[11px] text-brand truncate">#{{ claim.id }}</div>
+                    <div class="lg:hidden text-[11px] text-ink-3 mt-0.5 truncate">
+                      {{ claim.cobertura }} · {{ ramoLabel(claim.ramo) }}
+                    </div>
+                    <div class="lg:hidden text-[11px] text-ink-3 mt-0.5 truncate">
+                      {{ claim.ciudad }} · {{ money(claim.monto_reclamado) }}
+                    </div>
+                    <div class="md:hidden flex flex-wrap items-center gap-1.5 mt-1">
+                      <span
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
+                        [class]="reviewStatusBadgeClass(claim.review.status)"
+                      >
+                        {{ reviewStatusLabel(claim.review.status) }}
+                      </span>
+                      <span class="text-[10.5px] text-ink-3 truncate">{{ claim.ciudad }}</span>
+                    </div>
+                  </div>
                 </div>
               </td>
-              <td class="px-4 py-3.5 align-middle">
-                <div class="font-medium text-[13px] whitespace-nowrap">
+              <td class="hidden lg:table-cell">
+                <div class="font-medium text-[13px]">
                   {{ claim.cobertura }}
                   <span class="text-ink-3 font-normal text-[11.5px]"> · {{ ramoLabel(claim.ramo) }}</span>
                 </div>
               </td>
-              <td class="px-4 py-3.5 align-middle text-ink-2 whitespace-nowrap">{{ claim.ciudad }}</td>
-              <td class="px-4 py-3.5 align-middle tabular-nums font-semibold whitespace-nowrap">{{ money(claim.monto_reclamado) }}</td>
-              <td class="px-4 py-3.5 align-middle whitespace-nowrap text-center">
+              <td class="hidden lg:table-cell text-ink-2">{{ claim.ciudad }}</td>
+              <td class="hidden xl:table-cell text-right tabular-nums font-semibold">{{ money(claim.monto_reclamado) }}</td>
+              <td class="text-center">
                 @if (claim.alertas.length > 0) {
-                  <div class="inline-flex items-center justify-center gap-1 flex-wrap">
+                  <div class="inline-flex items-center justify-center gap-1 flex-wrap max-w-[120px] mx-auto">
                     @for (alert of topAlerts(claim); track alert.code) {
                       <span class="font-mono text-[10px] px-1.5 py-0.5 rounded shrink-0" [class]="alertChipClass(alert.severidad)">
                         {{ alert.code }}
@@ -72,22 +91,22 @@ import type { Claim } from '@shared/models';
                     }
                   </div>
                 } @else {
-                  <span class="text-[12px] text-ink-3">Sin alertas</span>
+                  <span class="text-[12px] text-ink-3">—</span>
                 }
               </td>
-              <td class="px-4 py-3.5 align-middle whitespace-nowrap text-center">
+              <td class="text-center">
                 <span
-                  class="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium tabular-nums"
+                  class="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium tabular-nums whitespace-nowrap"
                   [class]="riskBadgeClass(claim.nivel)"
                 >
                   <span class="w-1.5 h-1.5 rounded-full shrink-0" [class]="riskDotClass(claim.nivel)"></span>
                   {{ claim.score }}
                 </span>
               </td>
-              <td class="px-4 py-3.5 align-middle whitespace-nowrap">
+              <td class="hidden md:table-cell text-center">
                 <div class="flex flex-col items-center gap-1">
                   <span
-                    class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium"
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap"
                     [class]="reviewStatusBadgeClass(claim.review.status)"
                   >
                     {{ reviewStatusLabel(claim.review.status) }}
@@ -95,7 +114,7 @@ import type { Claim } from '@shared/models';
                   <span class="text-[10.5px] text-ink-3">{{ claim.estado }}</span>
                 </div>
               </td>
-              <td class="px-4 py-3.5 align-middle">
+              <td class="hidden md:table-cell">
                 <button
                   type="button"
                   class="w-8 h-8 grid place-items-center rounded-md border-0 bg-transparent text-ink-3 hover:text-brand hover:bg-soft cursor-pointer"
@@ -124,7 +143,7 @@ export class InvestigacionTable {
   protected readonly reviewStatusBadgeClass = reviewStatusBadgeClass;
 
   protected topAlerts(claim: Claim) {
-    return claim.alertas.slice(0, 3);
+    return claim.alertas.slice(0, 2);
   }
 
   protected onOpen(event: MouseEvent, claimId: string): void {

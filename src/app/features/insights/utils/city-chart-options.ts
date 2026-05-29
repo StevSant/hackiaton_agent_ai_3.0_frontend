@@ -1,25 +1,86 @@
 import type { EChartsOption, SeriesOption } from 'echarts';
 
 import type { CityInsightsSnapshot } from './city-insights';
+import {
+  INSIGHTS_CHART as C,
+  brandBarColor,
+  tierFill,
+  type AlertTier,
+} from './insights-chart-theme';
 
-const BRAND = '#6286B8';
-const BRAND_GLOW = '#7A9CC9';
-const BRAND_SOFT = 'rgba(98, 134, 184, 0.18)';
-const TIER_RED = '#e5484d';
-const TIER_RED_SOFT = 'rgba(229, 72, 77, 0.22)';
-const TIER_YELLOW = '#f5a524';
-const TIER_YELLOW_SOFT = 'rgba(245, 165, 36, 0.22)';
-const TIER_GREEN = '#30a46c';
-const TIER_GREEN_SOFT = 'rgba(48, 164, 108, 0.18)';
-const INK = '#64748b';
-const INK_DARK = '#0f172a';
-const GRID = '#e2e8f0';
-const BG_SOFT = '#f1f5f9';
+const BRAND = C.brand;
+const BRAND_GLOW = C.brandLight;
+const BRAND_SOFT = C.brandSoft;
+const TIER_RED = C.tierRed;
+const TIER_RED_SOFT = C.tierRedSoft;
+const TIER_YELLOW = C.tierYellow;
+const TIER_YELLOW_SOFT = C.tierYellowSoft;
+const TIER_GREEN = C.tierGreen;
+const TIER_GREEN_SOFT = C.tierGreenSoft;
+const INK = C.ink;
+const INK_DARK = C.inkDark;
+const GRID = C.grid;
+const BG_SOFT = C.bgSoft;
 
 const BASE_ANIMATION = {
   animationDuration: 900,
   animationEasing: 'cubicOut' as const,
 };
+
+function buildTierDonutSlices(view: CityInsightsSnapshot) {
+  const tierOrder: Array<{ tier: AlertTier; label: string }> = [
+    { tier: 'rojo', label: 'Alto' },
+    { tier: 'amarillo', label: 'Medio' },
+    { tier: 'verde', label: 'Bajo' },
+  ];
+
+  return tierOrder
+    .map(({ tier, label }) => {
+      const slice = view.tierBreakdown.find((row) => row.tier === tier);
+      const count = slice?.count ?? 0;
+      if (count <= 0) return null;
+      return {
+        name: label,
+        value: count,
+        itemStyle: { color: tierFill(tier) },
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null);
+}
+
+const TIER_DONUT_RADIUS: [string, string] = ['38%', '58%'];
+const TIER_DONUT_COMPARE_RADIUS: [string, string] = ['22%', '34%'];
+const COMPARE_DONUT_PRIMARY_CENTER: [string, string] = ['25%', '38%'];
+const COMPARE_DONUT_OTHER_CENTER: [string, string] = ['75%', '38%'];
+
+function tierDonutSeries(
+  name: string,
+  center: [string, string],
+  data: ReturnType<typeof buildTierDonutSlices>,
+  radius: [string, string] = TIER_DONUT_RADIUS,
+  showCenterTitle = false,
+): SeriesOption {
+  return {
+    name,
+    type: 'pie',
+    center,
+    radius,
+    avoidLabelOverlap: true,
+    itemStyle: { borderRadius: 4, borderColor: C.surface, borderWidth: 2 },
+    label: showCenterTitle
+      ? {
+          show: true,
+          position: 'center',
+          formatter: name,
+          color: INK_DARK,
+          fontSize: 10,
+          fontWeight: 600,
+        }
+      : { show: false },
+    labelLine: { show: false },
+    data,
+  };
+}
 
 function cardGrid(show: boolean) {
   return {
@@ -132,37 +193,22 @@ export function buildRegionalFraudBarOption(
           name: point.region,
           value: point.value,
           itemStyle: {
-            borderRadius: [5, 5, 0, 0],
-            color: {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: index === 0 ? '#1e3a5f' : BRAND_GLOW },
-                { offset: 1, color: index === 0 ? BRAND : 'rgba(98, 134, 184, 0.35)' },
-              ],
-            },
-            shadowBlur: index === 0 ? 10 : 4,
-            shadowColor: 'rgba(98, 134, 184, 0.35)',
+            borderRadius: [4, 4, 0, 0],
+            color: brandBarColor(index, points.length),
           },
         })),
-        barWidth: '76%',
-        barCategoryGap: '12%',
+        barWidth: '72%',
+        barCategoryGap: '14%',
         label: {
           show: true,
           position: 'top',
           distance: 2,
-          color: INK,
+          color: C.ink2,
           fontSize: 10,
-          fontFamily: 'ui-monospace, monospace',
+          fontFamily: C.fontMono,
         },
         emphasis: {
-          itemStyle: {
-            shadowBlur: 18,
-            shadowColor: 'rgba(98, 134, 184, 0.55)',
-          },
+          itemStyle: { color: C.brandInk },
         },
       },
     ],
@@ -188,28 +234,13 @@ function buildSingleScoreGaugeSeries(
     center,
     progress: {
       show: true,
-      width: 12,
+      width: 10,
       roundCap: true,
-      itemStyle: {
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 1,
-          y2: 0,
-          colorStops: [
-            { offset: 0, color: BRAND },
-            { offset: 0.55, color: tone },
-            { offset: 1, color: TIER_RED },
-          ],
-        },
-        shadowBlur: 12,
-        shadowColor: 'rgba(98, 134, 184, 0.3)',
-      },
+      itemStyle: { color: tone },
     },
     axisLine: {
       lineStyle: {
-        width: 12,
+        width: 10,
         color: [[1, BG_SOFT]],
       },
     },
@@ -242,62 +273,31 @@ export function buildCityTierCompareRoseOption(
   primary: CityInsightsSnapshot,
   other: CityInsightsSnapshot,
 ): EChartsOption {
-  const tierSeries = (view: CityInsightsSnapshot) =>
-    view.tierBreakdown
-      .filter((slice) => slice.count > 0)
-      .map((slice) => ({
-        name: slice.label,
-        value: slice.count,
-        itemStyle: {
-          color:
-            slice.tier === 'rojo' ? TIER_RED : slice.tier === 'amarillo' ? TIER_YELLOW : TIER_GREEN,
-        },
-      }));
-
   return {
     ...BASE_ANIMATION,
     tooltip: { trigger: 'item', formatter: '{a}<br/>{b}: {c} ({d}%)' },
     legend: {
-      bottom: 0,
+      bottom: 4,
       itemWidth: 10,
       itemHeight: 10,
       textStyle: { color: INK, fontSize: 10 },
+      data: ['Alto', 'Medio', 'Bajo'],
     },
     series: [
-      {
-        name: primary.city,
-        type: 'pie',
-        roseType: 'area',
-        center: ['28%', '46%'],
-        radius: ['16%', '50%'],
-        itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 },
-        label: { show: false },
-        data: tierSeries(primary),
-      },
-      {
-        name: other.city,
-        type: 'pie',
-        roseType: 'area',
-        center: ['72%', '46%'],
-        radius: ['16%', '50%'],
-        itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2, opacity: 0.92 },
-        label: { show: false },
-        data: tierSeries(other),
-      },
-    ],
-    graphic: [
-      {
-        type: 'text',
-        left: '22%',
-        top: '82%',
-        style: { text: primary.city, fill: INK_DARK, fontSize: 11, fontWeight: 600, align: 'center' },
-      },
-      {
-        type: 'text',
-        left: '66%',
-        top: '82%',
-        style: { text: other.city, fill: INK_DARK, fontSize: 11, fontWeight: 600, align: 'center' },
-      },
+      tierDonutSeries(
+        primary.city,
+        COMPARE_DONUT_PRIMARY_CENTER,
+        buildTierDonutSlices(primary),
+        TIER_DONUT_COMPARE_RADIUS,
+        true,
+      ),
+      tierDonutSeries(
+        other.city,
+        COMPARE_DONUT_OTHER_CENTER,
+        buildTierDonutSlices(other),
+        TIER_DONUT_COMPARE_RADIUS,
+        true,
+      ),
     ],
   };
 }
@@ -366,33 +366,10 @@ export function buildCityRamoCompareOption(
 }
 
 export function buildCityTierRoseOption(view: CityInsightsSnapshot): EChartsOption {
-  const data = view.tierBreakdown
-    .filter((slice) => slice.count > 0)
-    .map((slice) => ({
-      name: slice.label,
-      value: slice.count,
-      itemStyle: {
-        color:
-          slice.tier === 'rojo' ? TIER_RED : slice.tier === 'amarillo' ? TIER_YELLOW : TIER_GREEN,
-        shadowBlur: 10,
-        shadowColor: 'rgba(0,0,0,0.12)',
-      },
-    }));
-
   return {
     ...BASE_ANIMATION,
     tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-    series: [
-      {
-        type: 'pie',
-        radius: ['28%', '68%'],
-        center: ['50%', '50%'],
-        roseType: 'area',
-        itemStyle: { borderRadius: 6, borderColor: '#ffffff', borderWidth: 2 },
-        label: { color: INK_DARK, fontSize: 11 },
-        data,
-      },
-    ],
+    series: [tierDonutSeries(view.city, ['50%', '50%'], buildTierDonutSlices(view))],
   };
 }
 
@@ -430,20 +407,7 @@ export function buildCityStackedTrendOption(view: CityInsightsSnapshot): ECharts
         symbol: 'circle',
         symbolSize: 6,
         lineStyle: { width: 0 },
-        areaStyle: {
-          opacity: 0.92,
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: TIER_RED_SOFT },
-              { offset: 1, color: 'rgba(229, 72, 77, 0.04)' },
-            ],
-          },
-        },
+        areaStyle: { color: TIER_RED_SOFT, opacity: 1 },
         itemStyle: { color: TIER_RED },
         data: view.monthlyStacked.rojo,
       },
@@ -455,20 +419,7 @@ export function buildCityStackedTrendOption(view: CityInsightsSnapshot): ECharts
         symbol: 'circle',
         symbolSize: 6,
         lineStyle: { width: 0 },
-        areaStyle: {
-          opacity: 0.88,
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: TIER_YELLOW_SOFT },
-              { offset: 1, color: 'rgba(245, 165, 36, 0.04)' },
-            ],
-          },
-        },
+        areaStyle: { color: TIER_YELLOW_SOFT, opacity: 1 },
         itemStyle: { color: TIER_YELLOW },
         data: view.monthlyStacked.amarillo,
       },
@@ -480,20 +431,7 @@ export function buildCityStackedTrendOption(view: CityInsightsSnapshot): ECharts
         symbol: 'circle',
         symbolSize: 6,
         lineStyle: { width: 0 },
-        areaStyle: {
-          opacity: 0.85,
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: TIER_GREEN_SOFT },
-              { offset: 1, color: 'rgba(48, 164, 108, 0.04)' },
-            ],
-          },
-        },
+        areaStyle: { color: TIER_GREEN_SOFT, opacity: 1 },
         itemStyle: { color: TIER_GREEN },
         data: view.monthlyStacked.verde,
       },
@@ -527,20 +465,7 @@ function stackedTrendSeries(
       symbol: 'circle',
       symbolSize: 5,
       lineStyle: { width: 0 },
-      areaStyle: {
-        opacity: 0.92,
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            { offset: 0, color: TIER_RED_SOFT },
-            { offset: 1, color: 'rgba(229, 72, 77, 0.04)' },
-          ],
-        },
-      },
+      areaStyle: { color: TIER_RED_SOFT, opacity: 1 },
       itemStyle: { color: TIER_RED },
       data: view.monthlyStacked.rojo,
     },
@@ -554,20 +479,7 @@ function stackedTrendSeries(
       symbol: 'circle',
       symbolSize: 5,
       lineStyle: { width: 0 },
-      areaStyle: {
-        opacity: 0.88,
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            { offset: 0, color: TIER_YELLOW_SOFT },
-            { offset: 1, color: 'rgba(245, 165, 36, 0.04)' },
-          ],
-        },
-      },
+      areaStyle: { color: TIER_YELLOW_SOFT, opacity: 1 },
       itemStyle: { color: TIER_YELLOW },
       data: view.monthlyStacked.amarillo,
     },
@@ -581,20 +493,7 @@ function stackedTrendSeries(
       symbol: 'circle',
       symbolSize: 5,
       lineStyle: { width: 0 },
-      areaStyle: {
-        opacity: 0.85,
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            { offset: 0, color: TIER_GREEN_SOFT },
-            { offset: 1, color: 'rgba(48, 164, 108, 0.04)' },
-          ],
-        },
-      },
+      areaStyle: { color: TIER_GREEN_SOFT, opacity: 1 },
       itemStyle: { color: TIER_GREEN },
       data: view.monthlyStacked.verde,
     },
@@ -653,7 +552,7 @@ export function buildCityStackedTrendCompareOption(
         type: 'value',
         gridIndex: 1,
         max: yMax,
-        splitLine: { show: false },
+        splitLine: { lineStyle: { color: GRID, type: 'dashed' } },
         axisLabel: { color: INK, fontSize: 10 },
       },
     ],
@@ -766,10 +665,8 @@ export function buildCityExposureScatterOption(view: CityInsightsSnapshot): ECha
       type: 'scatter',
       symbolSize: (data: number[]) => 8 + data[1] / 18,
       itemStyle: {
-        color: tier === 'rojo' ? TIER_RED : tier === 'amarillo' ? TIER_YELLOW : TIER_GREEN,
-        opacity: 0.82,
-        shadowBlur: 8,
-        shadowColor: 'rgba(0,0,0,0.15)',
+        color: tierFill(tier),
+        opacity: 0.78,
       },
       data: groups[tier].map((point) => ({
         name: point.id,
@@ -803,17 +700,7 @@ export function buildCityRamoPolarOption(view: CityInsightsSnapshot): EChartsOpt
         data: rows.map((row, index) => ({
           value: row.pct,
           itemStyle: {
-            color: {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 1,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: BRAND },
-                { offset: 1, color: index % 2 === 0 ? BRAND_GLOW : TIER_YELLOW },
-              ],
-            },
+            color: brandBarColor(index, rows.length),
           },
         })),
       },
@@ -847,37 +734,11 @@ export function buildCityBenchmarkOption(view: CityInsightsSnapshot): EChartsOpt
         data: [
           {
             value: bench.citySuspicionPct,
-            itemStyle: {
-              borderRadius: [8, 8, 0, 0],
-              color: {
-                type: 'linear',
-                x: 0,
-                y: 0,
-                x2: 0,
-                y2: 1,
-                colorStops: [
-                  { offset: 0, color: TIER_RED },
-                  { offset: 1, color: '#9b4dca' },
-                ],
-              },
-            },
+            itemStyle: { borderRadius: [6, 6, 0, 0], color: C.tierRed },
           },
           {
             value: bench.nationalSuspicionPct,
-            itemStyle: {
-              borderRadius: [8, 8, 0, 0],
-              color: {
-                type: 'linear',
-                x: 0,
-                y: 0,
-                x2: 0,
-                y2: 1,
-                colorStops: [
-                  { offset: 0, color: BRAND_GLOW },
-                  { offset: 1, color: BRAND },
-                ],
-              },
-            },
+            itemStyle: { borderRadius: [6, 6, 0, 0], color: C.brand },
           },
         ],
         label: {
@@ -918,18 +779,8 @@ export function buildCityRamoBarOption(view: CityInsightsSnapshot): EChartsOptio
         data: rows.map((row, index) => ({
           value: row.pct,
           itemStyle: {
-            borderRadius: [0, 6, 6, 0],
-            color: {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 1,
-              y2: 0,
-              colorStops: [
-                { offset: 0, color: BRAND },
-                { offset: 1, color: index % 2 === 0 ? TIER_YELLOW : TIER_RED },
-              ],
-            },
+            borderRadius: [0, 5, 5, 0],
+            color: brandBarColor(index, rows.length),
           },
         })),
         barWidth: 14,
@@ -939,6 +790,87 @@ export function buildCityRamoBarOption(view: CityInsightsSnapshot): EChartsOptio
           formatter: '{c}%',
           color: INK_DARK,
           fontSize: 11,
+          fontWeight: 600,
+        },
+      },
+    ],
+  };
+}
+
+export interface SavingsBucketChartPoint {
+  nivel: string;
+  label: string;
+  casos: number;
+  ahorro: number;
+  riesgo: number;
+  color: string;
+}
+
+function formatSavingsAxis(value: number): string {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1000) return `$${Math.round(value / 1000)}K`;
+  return `$${Math.round(value)}`;
+}
+
+export function buildSavingsBarOption(
+  buckets: readonly SavingsBucketChartPoint[],
+): EChartsOption {
+  const active = buckets.filter((bucket) => bucket.ahorro > 0 || bucket.casos > 0);
+  const peak = Math.max(...active.map((bucket) => bucket.ahorro), 1);
+
+  return {
+    ...BASE_ANIMATION,
+    animationDuration: 1000,
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: unknown) => {
+        const row = Array.isArray(params) ? params[0] : params;
+        if (!row || typeof row !== 'object' || !('dataIndex' in row)) return '';
+        const bucket = active[Number(row.dataIndex)];
+        if (!bucket) return '';
+        return [
+          `<b>${bucket.label}</b>`,
+          `${bucket.casos} casos`,
+          `Ahorro: ${formatSavingsAxis(bucket.ahorro)}`,
+          `En riesgo: ${formatSavingsAxis(bucket.riesgo)}`,
+        ].join('<br/>');
+      },
+    },
+    grid: { left: 4, right: 52, top: 8, bottom: 4, containLabel: true },
+    xAxis: {
+      type: 'value',
+      show: false,
+      max: Math.ceil(peak * 1.08),
+    },
+    yAxis: {
+      type: 'category',
+      data: active.map((bucket) => bucket.label),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: INK, fontSize: 11, margin: 8 },
+    },
+    series: [
+      {
+        type: 'bar',
+        data: active.map((bucket) => ({
+          value: bucket.ahorro,
+          itemStyle: {
+            borderRadius: [0, 5, 5, 0],
+            color: tierFill(bucket.nivel as AlertTier),
+          },
+        })),
+        barWidth: 14,
+        label: {
+          show: true,
+          position: 'right',
+          formatter: (params: unknown) => {
+            if (!params || typeof params !== 'object' || !('value' in params)) return '';
+            const value = Number(params.value);
+            return Number.isFinite(value) ? formatSavingsAxis(value) : '';
+          },
+          color: INK_DARK,
+          fontSize: 10,
           fontWeight: 600,
         },
       },

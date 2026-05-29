@@ -14,6 +14,7 @@ import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
 import { FilterBar, type FilterControl, type FilterValue } from '@shared/ui/filter-bar';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
+import { PageHeader } from '@shared/ui/page-header';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
 import {
@@ -44,6 +45,7 @@ import {
     FilterBar,
     Icon,
     KpiSmall,
+    PageHeader,
     Pagination,
     SkeletonTable,
     AseguradosTable,
@@ -51,14 +53,11 @@ import {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-end justify-between gap-6 py-2 pb-6">
-      <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">Asegurados</h1>
-        <p class="text-ink-3 text-[13.5px] m-0">
-          Listado de personas aseguradas con su exposición y nivel de alertas acumuladas.
-        </p>
-      </div>
-      <div class="flex items-center gap-2 shrink-0">
+    <ui-page-header title="Asegurados">
+      <p class="centinela-page-header__desc" ngProjectAs="[description]">
+        Listado de personas aseguradas con su exposición y nivel de alertas acumuladas.
+      </p>
+      <div ngProjectAs="[actions]" class="flex flex-wrap items-center gap-2">
         <ui-button variant="primary" (click)="openCreate()">
           <ui-icon name="add" [size]="16" />
           Agregar asegurado
@@ -69,9 +68,9 @@ import {
           (trigger)="exportOpen.set(true)"
         />
       </div>
-    </div>
+    </ui-page-header>
 
-    <div class="grid grid-cols-4 gap-3 mb-5">
+    <div class="centinela-kpi-row">
       <ui-kpi-small label="Total" [value]="stats().total + ''" icon="group" tone="brand" />
       <ui-kpi-small label="En mora" [value]="stats().mora + ''" icon="report" tone="red" />
       <ui-kpi-small label="Alertas acumuladas" [value]="stats().alertas + ''" icon="warning" tone="yellow" />

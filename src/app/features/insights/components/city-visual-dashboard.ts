@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { Icon } from '@shared/ui/icon';
 
 import { InsightsEchart } from './insights-echart';
+import { CitySavingsChart } from './city-savings-chart';
 import type { CityInsightsSnapshot } from '../utils/city-insights';
 import {
   buildCityBenchmarkOption,
@@ -21,7 +22,7 @@ import {
 @Component({
   selector: 'insights-city-visual-dashboard',
   standalone: true,
-  imports: [Icon, InsightsEchart],
+  imports: [Icon, InsightsEchart, CitySavingsChart],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="insights-city-viz" [class.insights-city-viz--comparing]="isComparing()">
@@ -98,6 +99,7 @@ import {
               </header>
               <insights-echart [option]="roseOption()" height="168px" />
             </section>
+            <insights-city-savings-chart [savings]="view().savings" />
           </div>
         </div>
       }

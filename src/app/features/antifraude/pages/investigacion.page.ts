@@ -7,6 +7,7 @@ import { ExportButton } from '@shared/ui/export-button';
 import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
 import { FilterBar, type FilterControl, type FilterValue } from '@shared/ui/filter-bar';
 import { Icon } from '@shared/ui/icon';
+import { PageHeader } from '@shared/ui/page-header';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
 import {
@@ -48,6 +49,7 @@ const EMPTY_FILTERS = EMPTY_INVESTIGATION_FILTERS;
     ExportModal,
     FilterBar,
     Icon,
+    PageHeader,
     InvestigacionTable,
     Pagination,
     SavedFiltersModal,
@@ -55,14 +57,11 @@ const EMPTY_FILTERS = EMPTY_INVESTIGATION_FILTERS;
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-start justify-between gap-4 py-2 pb-5">
-      <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">Investigación Avanzada</h1>
-        <p class="text-ink-3 text-[13.5px] m-0 max-w-2xl">
-          Vista completa de todos los siniestros. Cruza patrones por proveedor, asegurado y ramo.
-        </p>
-      </div>
-      <div class="flex items-center gap-2 shrink-0">
+    <ui-page-header title="Investigación Avanzada">
+      <p class="centinela-page-header__desc" ngProjectAs="[description]">
+        Vista completa de todos los siniestros. Cruza patrones por proveedor, asegurado y ramo.
+      </p>
+      <div ngProjectAs="[actions]" class="flex flex-wrap items-center gap-2">
         <ui-button variant="secondary" (click)="savedFiltersOpen.set(true)">
           <ui-icon name="tune" [size]="15" />
           Filtros guardados
@@ -72,7 +71,7 @@ const EMPTY_FILTERS = EMPTY_INVESTIGATION_FILTERS;
           (trigger)="exportOpen.set(true)"
         />
       </div>
-    </div>
+    </ui-page-header>
 
     <ui-filter-bar
       [controls]="filterControls()"
@@ -81,7 +80,7 @@ const EMPTY_FILTERS = EMPTY_INVESTIGATION_FILTERS;
     />
 
     @if (store.error(); as err) {
-      <div class="bg-tier-red-soft border border-line rounded-lg shadow-1 p-4 mb-4 flex items-center justify-between gap-4">
+      <div class="bg-tier-red-soft border border-line rounded-lg shadow-1 p-4 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-start gap-2 text-tier-red-ink">
           <ui-icon name="error_outline" [size]="18" class="mt-0.5 shrink-0" />
           <div class="text-[13px]">
