@@ -40,11 +40,15 @@ export {
   scrollAppMainToTop,
 } from './detail-navigation';
 export { bindListKeyboardNav } from './list-keyboard-nav';
+export { bindSectionKeyboardNav } from './section-keyboard-nav';
 export {
   bindShortcutHandlers,
   focusKeyboardSearch,
+  focusListContext,
   hasOpenDialog,
+  hasKeyboardListSelection,
   isHelpKey,
+  isShortcutContextAllowed,
   isTypingTarget,
   type ShortcutHandler,
 } from './keyboard';

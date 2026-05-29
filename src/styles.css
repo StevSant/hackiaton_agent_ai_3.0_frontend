@@ -354,6 +354,11 @@ page-chat {
   color: var(--ink);
 }
 
+.centinela-nav-link:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
 .centinela-nav-link--active {
   background: var(--brand-soft);
   color: var(--brand-ink);

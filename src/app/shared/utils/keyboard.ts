@@ -81,11 +81,36 @@ export function bindShortcutHandlers(
   destroyRef.onDestroy(() => window.removeEventListener('keydown', onKeyDown));
 }
 
+export function hasKeyboardListSelection(): boolean {
+  if (typeof document === 'undefined') return false;
+  return !!document.querySelector('.centinela-table-row--focused');
+}
+
+export function focusListContext(): void {
+  if (typeof document === 'undefined') return;
+  document.querySelector<HTMLElement>('.centinela-main')?.focus({ preventScroll: true });
+}
+
 function shouldBlockShortcut(event: KeyboardEvent): boolean {
   if (isModifiedShortcut(event)) return true;
   if (isTypingTarget(event.target)) return true;
   if (hasOpenDialog()) return true;
+  if (!isShortcutContextAllowed(event.target, event)) return true;
   return false;
+}
+
+export function isShortcutContextAllowed(target: EventTarget | null, event?: KeyboardEvent): boolean {
+  if (!(target instanceof HTMLElement)) return true;
+  if (target.closest('.centinela-kbd-hint')) return false;
+
+  if (event?.key === 'Enter') {
+    // A focused table row takes priority over sidebar link activation.
+    if (hasKeyboardListSelection()) return true;
+    if (target.closest('aside.centinela-sidebar a.centinela-nav-link')) return false;
+    if (target.closest('button') && !target.closest('.centinela-table-row--focused')) return false;
+  }
+
+  return true;
 }
 
 export function focusKeyboardSearch(selector = '[data-keyboard-search]'): void {

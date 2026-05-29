@@ -51,17 +51,17 @@ import { SidebarNav } from './sidebar-nav';
       </div>
 
       @if (fullBleed()) {
-        <main class="centinela-main centinela-main--full-bleed min-h-0 h-full overflow-hidden">
+        <main tabindex="-1" class="centinela-main centinela-main--full-bleed min-h-0 h-full overflow-hidden outline-none">
           <router-outlet />
         </main>
       } @else if (viewportFit()) {
-        <main class="centinela-main centinela-main--viewport min-h-0 h-full overflow-hidden">
+        <main tabindex="-1" class="centinela-main centinela-main--viewport min-h-0 h-full overflow-hidden outline-none">
           <div class="centinela-viewport-shell">
             <router-outlet />
           </div>
         </main>
       } @else {
-        <main class="flex-1 md:flex-initial min-h-0 overflow-y-auto scroll-pretty centinela-main">
+        <main tabindex="-1" class="flex-1 md:flex-initial min-h-0 overflow-y-auto scroll-pretty centinela-main outline-none">
           <div class="max-w-page mx-auto px-4 md:px-8 pt-14 md:pt-8 pb-24 min-w-0">
             <router-outlet />
           </div>

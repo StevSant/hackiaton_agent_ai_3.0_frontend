@@ -6,6 +6,7 @@ import type { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts
 import {
   bindShortcutHandlers,
   focusKeyboardSearch,
+  focusListContext,
   scrollKeyboardRowIntoView,
 } from './keyboard';
 
@@ -38,6 +39,7 @@ export function bindListKeyboardNav(
 
     options.focusedIndex.set(index);
     scrollKeyboardRowIntoView(rows[index].id);
+    focusListContext();
   };
 
   const openFocused = (): void => {
@@ -65,21 +67,25 @@ export function bindListKeyboardNav(
         keys: 'J  ·  ↑',
         label: 'Subir en la lista',
         group: 'Lista',
-        test: (event) => event.key === 'j' || event.key === 'J' || event.key === 'ArrowUp',
+        test: (event) =>
+          !event.shiftKey &&
+          (event.key === 'j' || event.key === 'J' || event.key === 'ArrowUp'),
         run: () => moveFocus(-1),
       },
       {
         keys: 'K  ·  ↓',
         label: 'Bajar en la lista',
         group: 'Lista',
-        test: (event) => event.key === 'k' || event.key === 'K' || event.key === 'ArrowDown',
+        test: (event) =>
+          !event.shiftKey &&
+          (event.key === 'k' || event.key === 'K' || event.key === 'ArrowDown'),
         run: () => moveFocus(1),
       },
       {
         keys: 'Enter',
         label: 'Abrir registro seleccionado',
         group: 'Lista',
-        test: (event) => event.key === 'Enter',
+        test: (event) => !event.shiftKey && event.key === 'Enter',
         run: openFocused,
       },
     ],

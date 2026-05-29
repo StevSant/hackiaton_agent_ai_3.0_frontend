@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
+import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
+import { bindSectionKeyboardNav } from '@shared/utils/section-keyboard-nav';
 import { BrandLogo } from '@shared/ui/brand-logo';
 import { Icon } from '@shared/ui/icon';
 import { RoleBadge } from '@shared/ui/role-badge';
@@ -146,6 +148,12 @@ export class SidebarNav {
   private readonly claims = inject(ClaimsStore);
   private readonly providers = inject(ProvidersStore);
   private readonly asegurados = inject(AseguradosStore);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly shortcuts = inject(KeyboardShortcutsService);
+
+  constructor() {
+    bindSectionKeyboardNav(this.destroyRef, this.shortcuts, this.router);
+  }
 
   protected readonly initials = computed(() => this.auth.user()?.initials ?? '··');
   protected readonly displayName = computed(() => this.auth.user()?.name ?? 'Sin sesión');

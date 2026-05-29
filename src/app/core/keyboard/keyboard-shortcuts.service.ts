@@ -24,8 +24,14 @@ export class KeyboardShortcutsService {
 
   readonly helpTitle = computed(() => {
     const stack = this.scopeStack();
-    const pageScope = stack.findLast((scope) => scope.title !== 'Centinela IA');
-    return pageScope?.title ?? stack.at(-1)?.title ?? 'Centinela IA';
+    let pageScope: ShortcutScope | undefined;
+    for (let index = stack.length - 1; index >= 0; index -= 1) {
+      if (stack[index].title !== 'Centinela IA') {
+        pageScope = stack[index];
+        break;
+      }
+    }
+    return pageScope?.title ?? stack[stack.length - 1]?.title ?? 'Centinela IA';
   });
 
   readonly helpEntries = computed(() => {
