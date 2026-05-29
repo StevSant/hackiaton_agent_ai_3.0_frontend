@@ -59,6 +59,13 @@ export class ClaimsApi {
     });
   }
 
+  analyzeNarrative(id: string): Observable<ClaimDto> {
+    return this.http.post<ClaimDto>(
+      `${this.base}/claims/${encodeURIComponent(id)}/narrative-analysis`,
+      {},
+    );
+  }
+
   escalate(id: string, note?: string): Observable<ClaimDto> {
     return this.http.post<ClaimDto>(`${this.base}/claims/${encodeURIComponent(id)}/escalate`, {
       note: note ?? null,

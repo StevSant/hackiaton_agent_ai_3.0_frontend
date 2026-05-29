@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { RulesApi, type RuleConfigDto } from '@core/api/clients/rules.api';
 import { AuthStore } from '@core/auth/auth.store';
 import { AppError } from '@core/errors/app-error';
-import type { FraudRule } from '../models';
+import type { FraudRule } from '@shared/models';
 
 // Bump suffix to invalidate cached payloads after a schema change.
 const CACHE_KEY = 'centinela:rules-catalog:v1';

@@ -13,7 +13,7 @@ import { ClaimsApi } from '@core/api/clients/claims.api';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { Spinner } from '@shared/ui/spinner';
-import { aiExplanation } from '../utils/ai-explanation';
+import { aiExplanation } from '@shared/utils';
 import type { Claim } from '../models';
 
 @Component({

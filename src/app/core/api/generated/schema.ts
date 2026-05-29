@@ -467,6 +467,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/claims/{claim_id}/narrative-analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Claim Narrative Route
+         * @description Run (or return cached) NLP analysis of the claim narrative.
+         *
+         *     Extracts entities, judges narrative coherence (the genuine source for FS-09),
+         *     and writes a short summary. Cached in ``claim_scores`` — a second call returns
+         *     the cached result without hitting the LLM. When the feature is disabled the
+         *     claim is returned unchanged.
+         */
+        post: operations["analyze_claim_narrative_route_api_v1_claims__claim_id__narrative_analysis_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/claims/{claim_id}/resumen": {
         parameters: {
             query?: never;
@@ -1074,6 +1099,10 @@ export interface components {
             severidad: "high" | "med" | "low";
             /** Detalle */
             detalle: string;
+            /** Evidence */
+            evidence?: {
+                [key: string]: unknown;
+            };
         };
         /**
          * ClaimDetail
@@ -1143,6 +1172,7 @@ export interface components {
             anomaly_score?: number | null;
             /** Nearest Normal Claim Id */
             nearest_normal_claim_id?: string | null;
+            narrative_analysis?: components["schemas"]["NarrativeAnalysis"] | null;
             /**
              * Posible Falso Positivo
              * @default false
@@ -1434,6 +1464,24 @@ export interface components {
             note?: string | null;
         };
         /**
+         * ExtractedEntities
+         * @description Structured entities lifted from the narrative (empty lists when none).
+         */
+        ExtractedEntities: {
+            /** Personas */
+            personas?: string[];
+            /** Lugares */
+            lugares?: string[];
+            /** Fechas */
+            fechas?: string[];
+            /** Vehiculos */
+            vehiculos?: string[];
+            /** Terceros */
+            terceros?: string[];
+            /** Montos */
+            montos?: string[];
+        };
+        /**
          * FactorContribution
          * @description One SHAP contributor from the supervised model (top-3 surfaced).
          */
@@ -1638,6 +1686,25 @@ export interface components {
             transparency_metadata?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * NarrativeAnalysis
+         * @description Full NLP read of the claim narrative: entities + coherence + summary.
+         */
+        NarrativeAnalysis: {
+            entidades?: components["schemas"]["ExtractedEntities"];
+            /**
+             * Narrativa Ilogica
+             * @default false
+             */
+            narrativa_ilogica: boolean;
+            /** Incoherencias */
+            incoherencias?: string[];
+            /**
+             * Resumen Narrativa
+             * @default
+             */
+            resumen_narrativa: string;
         };
         /**
          * NetworkEdge
@@ -2814,6 +2881,39 @@ export interface operations {
     rescore_claim_route_api_v1_claims__claim_id__rescore_post: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_claim_narrative_route_api_v1_claims__claim_id__narrative_analysis_post: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
             header?: never;
             path: {
                 claim_id: string;

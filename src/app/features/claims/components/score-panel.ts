@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { RiskRing } from '@shared/ui/risk-ring';
 import { ALERT_CATALOG } from '@shared/models';
 import { RiskSignalBadges } from './risk-signal-badges';
-import { suggestedAction } from '../utils/ai-explanation';
+import { suggestedAction } from '@shared/utils';
 import { hardRuleOverride } from '../utils/hard-rule-override';
 import type { Claim, ClaimAlert } from '../models';
 

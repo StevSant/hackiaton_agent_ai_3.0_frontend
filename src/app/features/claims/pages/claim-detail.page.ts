@@ -29,6 +29,7 @@ import { DictamenFormModal } from '../components/dictamen-form-modal';
 import { DocumentsCard } from '../components/documents-card';
 import { EscalationStickyBanner } from '../components/escalation-sticky-banner';
 import { MlFactorsCard } from '../components/ml-factors-card';
+import { NarrativeAnalysisCard } from '../components/narrative-analysis-card';
 import { ProviderSummaryCard } from '../components/provider-summary-card';
 import { RecommendationCard } from '../components/recommendation-card';
 import { RevisadoCard } from '../components/revisado-card';
@@ -61,6 +62,7 @@ import { ProvidersStore } from '@core/state/providers.store';
     DocumentsCard,
     EscalationStickyBanner,
     MlFactorsCard,
+    NarrativeAnalysisCard,
     ProviderSummaryCard,
     RecommendationCard,
     RevisadoCard,
@@ -156,6 +158,10 @@ import { ProvidersStore } from '@core/state/providers.store';
                 <ui-icon name="auto_awesome" [size]="14" />
                 Preguntar a la IA
               </ui-button>
+              <ui-button (click)="openPanel()">
+                <ui-icon name="groups" [size]="14" />
+                Análisis multi-agente
+              </ui-button>
               <ui-button (click)="showOnMap()">
                 <ui-icon name="map" [size]="14" />
                 Mostrar en el mapa
@@ -202,6 +208,7 @@ import { ProvidersStore } from '@core/state/providers.store';
             <claim-alerts-list [alerts]="c.alertas" />
             <claim-ml-factors-card [claim]="c" />
             <claim-anomaly-indicator-card [claim]="c" />
+            <claim-narrative-analysis-card [claim]="c" />
             <claim-similar-narratives-card [claim]="c" />
             <claim-timeline-card [events]="c.timeline" />
             <claim-documents-card
@@ -298,7 +305,10 @@ export class ClaimDetailPage {
       if (!id) return;
 
       scrollAppMainToTop();
-      void this.claims.loadDetail(id);
+      // Load detail, then trigger NLP narrative analysis once if not yet cached.
+      void this.claims.loadDetail(id).then((claim) => {
+        if (claim && !claim.narrative_analysis) void this.claims.analyzeNarrative(id);
+      });
 
       const orderedIds = this.claimNavigation.getOrderedIds(this.fallbackNavIds());
       this.claims.prefetchNeighborDetails(orderedIds, id, 2);
@@ -370,6 +380,10 @@ export class ClaimDetailPage {
     void this.router.navigate(['/agent'], {
       queryParams: { case: this.id(), conversation: conversationId },
     });
+  }
+
+  protected openPanel(): void {
+    void this.router.navigate(['/fraud-panel', this.id()]);
   }
 
   protected showOnMap(): void {

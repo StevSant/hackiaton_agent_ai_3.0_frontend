@@ -1,4 +1,4 @@
-import { ramoLabel } from '@shared/utils';
+import { ramoLabel } from './ramos';
 import { ALERT_CATALOG, type Claim } from '@shared/models';
 
 export function aiExplanation(c: Claim): string {

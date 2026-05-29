@@ -9,8 +9,13 @@ export type {
 export type { ClaimTimelineEvent, TimelineTone } from './claim-timeline-event.model';
 export type { ClaimVehicle } from './claim-vehicle.model';
 export type { FactorContribution } from './factor-contribution.model';
+export type {
+  NarrativeAnalysis,
+  ExtractedEntities,
+} from './narrative-analysis.model';
 export type { SimilarClaim } from './similar-claim.model';
 export type { TrendPoint } from './trend-point.model';
 export type { Provider } from './provider.model';
 export type { Asegurado } from './asegurado.model';
+export type { FraudRule, RuleKind } from './fraud-rule.model';
 export { ALERT_CATALOG, type AlertCatalogEntry } from './alert-catalog';

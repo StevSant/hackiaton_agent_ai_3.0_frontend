@@ -6,7 +6,7 @@ import { Icon } from '@shared/ui/icon';
 import { AuthStore } from '@core/auth/auth.store';
 import type { RoleCode } from '@core/auth/auth-user.model';
 import { ClaimsStore } from '@core/state/claims.store';
-import { RulesStore } from '@features/alerts/services/rules.store';
+import { RulesStore } from '@core/state/rules.store';
 
 @Component({
   selector: 'page-login',
