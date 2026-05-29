@@ -1,10 +1,19 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { Skeleton } from '@shared/ui/skeleton';
 import type { ConversationSummary } from '../models';
+import { ConversationPrefsStore } from '../services/conversation-prefs.store';
 import { ConversationItem } from './conversation-item';
+
+interface ConversationGroup {
+  key: string;
+  label: string;
+  /** Material icon for the group header (push_pin for pinned, gavel for a case). */
+  icon: string;
+  items: ConversationSummary[];
+}
 
 @Component({
   selector: 'agent-conversations-sidebar',
@@ -50,14 +59,25 @@ import { ConversationItem } from './conversation-item';
         } @else if (items().length === 0) {
           <p class="text-[12.5px] text-ink-3 px-3 py-2">Sin conversaciones todavía.</p>
         } @else {
-          @for (item of items(); track item.id) {
-            <agent-conversation-item
-              [item]="item"
-              [active]="item.id === activeId()"
-              (select)="select.emit($event)"
-              (rename)="rename.emit($event)"
-              (remove)="remove.emit($event)"
-            />
+          @for (group of groups(); track group.key) {
+            @if (showHeaders()) {
+              <div
+                class="flex items-center gap-1.5 px-2.5 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-3"
+              >
+                <ui-icon [name]="group.icon" [size]="13" />
+                <span class="truncate">{{ group.label }}</span>
+                <span class="text-ink-3/70 font-normal">· {{ group.items.length }}</span>
+              </div>
+            }
+            @for (item of group.items; track item.id) {
+              <agent-conversation-item
+                [item]="item"
+                [active]="item.id === activeId()"
+                (select)="select.emit($event)"
+                (rename)="rename.emit($event)"
+                (remove)="remove.emit($event)"
+              />
+            }
           }
         }
       </div>
@@ -75,4 +95,39 @@ export class ConversationsSidebar {
   readonly remove = output<string>();
   readonly newChat = output<void>();
   readonly queryChange = output<string>();
+
+  private readonly prefs = inject(ConversationPrefsStore);
+
+  /** Pinned first, then one group per case (context_claim_id), then General. */
+  protected readonly groups = computed<ConversationGroup[]>(() => {
+    const pinnedSet = this.prefs.pinned();
+    const pinned: ConversationSummary[] = [];
+    const byCase = new Map<string, ConversationSummary[]>();
+    const general: ConversationSummary[] = [];
+
+    for (const it of this.items()) {
+      if (pinnedSet.has(it.id)) {
+        pinned.push(it);
+      } else if (it.context_claim_id) {
+        const arr = byCase.get(it.context_claim_id) ?? [];
+        arr.push(it);
+        byCase.set(it.context_claim_id, arr);
+      } else {
+        general.push(it);
+      }
+    }
+
+    const groups: ConversationGroup[] = [];
+    if (pinned.length) groups.push({ key: '__pinned', label: 'Ancladas', icon: 'push_pin', items: pinned });
+    for (const [claimId, arr] of byCase) {
+      groups.push({ key: claimId, label: `Caso ${claimId}`, icon: 'gavel', items: arr });
+    }
+    if (general.length) groups.push({ key: '__general', label: 'General', icon: 'chat', items: general });
+    return groups;
+  });
+
+  /** Hide headers when everything is just one ungrouped "General" bucket. */
+  protected readonly showHeaders = computed(() =>
+    this.groups().some((g) => g.key !== '__general'),
+  );
 }
