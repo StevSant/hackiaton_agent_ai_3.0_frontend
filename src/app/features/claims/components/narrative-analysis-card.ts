@@ -45,8 +45,8 @@ interface EntityGroup {
         @if (error()) {
           <div class="flex flex-col items-center gap-3 py-10 px-4">
             <ui-empty-state
-              title="No se pudo analizar la narrativa"
-              sub="El análisis automático falló o tardó demasiado. Reintentá: si el caso tiene descripción, se procesa de nuevo."
+              title="Análisis no aplicable a este caso"
+              sub="Este siniestro no cumple los requisitos del analizador de narrativa para generar un informe automático."
             />
             <ui-button variant="secondary" (click)="retry.emit()">
               <ui-icon name="refresh" [size]="15" />

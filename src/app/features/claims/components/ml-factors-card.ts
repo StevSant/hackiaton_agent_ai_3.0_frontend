@@ -28,8 +28,8 @@ import { featureLabel } from '../utils/feature-labels';
       </div>
       @if (probability() === null) {
         <ui-empty-state
-          title="Modelo supervisado no cargado"
-          sub="Entrena el clasificador en notebooks/02_modelo_fraude.ipynb para activar esta vista."
+          title="Modelo no aplicable a este caso"
+          sub="Este siniestro no cumple los requisitos del clasificador supervisado para calcular factores explicativos."
         />
       } @else if (factors().length === 0) {
         <ui-empty-state
