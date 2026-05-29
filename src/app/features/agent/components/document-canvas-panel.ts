@@ -248,9 +248,9 @@ export class DocumentCanvasPanel implements OnChanges {
   protected readonly editMode = signal(false);
   protected readonly downloading = signal(false);
   protected readonly downloadError = signal(false);
-  /** CHANGE 2 — whether to embed the chart image in the downloaded .docx. */
-  protected readonly includeChart = signal(false);
-  /** When true, pipe tables are omitted from the downloaded .docx. */
+  /** Embed the chart in the downloaded .docx — ON by default so it always comes out. */
+  protected readonly includeChart = signal(true);
+  /** Omit pipe tables from the .docx — OFF by default so tables always show. */
   protected readonly hideTables = signal(false);
   /** Snapshot of the rendered HTML used to seed the contenteditable on edit entry. */
   protected readonly renderedHtml = signal('');
