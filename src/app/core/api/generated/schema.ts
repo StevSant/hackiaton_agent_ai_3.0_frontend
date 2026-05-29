@@ -760,6 +760,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/savings-analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Savings Analysis Route */
+        get: operations["get_savings_analysis_route_api_v1_reports_savings_analysis_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/claims/{claim_id}/documentos": {
         parameters: {
             query?: never;
@@ -1189,6 +1206,7 @@ export interface components {
             latitude?: number | null;
             /** Longitude */
             longitude?: number | null;
+            ahorro?: components["schemas"]["SavingsEstimate"] | null;
         };
         /** ClaimDocument */
         ClaimDocument: {
@@ -2050,6 +2068,42 @@ export interface components {
             what_triggers: string;
             /** Max Points */
             max_points: number;
+        };
+        /** SavingsAnalysisOut */
+        SavingsAnalysisOut: {
+            /** Total Valor En Riesgo */
+            total_valor_en_riesgo: number;
+            /** Total Ahorro Potencial */
+            total_ahorro_potencial: number;
+            /** Casos */
+            casos: number;
+            /** Por Nivel */
+            por_nivel: components["schemas"]["SavingsTierBucket"][];
+        };
+        /**
+         * SavingsEstimate
+         * @description Value object returned by estimate_savings.
+         */
+        SavingsEstimate: {
+            /** Exposicion */
+            exposicion: number;
+            /** Valor En Riesgo */
+            valor_en_riesgo: number;
+            /** Prob Fraude Usada */
+            prob_fraude_usada: number;
+            /** Ahorro Potencial Estimado */
+            ahorro_potencial_estimado: number;
+        };
+        /** SavingsTierBucket */
+        SavingsTierBucket: {
+            /** Nivel */
+            nivel: string;
+            /** Casos */
+            casos: number;
+            /** Valor En Riesgo */
+            valor_en_riesgo: number;
+            /** Ahorro Potencial */
+            ahorro_potencial: number;
         };
         /**
          * SimilarClaim
@@ -3583,6 +3637,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InsightsBundleOut"];
+                };
+            };
+        };
+    };
+    get_savings_analysis_route_api_v1_reports_savings_analysis_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavingsAnalysisOut"];
                 };
             };
         };
