@@ -1,4 +1,8 @@
 import type { RiskTier } from '@shared/utils';
+
+/** Wire contract — confidence in the risk assessment. */
+export type ConfianzaNivel = 'alta' | 'media' | 'baja';
+
 import type { ClaimAlert } from './claim-alert.model';
 import type { ClaimDocument } from './claim-document.model';
 import type { ClaimReview } from './claim-review.model';
@@ -39,5 +43,7 @@ export interface Claim {
   anomaly_score?: number | null;
   nearest_normal_claim_id?: string | null;
   similar?: SimilarClaim[];
+  posible_falso_positivo?: boolean;
+  confianza?: ConfianzaNivel;
   resumen_editado?: string | null;
 }

@@ -110,6 +110,8 @@ export interface ClaimDto {
   anomaly_score?: number | null;
   nearest_normal_claim_id?: string | null;
   similar?: SimilarClaimDto[];
+  posible_falso_positivo?: boolean;
+  confianza?: 'alta' | 'media' | 'baja';
   resumen_editado?: string | null;
 }
 

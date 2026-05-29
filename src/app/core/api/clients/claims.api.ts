@@ -89,13 +89,6 @@ export class ClaimsApi {
     );
   }
 
-  patchResumen(id: string, resumen_editado: string): Observable<ClaimDto> {
-    return this.http.patch<ClaimDto>(
-      `${this.base}/claims/${encodeURIComponent(id)}/resumen`,
-      { resumen_editado },
-    );
-  }
-
   downloadReportDocx(id: string): Observable<Blob> {
     return this.http.get(
       `${this.base}/claims/${encodeURIComponent(id)}/report.docx`,
