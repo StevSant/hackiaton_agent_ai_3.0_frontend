@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 
 import type { SavingsEstimate } from '@shared/models';
 import { formatMoney } from '@shared/utils/format-money';
@@ -74,8 +74,11 @@ import { SavingsBreakdown } from './savings-breakdown';
         </p>
       </div>
     } @else {
-      <div class="bg-surface border border-line rounded-lg px-5 py-4 shadow-1">
-        <p class="text-[12.5px] text-ink-3 m-0">Sin estimación de ahorro disponible.</p>
+      <div class="bg-surface border border-line rounded-lg px-5 py-4 shadow-1 flex flex-col gap-1.5">
+        <div class="text-[11px] text-ink-3 uppercase tracking-wider font-medium">
+          Estimación de ahorro potencial
+        </div>
+        <p class="text-[12.5px] text-ink-2 m-0 leading-relaxed">{{ unavailableReason() }}</p>
       </div>
     }
   `,
@@ -84,9 +87,25 @@ export class SavingsCard {
   readonly ahorro = input.required<SavingsEstimate | null | undefined>();
   readonly score = input<number | null>(null);
   readonly senalesCount = input<number>(0);
+  // Claim amounts — used to explain WHY there's no estimate when ahorro is null.
+  readonly montoReclamado = input<number | null>(null);
+  readonly sumaAsegurada = input<number | null>(null);
 
   protected readonly showBreakdown = signal(false);
   protected readonly formatMoney = formatMoney;
+
+  /** When there's no estimate, say WHY — exposure can't be computed without amounts. */
+  protected readonly unavailableReason = computed(() => {
+    const monto = this.montoReclamado();
+    const suma = this.sumaAsegurada();
+    if (monto != null && monto <= 0) {
+      return 'No se puede estimar el ahorro: el siniestro no registra monto reclamado ($0). Sin monto reclamado no hay exposición que la aseguradora pueda evitar pagar.';
+    }
+    if (suma != null && suma <= 0) {
+      return 'No se puede estimar el ahorro: la póliza no registra suma asegurada ($0), necesaria para acotar la exposición del caso.';
+    }
+    return 'La estimación de ahorro aún no se ha calculado para este caso. Pulsá «Re-analizar caso» para generarla.';
+  });
 
   protected toggleBreakdown(): void {
     this.showBreakdown.update((v) => !v);

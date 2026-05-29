@@ -83,6 +83,8 @@ import type { Claim, ClaimAlert } from '../models';
         [ahorro]="claim().ahorro"
         [score]="claim().score"
         [senalesCount]="claim().alertas.length"
+        [montoReclamado]="claim().monto_reclamado"
+        [sumaAsegurada]="claim().suma_asegurada"
       />
     </div>
   `,
