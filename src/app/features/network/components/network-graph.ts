@@ -204,10 +204,15 @@ export class NetworkGraph {
 
   /** Top providers by alerts, then the insured each connects to (capped). */
   private readonly visible = computed(() => {
+    // The force cloud needs more empty space per node than the columnar/radial
+    // layouts, so it shows fewer to stay readable on smaller screens.
+    const maxProv = this.layout() === 'fuerza' ? 6 : MAX_PROVIDERS;
+    const maxInsured = this.layout() === 'fuerza' ? 8 : MAX_INSURED;
+
     const providers = this.nodes()
       .filter((n) => n.kind === 'proveedor')
       .sort((a, b) => b.alertas - a.alertas || b.casos - a.casos)
-      .slice(0, MAX_PROVIDERS);
+      .slice(0, maxProv);
     const provIds = new Set(providers.map((p) => p.id));
 
     // Insured linked to a visible provider, ranked by total alerts on those links.
@@ -223,7 +228,7 @@ export class NetworkGraph {
       .map((id) => insuredById.get(id))
       .filter((n): n is NetworkNodeDto => n != null)
       .sort((a, b) => (insuredAlertas.get(b.id) ?? 0) - (insuredAlertas.get(a.id) ?? 0))
-      .slice(0, MAX_INSURED);
+      .slice(0, maxInsured);
 
     return { providers, insured };
   });
