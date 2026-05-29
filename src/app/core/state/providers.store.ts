@@ -42,7 +42,7 @@ export class ProvidersStore {
   private readonly _providers = signal<Provider[]>([]);
   private readonly _loading = signal<boolean>(false);
   private readonly _error = signal<AppError | null>(null);
-  private readonly _relations = signal<NetworkRelationsDto>({ nodes: [], edges: [] });
+  private readonly _relations = signal<NetworkRelationsDto>({ nodes: [], edges: [], casos: [] });
   private readonly _relationsLoading = signal<boolean>(false);
 
   readonly providers = this._providers.asReadonly();
@@ -73,7 +73,7 @@ export class ProvidersStore {
         void this.loadRelations();
       } else {
         this._providers.set([]);
-        this._relations.set({ nodes: [], edges: [] });
+        this._relations.set({ nodes: [], edges: [], casos: [] });
       }
     });
   }
@@ -85,7 +85,7 @@ export class ProvidersStore {
       this._relations.set(await firstValueFrom(this.api.relations()));
     } catch {
       // Relations are a visualization aid — keep the page usable on failure.
-      this._relations.set({ nodes: [], edges: [] });
+      this._relations.set({ nodes: [], edges: [], casos: [] });
     } finally {
       this._relationsLoading.set(false);
     }

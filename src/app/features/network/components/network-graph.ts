@@ -2,14 +2,15 @@ import { ChangeDetectionStrategy, Component, computed, input, output, signal } f
 
 import { Icon } from '@shared/ui/icon';
 import { formatMoneyShort } from '@shared/utils';
-import type { NetworkEdgeDto, NetworkNodeDto } from '@core/api/clients/network.api';
+import type { NetworkNodeDto, NetworkNodeKind } from '@core/api/clients/network.api';
+import type { ColumnSpec, GraphEdge } from '../models';
 
 type Risk = 'alert' | 'warn' | 'ok';
 
 interface PlacedNode {
   id: string;
   label: string;
-  kind: 'proveedor' | 'asegurado';
+  kind: NetworkNodeKind;
   ciudad: string;
   casos: number;
   alertas: number;
@@ -26,27 +27,43 @@ interface PlacedEdge {
   path: string;
   risk: Risk;
   width: number;
-  provId: string;
-  asegId: string;
+  source: string;
+  target: string;
 }
 
-/** Top providers shown — fewer nodes keeps the bipartite layout legible. */
-const MAX_PROVIDERS = 8;
-/** Cap on insured shown (only those linked to a visible provider). */
-const MAX_INSURED = 12;
-const PROV_X = 17;
-const ASEG_X = 83;
+/** Per-column node caps, keyed by kind. Force needs more breathing room. */
+function capFor(kind: NetworkNodeKind, layout: string): number {
+  const force = layout === 'fuerza';
+  if (kind === 'caso') return force ? 12 : 16;
+  if (kind === 'proveedor') return force ? 6 : 8;
+  return force ? 8 : 12; // asegurado
+}
 
 function riskFromRatio(alertas: number, casos: number): Risk {
   const ratio = casos > 0 ? alertas / casos : 0;
   return ratio > 0.4 ? 'alert' : ratio > 0.2 ? 'warn' : 'ok';
 }
 
+function riskFromTier(tier: string | undefined): Risk | null {
+  if (tier === 'rojo') return 'alert';
+  if (tier === 'amarillo') return 'warn';
+  if (tier === 'verde') return 'ok';
+  return null;
+}
+
+const KIND_LABEL: Record<NetworkNodeKind, string> = {
+  proveedor: 'Proveedor',
+  asegurado: 'Asegurado',
+  caso: 'Caso',
+};
+
 /**
- * Bipartite relationship graph: a few high-risk providers (left) linked to the
- * insured parties they share claims with (right). Curved edges + barycenter
- * ordering of the insured column keep crossings down; hovering a node isolates
- * its links so the analyst can read one relationship at a time.
+ * Column-based relationship graph. Driven by a `columns` descriptor so it can
+ * render bipartite views (provider↔insured, provider↔caso, insured↔caso) and
+ * the tripartite provider—caso—insured chain with the same code. Nodes are
+ * placed left→right by their kind's column; the leftmost column is capped by
+ * alert weight and each following column keeps the nodes connected to the
+ * already-visible ones. Columnas / Estrella / Fuerza re-arrange the same set.
  */
 @Component({
   selector: 'network-graph',
@@ -57,7 +74,7 @@ function riskFromRatio(alertas: number, casos: number): Risk {
     <div class="flex flex-col h-full min-h-[420px]">
       @if (placedNodes().length === 0) {
         <div class="flex-1 grid place-items-center text-ink-3 text-[13px] px-6 text-center">
-          No hay relaciones proveedor–asegurado para los filtros actuales.
+          No hay relaciones para los filtros actuales.
         </div>
       } @else {
         @if (focusedNode(); as fn) {
@@ -94,12 +111,16 @@ function riskFromRatio(alertas: number, casos: number): Risk {
             [style.height.px]="layout() === 'columnas' ? canvasHeight() : null"
           >
             @if (layout() === 'columnas') {
-              <div class="absolute top-0 left-0 text-[11px] font-semibold uppercase tracking-wide text-brand-ink">
-                Proveedores
-              </div>
-              <div class="absolute top-0 right-0 text-[11px] font-semibold uppercase tracking-wide text-ink-3">
-                Asegurados
-              </div>
+              @for (col of columns(); track col.kind) {
+                <div
+                  class="absolute top-0 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap"
+                  [class]="col.kind === 'proveedor' ? 'text-brand-ink' : 'text-ink-3'"
+                  [style.left.%]="col.x"
+                  [style.transform]="'translateX(-50%)'"
+                >
+                  {{ col.label }}
+                </div>
+              }
             }
 
             <svg class="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -145,14 +166,16 @@ function riskFromRatio(alertas: number, casos: number): Risk {
                 <div class="flex items-start justify-between gap-2 mb-1">
                   <div class="text-[12.5px] font-semibold text-ink leading-tight">{{ hn.label }}</div>
                   <span class="shrink-0 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded border" [class]="kindBadge(hn.kind)">
-                    {{ hn.kind === 'proveedor' ? 'Proveedor' : 'Asegurado' }}
+                    {{ kindLabel(hn.kind) }}
                   </span>
                 </div>
                 <div class="text-[11px] text-ink-3 mb-2">{{ hn.ciudad }}</div>
                 <div class="space-y-1 text-[11.5px]">
                   <div class="flex justify-between gap-2">
-                    <span class="text-ink-3">Alertas</span>
-                    <span class="font-semibold text-ink tabular-nums">{{ hn.alertas }} / {{ hn.casos }}</span>
+                    <span class="text-ink-3">{{ hn.kind === 'caso' ? 'Estado' : 'Alertas' }}</span>
+                    <span class="font-semibold text-ink tabular-nums">
+                      {{ hn.kind === 'caso' ? riskLabel(hn.risk) : hn.alertas + ' / ' + hn.casos }}
+                    </span>
                   </div>
                   <div class="flex justify-between gap-2">
                     <span class="text-ink-3">Vínculos</span>
@@ -181,19 +204,18 @@ function riskFromRatio(alertas: number, casos: number): Risk {
           <span class="inline-flex items-center gap-1.5"><span class="tier-dot tier-dot-y" style="box-shadow:none"></span>Medio</span>
           <span class="inline-flex items-center gap-1.5"><span class="tier-dot" style="background:var(--brand);box-shadow:none"></span>Estándar</span>
         </div>
-        <span class="text-[11px] text-ink-2">
-          {{ providerCount() }} proveedores · {{ insuredCount() }} asegurados · {{ placedEdges().length }} vínculos
-        </span>
+        <span class="text-[11px] text-ink-2">{{ summary() }}</span>
       </div>
     </div>
   `,
 })
 export class NetworkGraph {
   readonly nodes = input.required<readonly NetworkNodeDto[]>();
-  readonly edges = input.required<readonly NetworkEdgeDto[]>();
+  readonly edges = input.required<readonly GraphEdge[]>();
+  readonly columns = input.required<readonly ColumnSpec[]>();
   readonly layout = input<'columnas' | 'estrella' | 'fuerza'>('columnas');
 
-  readonly openNode = output<{ id: string; kind: 'proveedor' | 'asegurado' }>();
+  readonly openNode = output<{ id: string; kind: NetworkNodeKind }>();
 
   protected readonly hoveredId = signal<string | null>(null);
   /** Sticky focus set by clicking a node — isolates its sub-network. */
@@ -202,60 +224,49 @@ export class NetworkGraph {
   /** Focus wins over hover for highlight/dim logic. */
   private readonly activeId = computed(() => this.focusId() ?? this.hoveredId());
 
-  /** Top providers by alerts, then the insured each connects to (capped). */
-  private readonly visible = computed(() => {
-    // The force cloud needs more empty space per node than the columnar/radial
-    // layouts, so it shows fewer to stay readable on smaller screens.
-    const maxProv = this.layout() === 'fuerza' ? 6 : MAX_PROVIDERS;
-    const maxInsured = this.layout() === 'fuerza' ? 8 : MAX_INSURED;
+  private nodeById = computed(() => new Map(this.nodes().map((n) => [n.id, n])));
 
-    const providers = this.nodes()
-      .filter((n) => n.kind === 'proveedor')
-      .sort((a, b) => b.alertas - a.alertas || b.casos - a.casos)
-      .slice(0, maxProv);
-    const provIds = new Set(providers.map((p) => p.id));
-
-    // Insured linked to a visible provider, ranked by total alerts on those links.
-    const insuredAlertas = new Map<string, number>();
-    for (const e of this.edges()) {
-      if (!provIds.has(e.proveedor_id)) continue;
-      insuredAlertas.set(e.asegurado_id, (insuredAlertas.get(e.asegurado_id) ?? 0) + e.alertas);
+  /** Capped node set, walked left→right keeping each column connected. */
+  private readonly visibleColumns = computed<NetworkNodeDto[][]>(() => {
+    const cols = this.columns();
+    const layout = this.layout();
+    const grouped: NetworkNodeDto[][] = cols.map(() => []);
+    for (const n of this.nodes()) {
+      const ci = cols.findIndex((c) => c.kind === n.kind);
+      if (ci >= 0) grouped[ci].push(n);
     }
-    const insuredById = new Map(
-      this.nodes().filter((n) => n.kind === 'asegurado').map((n) => [n.id, n]),
-    );
-    const insured = [...insuredAlertas.keys()]
-      .map((id) => insuredById.get(id))
-      .filter((n): n is NetworkNodeDto => n != null)
-      .sort((a, b) => (insuredAlertas.get(b.id) ?? 0) - (insuredAlertas.get(a.id) ?? 0))
-      .slice(0, maxInsured);
+    const byAlerts = (a: NetworkNodeDto, b: NetworkNodeDto): number =>
+      b.alertas - a.alertas || b.casos - a.casos;
 
-    return { providers, insured };
+    const visible: NetworkNodeDto[][] = [];
+    const seen: Set<string>[] = [];
+    const first = [...grouped[0]].sort(byAlerts).slice(0, capFor(cols[0].kind, layout));
+    visible.push(first);
+    seen.push(new Set(first.map((n) => n.id)));
+
+    for (let k = 1; k < cols.length; k++) {
+      const prev = seen[k - 1];
+      const connected = grouped[k].filter((n) =>
+        this.edges().some(
+          (e) =>
+            (e.source === n.id && prev.has(e.target)) ||
+            (e.target === n.id && prev.has(e.source)),
+        ),
+      );
+      const sel = connected.sort(byAlerts).slice(0, capFor(cols[k].kind, layout));
+      visible.push(sel);
+      seen.push(new Set(sel.map((n) => n.id)));
+    }
+    return visible;
   });
 
-  protected readonly providerCount = computed(() => this.visible().providers.length);
-  protected readonly insuredCount = computed(() => this.visible().insured.length);
+  private readonly visibleIds = computed<Set<string>>(
+    () => new Set(this.visibleColumns().flat().map((n) => n.id)),
+  );
 
   protected readonly canvasHeight = computed(() => {
-    const rows = Math.max(this.visible().providers.length, this.visible().insured.length, 1);
+    const rows = Math.max(...this.visibleColumns().map((c) => c.length), 1);
     return Math.max(400, rows * 58 + 30);
-  });
-
-  /** Insured ordered by the average position of their providers (barycenter) — cuts crossings. */
-  private readonly orderedInsured = computed<NetworkNodeDto[]>(() => {
-    const { providers, insured } = this.visible();
-    const provIndex = new Map(providers.map((p, i) => [p.id, i]));
-    const bary = new Map<string, number>();
-    for (const a of insured) {
-      const ys: number[] = [];
-      for (const e of this.edges()) {
-        if (e.asegurado_id === a.id && provIndex.has(e.proveedor_id)) {
-          ys.push(provIndex.get(e.proveedor_id)!);
-        }
-      }
-      bary.set(a.id, ys.length ? ys.reduce((s, v) => s + v, 0) / ys.length : 0);
-    }
-    return [...insured].sort((a, b) => (bary.get(a.id) ?? 0) - (bary.get(b.id) ?? 0));
   });
 
   protected readonly placedNodes = computed<PlacedNode[]>(() => {
@@ -269,15 +280,75 @@ export class NetworkGraph {
     }
   });
 
+  /** Order a column by the average position of its neighbors in the prior one. */
+  private orderByBarycenter(
+    list: NetworkNodeDto[],
+    prevOrder: Map<string, number>,
+  ): NetworkNodeDto[] {
+    const bary = new Map<string, number>();
+    for (const n of list) {
+      const ys: number[] = [];
+      for (const e of this.edges()) {
+        if (e.source === n.id && prevOrder.has(e.target)) ys.push(prevOrder.get(e.target)!);
+        if (e.target === n.id && prevOrder.has(e.source)) ys.push(prevOrder.get(e.source)!);
+      }
+      bary.set(n.id, ys.length ? ys.reduce((s, v) => s + v, 0) / ys.length : 0);
+    }
+    return [...list].sort((a, b) => (bary.get(a.id) ?? 0) - (bary.get(b.id) ?? 0));
+  }
+
+  private placeColumns(): PlacedNode[] {
+    const cols = this.columns();
+    const visible = this.visibleColumns();
+    const result: PlacedNode[] = [];
+    let prevOrder: Map<string, number> | null = null;
+    for (let k = 0; k < cols.length; k++) {
+      let list = visible[k];
+      if (k > 0 && prevOrder) list = this.orderByBarycenter(list, prevOrder);
+      const n = list.length;
+      list.forEach((node, i) =>
+        result.push(this.toPlaced(node, cols[k].x, n === 1 ? 50 : 7 + (i / (n - 1)) * 88)),
+      );
+      prevOrder = new Map(list.map((node, i) => [node.id, i]));
+    }
+    return result;
+  }
+
+  /** Radial: first column on the left arc, last on the right arc, middle vertical. */
+  private placeRadial(): PlacedNode[] {
+    const cols = this.columns();
+    const visible = this.visibleColumns();
+    const R = 39;
+    const arc = (list: NetworkNodeDto[], from: number, to: number): PlacedNode[] => {
+      const n = list.length;
+      return list.map((node, i) => {
+        const t = n === 1 ? 0.5 : i / (n - 1);
+        const angle = ((from + (to - from) * t) * Math.PI) / 180;
+        return this.toPlaced(node, 50 + R * Math.cos(angle), 50 - R * Math.sin(angle));
+      });
+    };
+    const vertical = (list: NetworkNodeDto[]): PlacedNode[] => {
+      const n = list.length;
+      return list.map((node, i) =>
+        this.toPlaced(node, 50, n === 1 ? 50 : 10 + (i / (n - 1)) * 80),
+      );
+    };
+    const out: PlacedNode[] = [];
+    const last = cols.length - 1;
+    out.push(...arc(visible[0], 110, 250));
+    out.push(...arc(visible[last], 70, -70));
+    for (let k = 1; k < last; k++) out.push(...vertical(visible[k]));
+    return out;
+  }
+
   /**
    * Deterministic force-directed layout (Fruchterman–Reingold) — no dependency,
-   * no live animation. Repulsion between all nodes + attraction along edges +
-   * gravity to center, cooled over a fixed iteration count. Clusters and
-   * collusion rings settle out on their own. Seeded on a circle so the result
-   * is stable across renders.
+   * no live animation. Repulsion + edge attraction + gravity, cooled over a
+   * fixed iteration count, then a collision-resolution pass so nodes never
+   * overlap. Seeded on a circle so the result is stable across renders.
    */
   private placeForce(): PlacedNode[] {
-    const all = [...this.visible().providers, ...this.orderedInsured()];
+    const all = this.visibleColumns().flat();
     const n = all.length;
     if (n === 0) return [];
     const idx = new Map(all.map((node, i) => [node.id, i]));
@@ -287,12 +358,10 @@ export class NetworkGraph {
     });
     const links: Array<[number, number]> = [];
     for (const e of this.edges()) {
-      const s = idx.get(e.proveedor_id);
-      const t = idx.get(e.asegurado_id);
+      const s = idx.get(e.source);
+      const t = idx.get(e.target);
       if (s != null && t != null) links.push([s, t]);
     }
-    // Ideal edge length must exceed node diameter (~10 viewBox units) or
-    // connected pairs collapse on top of each other. Floor it at 20.
     const k = Math.max(20, Math.sqrt((100 * 100) / n) * 0.9);
     let temp = 18;
     for (let it = 0; it < 340; it++) {
@@ -329,7 +398,6 @@ export class NetworkGraph {
       }
       temp *= 0.985;
     }
-    // Normalize into an 8..92 box so nodes never clip the edges.
     const xs = pos.map((p) => p.x);
     const ys = pos.map((p) => p.y);
     const minX = Math.min(...xs);
@@ -338,11 +406,7 @@ export class NetworkGraph {
     const sy = Math.max(...ys) - minY || 1;
     const norm = pos.map((p) => ({ x: 8 + ((p.x - minX) / sx) * 84, y: 8 + ((p.y - minY) / sy) * 84 }));
 
-    // Collision resolution: the square canvas is ~520px → ~5.2px per viewBox
-    // unit, so a 44-60px node has a ~4.5-6 unit radius. Push any overlapping
-    // pair apart by their combined radii + padding. Guarantees no overlap
-    // regardless of how the force sim settled.
-    const radius = all.map((node) => (44 + Math.min(16, Math.round(node.casos * 0.9))) / 2 / 5.2);
+    const radius = all.map((node) => this.nodeSize(node) / 2 / 5.2);
     for (let pass = 0; pass < 30; pass++) {
       for (let i = 0; i < n; i++) {
         for (let j = i + 1; j < n; j++) {
@@ -367,31 +431,13 @@ export class NetworkGraph {
     return all.map((node, i) => this.toPlaced(node, norm[i].x, norm[i].y));
   }
 
-  private placeColumns(): PlacedNode[] {
-    const providers = this.visible().providers;
-    const insured = this.orderedInsured();
-    const place = (list: NetworkNodeDto[], x: number): PlacedNode[] => {
-      const n = list.length;
-      return list.map((node, i) => this.toPlaced(node, x, n === 1 ? 50 : 7 + (i / (n - 1)) * 88));
-    };
-    return [...place(providers, PROV_X), ...place(insured, ASEG_X)];
+  private nodeSize(node: NetworkNodeDto): number {
+    if (node.kind === 'caso') return 38;
+    return 44 + Math.min(16, Math.round(node.casos * 0.9));
   }
 
-  /** Radial "star": providers on the left arc, insured on the right arc of one ring. */
-  private placeRadial(): PlacedNode[] {
-    const providers = this.visible().providers;
-    const insured = this.orderedInsured();
-    const R = 39;
-    const arc = (list: NetworkNodeDto[], from: number, to: number): PlacedNode[] => {
-      const n = list.length;
-      return list.map((node, i) => {
-        const t = n === 1 ? 0.5 : i / (n - 1);
-        const angle = ((from + (to - from) * t) * Math.PI) / 180;
-        return this.toPlaced(node, 50 + R * Math.cos(angle), 50 - R * Math.sin(angle));
-      });
-    };
-    // Providers span the left semicircle (top→bottom), insured the right.
-    return [...arc(providers, 110, 250), ...arc(insured, 70, -70)];
+  private nodeRisk(node: NetworkNodeDto): Risk {
+    return riskFromTier(node.tier) ?? riskFromRatio(node.alertas, node.casos);
   }
 
   private toPlaced(node: NetworkNodeDto, x: number, y: number): PlacedNode {
@@ -404,10 +450,10 @@ export class NetworkGraph {
       alertas: node.alertas,
       monto: node.monto,
       listaRestrictiva: node.lista_restrictiva,
-      risk: riskFromRatio(node.alertas, node.casos),
+      risk: this.nodeRisk(node),
       x,
       y,
-      size: 44 + Math.min(16, Math.round(node.casos * 0.9)),
+      size: this.nodeSize(node),
     };
   }
 
@@ -416,32 +462,33 @@ export class NetworkGraph {
     const mode = this.layout();
     const out: PlacedEdge[] = [];
     for (const e of this.edges()) {
-      const p = byId.get(e.proveedor_id);
-      const a = byId.get(e.asegurado_id);
+      const p = byId.get(e.source);
+      const a = byId.get(e.target);
       if (!p || !a) continue;
+      // Order endpoints left→right so the bezier control points read correctly.
+      const left = p.x <= a.x ? p : a;
+      const right = p.x <= a.x ? a : p;
       let path: string;
       if (mode === 'fuerza') {
         path = `M ${p.x} ${p.y} L ${a.x} ${a.y}`;
       } else if (mode === 'estrella') {
-        // Control point = midpoint pulled toward the center, bending each chord
-        // inward so the links fan out like a star instead of a straight web.
         const midX = (p.x + a.x) / 2;
         const midY = (p.y + a.y) / 2;
         const cx = midX + (50 - midX) * 0.55;
         const cy = midY + (50 - midY) * 0.55;
         path = `M ${p.x} ${p.y} Q ${cx} ${cy} ${a.x} ${a.y}`;
       } else {
-        const cx1 = p.x + (a.x - p.x) * 0.42;
-        const cx2 = p.x + (a.x - p.x) * 0.58;
-        path = `M ${p.x} ${p.y} C ${cx1} ${p.y} ${cx2} ${a.y} ${a.x} ${a.y}`;
+        const cx1 = left.x + (right.x - left.x) * 0.42;
+        const cx2 = left.x + (right.x - left.x) * 0.58;
+        path = `M ${left.x} ${left.y} C ${cx1} ${left.y} ${cx2} ${right.y} ${right.x} ${right.y}`;
       }
       out.push({
-        id: `${e.proveedor_id}__${e.asegurado_id}`,
+        id: `${e.source}__${e.target}`,
         path,
-        risk: e.alertas > 0 ? (e.casos_compartidos >= 2 ? 'alert' : 'warn') : 'ok',
-        width: Math.min(3.5, 0.8 + e.casos_compartidos * 0.6),
-        provId: e.proveedor_id,
-        asegId: e.asegurado_id,
+        risk: e.alertas > 0 ? (e.casos >= 2 ? 'alert' : 'warn') : 'ok',
+        width: Math.min(3.5, 0.8 + e.casos * 0.6),
+        source: e.source,
+        target: e.target,
       });
     }
     return out;
@@ -452,8 +499,8 @@ export class NetworkGraph {
     if (!id) return new Set();
     const set = new Set<string>([id]);
     for (const e of this.placedEdges()) {
-      if (e.provId === id) set.add(e.asegId);
-      if (e.asegId === id) set.add(e.provId);
+      if (e.source === id) set.add(e.target);
+      if (e.target === id) set.add(e.source);
     }
     return set;
   });
@@ -468,6 +515,13 @@ export class NetworkGraph {
     const id = this.focusId();
     if (!id) return null;
     return this.placedNodes().find((n) => n.id === id) ?? null;
+  });
+
+  protected readonly summary = computed(() => {
+    const cols = this.columns();
+    const visible = this.visibleColumns();
+    const parts = cols.map((c, i) => `${visible[i].length} ${c.label.toLowerCase()}`);
+    return `${parts.join(' · ')} · ${this.placedEdges().length} vínculos`;
   });
 
   protected onNodeClick(n: PlacedNode, event: MouseEvent): void {
@@ -486,20 +540,23 @@ export class NetworkGraph {
   }
 
   protected linkCount(id: string): number {
-    return this.placedEdges().filter((e) => e.provId === id || e.asegId === id).length;
+    return this.placedEdges().filter((e) => e.source === id || e.target === id).length;
+  }
+
+  protected kindLabel(kind: NetworkNodeKind): string {
+    return KIND_LABEL[kind];
+  }
+
+  protected riskLabel(risk: Risk): string {
+    return risk === 'alert' ? 'Rojo' : risk === 'warn' ? 'Amarillo' : 'Verde';
   }
 
   protected nodeClass(n: PlacedNode): string {
-    if (n.kind === 'asegurado') {
-      return n.risk === 'alert'
-        ? 'border-[var(--tier-red)] bg-tier-red-soft text-tier-red-ink z-10'
-        : 'border-line-2 bg-soft text-ink-2 z-10';
-    }
-    return n.risk === 'alert'
-      ? 'border-[var(--tier-red)] bg-tier-red-soft text-tier-red-ink z-10'
-      : n.risk === 'warn'
-        ? 'border-[var(--tier-yellow)] bg-tier-yellow-soft text-tier-yellow-ink z-10'
-        : 'border-[var(--brand)] bg-brand-soft text-brand-ink z-10';
+    if (n.risk === 'alert') return 'border-[var(--tier-red)] bg-tier-red-soft text-tier-red-ink z-10';
+    if (n.risk === 'warn') return 'border-[var(--tier-yellow)] bg-tier-yellow-soft text-tier-yellow-ink z-10';
+    return n.kind === 'asegurado'
+      ? 'border-line-2 bg-soft text-ink-2 z-10'
+      : 'border-[var(--brand)] bg-brand-soft text-brand-ink z-10';
   }
 
   protected edgeStroke(risk: Risk): string {
@@ -509,21 +566,21 @@ export class NetworkGraph {
   protected edgeOpacity(e: PlacedEdge): number {
     const id = this.activeId();
     if (!id) return e.risk === 'alert' ? 0.4 : e.risk === 'warn' ? 0.32 : 0.16;
-    return e.provId === id || e.asegId === id ? 0.9 : 0.04;
+    return e.source === id || e.target === id ? 0.9 : 0.04;
   }
 
-  protected kindBadge(kind: 'proveedor' | 'asegurado'): string {
-    return kind === 'proveedor'
-      ? 'bg-brand-soft text-brand-ink border-[var(--brand)]'
-      : 'bg-soft text-ink-2 border-line-2';
+  protected kindBadge(kind: NetworkNodeKind): string {
+    if (kind === 'proveedor') return 'bg-brand-soft text-brand-ink border-[var(--brand)]';
+    if (kind === 'caso') return 'bg-tier-yellow-soft text-tier-yellow-ink border-[var(--tier-yellow)]';
+    return 'bg-soft text-ink-2 border-line-2';
   }
 
   protected tooltipStyle(n: PlacedNode): Record<string, string> {
     const placeRight = n.x < 50;
     const key = placeRight ? 'left' : 'right';
     const value = placeRight ? `${n.x + 5}%` : `${100 - n.x + 5}%`;
-    const vertical = n.y > 70 ? 'translateY(-100%)' : n.y < 25 ? 'translateY(0%)' : 'translateY(-50%)';
-    return { [key]: value, top: `${n.y}%`, transform: vertical };
+    const v = n.y > 70 ? 'translateY(-100%)' : n.y < 25 ? 'translateY(0%)' : 'translateY(-50%)';
+    return { [key]: value, top: `${n.y}%`, transform: v };
   }
 
   protected money(amount: number): string {

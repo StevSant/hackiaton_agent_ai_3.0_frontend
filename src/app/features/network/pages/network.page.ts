@@ -1,10 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import type { NetworkEdgeDto, NetworkNodeDto } from '@core/api/clients/network.api';
+import type {
+  NetworkClaimDto,
+  NetworkEdgeDto,
+  NetworkNodeDto,
+  NetworkNodeKind,
+} from '@core/api/clients/network.api';
 import { Button } from '@shared/ui/button';
 import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
 import { Icon } from '@shared/ui/icon';
+import { Pagination } from '@shared/ui/pagination';
 import {
   PROVIDER_EXPORT_COLUMNS,
   RAMOS,
@@ -21,11 +27,39 @@ import { NetworkMatrix } from '../components/network-matrix';
 import { ProviderRanking } from '../components/provider-ranking';
 import { RamoDistributionCard } from '../components/ramo-distribution-card';
 import type { Provider } from '@shared/models';
+import type { ColumnSpec, GraphEdge, RelationMode } from '../models';
 import { ProvidersStore } from '@core/state/providers.store';
 
 type RamoFilter = 'todos' | RamoKey;
 type GraphTierFilter = 'todos' | 'rojo' | 'amarillo_rojo' | 'estandar';
 type GraphLayout = 'columnas' | 'estrella' | 'fuerza' | 'matriz';
+
+interface GraphView {
+  nodes: NetworkNodeDto[];
+  edges: GraphEdge[];
+  columns: ColumnSpec[];
+}
+
+const COL_X = { left: 17, mid: 50, right: 83 } as const;
+
+function casoToNode(c: NetworkClaimDto): NetworkNodeDto {
+  return {
+    id: c.id,
+    label: c.label,
+    kind: 'caso',
+    ciudad: c.ciudad,
+    casos: 1,
+    alertas: c.alerta ? 1 : 0,
+    monto: c.monto,
+    lista_restrictiva: false,
+    ramos: [c.ramo],
+    tier: c.tier,
+  };
+}
+
+function casoEdge(source: string, target: string, c: NetworkClaimDto): GraphEdge {
+  return { source, target, casos: 1, alertas: c.alerta ? 1 : 0, monto: c.monto };
+}
 
 @Component({
   selector: 'page-network',
@@ -36,6 +70,7 @@ type GraphLayout = 'columnas' | 'estrella' | 'fuerza' | 'matriz';
     Icon,
     NetworkGraph,
     NetworkMatrix,
+    Pagination,
     ProviderRanking,
     RamoDistributionCard,
   ],
@@ -107,21 +142,27 @@ type GraphLayout = 'columnas' | 'estrella' | 'fuerza' | 'matriz';
         <div class="px-5 py-3.5 border-b border-line shrink-0 flex items-start justify-between gap-3 flex-wrap">
           <div>
             <h3 class="text-[13px] font-semibold m-0">Mapa de relaciones</h3>
-            <div class="text-[12px] text-ink-3 mt-0.5">
-              @if (graphLayout() === 'matriz') {
-                Cada celda cuenta los siniestros que comparten un proveedor y un asegurado.
-                Más oscuro = más casos en común.
-              } @else {
-                Cada línea une un proveedor con un asegurado que comparten siniestros.
-                Clic en un nodo para aislar sus vínculos.
-              }
-            </div>
+            <div class="text-[12px] text-ink-3 mt-0.5">{{ graphHint() }}</div>
             <div class="text-[11.5px] text-ink-2 mt-1 font-medium">{{ graphSubtitle() }}</div>
           </div>
           <div class="flex flex-col items-end gap-1.5">
+            <div class="flex flex-wrap items-center justify-end gap-1.5">
+              <span class="text-[11px] uppercase tracking-wide text-ink-3 mr-0.5">Relación</span>
+              @for (opt of relationOptions; track opt.value) {
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] border transition-colors"
+                  [class]="relationChipClasses(opt.value)"
+                  (click)="setRelationMode(opt.value)"
+                >
+                  <ui-icon [name]="opt.icon" [size]="13" />
+                  {{ opt.label }}
+                </button>
+              }
+            </div>
             <div class="flex flex-wrap items-center gap-1.5">
               <span class="text-[11px] uppercase tracking-wide text-ink-3 mr-0.5">Vista</span>
-              @for (opt of graphLayoutOptions; track opt.value) {
+              @for (opt of layoutOptions(); track opt.value) {
                 <button
                   type="button"
                   class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] border transition-colors"
@@ -158,8 +199,9 @@ type GraphLayout = 'columnas' | 'estrella' | 'fuerza' | 'matriz';
         } @else {
           <network-graph
             class="flex-1"
-            [nodes]="graphNodes()"
-            [edges]="graphEdges()"
+            [nodes]="graphView().nodes"
+            [edges]="graphView().edges"
+            [columns]="graphView().columns"
             [layout]="nodeLayout()"
             (openNode)="onOpenNode($event)"
           />
@@ -169,7 +211,7 @@ type GraphLayout = 'columnas' | 'estrella' | 'fuerza' | 'matriz';
       <network-ramo-distribution-card />
     </div>
 
-    @if (topLinks().length > 0) {
+    @if (allLinks().length > 0) {
       <div class="bg-surface border border-line rounded-lg shadow-1 overflow-hidden mb-5">
         <div class="px-5 py-3.5 border-b border-line">
           <h3 class="text-[13px] font-semibold m-0">Vínculos más sospechosos</h3>
@@ -178,12 +220,12 @@ type GraphLayout = 'columnas' | 'estrella' | 'fuerza' | 'matriz';
           </div>
         </div>
         <ul class="divide-y divide-line">
-          @for (link of topLinks(); track link.provId + link.asegLabel; let i = $index) {
+          @for (link of pagedLinks(); track link.provId + link.asegLabel; let i = $index) {
             <li
               class="flex items-center gap-3 px-5 py-3 hover:bg-soft cursor-pointer"
               (click)="onOpenNode({ id: link.provId, kind: 'proveedor' })"
             >
-              <span class="w-6 text-[12px] font-semibold text-ink-3 tabular-nums shrink-0">{{ i + 1 }}</span>
+              <span class="w-6 text-[12px] font-semibold text-ink-3 tabular-nums shrink-0">{{ linksRankOffset() + i + 1 }}</span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 flex-wrap text-[13px]">
                   <span class="font-medium text-ink truncate">{{ link.provLabel }}</span>
@@ -202,6 +244,16 @@ type GraphLayout = 'columnas' | 'estrella' | 'fuerza' | 'matriz';
             </li>
           }
         </ul>
+        <div class="px-5 py-3 border-t border-line">
+          <ui-pagination
+            variant="numbered"
+            noun="vínculos"
+            [page]="linksPage()"
+            [pageSize]="linksPageSize()"
+            [total]="allLinks().length"
+            (pageChange)="linksPage.set($event)"
+          />
+        </div>
       </div>
     }
 
@@ -210,7 +262,20 @@ type GraphLayout = 'columnas' | 'estrella' | 'fuerza' | 'matriz';
         Sin proveedores en este ramo.
       </div>
     } @else {
-      <network-provider-ranking [providers]="filteredProviders()" />
+      <network-provider-ranking
+        [providers]="pagedProviders()"
+        [rankOffset]="providersRankOffset()"
+      />
+      <div class="bg-surface border border-line rounded-lg shadow-1 px-5 py-3 mt-3">
+        <ui-pagination
+          variant="numbered"
+          noun="proveedores"
+          [page]="providersPage()"
+          [pageSize]="providersPageSize()"
+          [total]="filteredProviders().length"
+          (pageChange)="providersPage.set($event)"
+        />
+      </div>
     }
 
     <ui-export-modal
@@ -237,6 +302,11 @@ export class NetworkPage {
   protected readonly filter = signal<RamoFilter>('todos');
   protected readonly graphTier = signal<GraphTierFilter>('amarillo_rojo');
   protected readonly graphLayout = signal<GraphLayout>('columnas');
+  protected readonly relationMode = signal<RelationMode>('prov_aseg');
+  protected readonly linksPage = signal<number>(0);
+  protected readonly linksPageSize = signal<number>(10);
+  protected readonly providersPage = signal<number>(0);
+  protected readonly providersPageSize = signal<number>(10);
   protected readonly exportOpen = signal<boolean>(false);
   protected readonly providerColumns = PROVIDER_EXPORT_COLUMNS;
   protected readonly ramoOptions: readonly RamoKey[] = RAMO_KEYS;
@@ -252,6 +322,19 @@ export class NetworkPage {
     { value: 'fuerza', label: 'Fuerza', icon: 'scatter_plot' },
     { value: 'matriz', label: 'Matriz', icon: 'grid_on' },
   ];
+  protected readonly relationOptions: ReadonlyArray<{ value: RelationMode; label: string; icon: string }> = [
+    { value: 'prov_aseg', label: 'Proveedor · Asegurado', icon: 'sync_alt' },
+    { value: 'prov_caso', label: 'Proveedor · Caso', icon: 'description' },
+    { value: 'aseg_caso', label: 'Asegurado · Caso', icon: 'description' },
+    { value: 'tripartito', label: 'Tripartito', icon: 'account_tree' },
+  ];
+
+  /** Matriz only makes sense for the bipartite provider↔insured view. */
+  protected readonly layoutOptions = computed(() =>
+    this.relationMode() === 'prov_aseg'
+      ? this.graphLayoutOptions
+      : this.graphLayoutOptions.filter((o) => o.value !== 'matriz'),
+  );
 
   protected readonly counts = computed<Record<RamoKey, number>>(() => {
     const acc: Record<RamoKey, number> = {
@@ -274,6 +357,20 @@ export class NetworkPage {
     const list = this.providers();
     if (f === 'todos') return list;
     return list.filter((p) => providerRamoKeys(p).includes(f));
+  });
+
+  /** Sorted like ProviderRanking (by alert ratio) so paginated ranks stay global. */
+  protected readonly sortedProviders = computed<Provider[]>(() =>
+    [...this.filteredProviders()].sort((l, r) => r.alertas / r.casos - l.alertas / l.casos),
+  );
+
+  protected readonly providersRankOffset = computed(
+    () => this.providersPage() * this.providersPageSize(),
+  );
+
+  protected readonly pagedProviders = computed<Provider[]>(() => {
+    const start = this.providersRankOffset();
+    return this.sortedProviders().slice(start, start + this.providersPageSize());
   });
 
   protected readonly filteredStats = computed(() => {
@@ -337,15 +434,128 @@ export class NetworkPage {
     );
   });
 
-  /** Strongest provider↔insured links in view, ranked by alerts + shared claims. */
-  protected readonly topLinks = computed(() => {
+  /** Claims behind the visible providers — the bridge nodes for case views. */
+  private readonly visibleCasos = computed<NetworkClaimDto[]>(() => {
+    const provIds = this.visibleProviderIds();
+    return (this.relations().casos ?? []).filter(
+      (c) => c.proveedor_id != null && provIds.has(c.proveedor_id),
+    );
+  });
+
+  /** Provider/insured nodes from the relations payload, indexed for reuse. */
+  private readonly nodesById = computed(
+    () => new Map(this.relations().nodes.map((n) => [n.id, n])),
+  );
+
+  /** Node + edge + column set for the active relationship mode. */
+  protected readonly graphView = computed<GraphView>(() => {
+    switch (this.relationMode()) {
+      case 'prov_caso':
+        return this.buildCasoView('proveedor');
+      case 'aseg_caso':
+        return this.buildCasoView('asegurado');
+      case 'tripartito':
+        return this.buildTripartiteView();
+      default:
+        return this.buildProviderInsuredView();
+    }
+  });
+
+  private buildProviderInsuredView(): GraphView {
+    const edges: GraphEdge[] = this.graphEdges().map((e) => ({
+      source: e.proveedor_id,
+      target: e.asegurado_id,
+      casos: e.casos_compartidos,
+      alertas: e.alertas,
+      monto: e.monto,
+    }));
+    return {
+      nodes: this.graphNodes(),
+      edges,
+      columns: [
+        { kind: 'proveedor', label: 'Proveedores', x: COL_X.left },
+        { kind: 'asegurado', label: 'Asegurados', x: COL_X.right },
+      ],
+    };
+  }
+
+  /** Bipartite view linking one anchor side (provider or insured) to its claims. */
+  private buildCasoView(anchor: 'proveedor' | 'asegurado'): GraphView {
+    const casos = this.visibleCasos();
+    const byId = this.nodesById();
+    const anchorIds = new Set<string>();
+    const edges: GraphEdge[] = [];
+    for (const c of casos) {
+      const anchorId = anchor === 'proveedor' ? c.proveedor_id : c.asegurado_id;
+      if (!anchorId) continue;
+      anchorIds.add(anchorId);
+      edges.push(casoEdge(anchorId, c.id, c));
+    }
+    const anchorNodes = [...anchorIds]
+      .map((id) => byId.get(id))
+      .filter((n): n is NetworkNodeDto => n != null);
+    const label = anchor === 'proveedor' ? 'Proveedores' : 'Asegurados';
+    return {
+      nodes: [...anchorNodes, ...casos.map(casoToNode)],
+      edges,
+      columns: [
+        { kind: anchor, label, x: COL_X.left },
+        { kind: 'caso', label: 'Casos', x: COL_X.right },
+      ],
+    };
+  }
+
+  private buildTripartiteView(): GraphView {
+    const casos = this.visibleCasos();
+    const byId = this.nodesById();
+    const provIds = new Set<string>();
+    const asegIds = new Set<string>();
+    const edges: GraphEdge[] = [];
+    for (const c of casos) {
+      if (c.proveedor_id) {
+        provIds.add(c.proveedor_id);
+        edges.push(casoEdge(c.proveedor_id, c.id, c));
+      }
+      asegIds.add(c.asegurado_id);
+      edges.push(casoEdge(c.id, c.asegurado_id, c));
+    }
+    const pick = (ids: Set<string>): NetworkNodeDto[] =>
+      [...ids].map((id) => byId.get(id)).filter((n): n is NetworkNodeDto => n != null);
+    return {
+      nodes: [...pick(provIds), ...casos.map(casoToNode), ...pick(asegIds)],
+      edges,
+      columns: [
+        { kind: 'proveedor', label: 'Proveedores', x: COL_X.left },
+        { kind: 'caso', label: 'Casos', x: COL_X.mid },
+        { kind: 'asegurado', label: 'Asegurados', x: COL_X.right },
+      ],
+    };
+  }
+
+  protected readonly graphHint = computed(() => {
+    if (this.graphLayout() === 'matriz') {
+      return 'Cada celda cuenta los siniestros que comparten un proveedor y un asegurado. Más oscuro = más casos en común.';
+    }
+    switch (this.relationMode()) {
+      case 'prov_caso':
+        return 'Cada proveedor enlazado con los siniestros en los que figura como beneficiario.';
+      case 'aseg_caso':
+        return 'Cada asegurado enlazado con sus siniestros. Clic en un nodo para aislar sus vínculos.';
+      case 'tripartito':
+        return 'Cadena proveedor → caso → asegurado. Útil para rastrear redes de colusión completas.';
+      default:
+        return 'Cada línea une un proveedor con un asegurado que comparten siniestros. Clic en un nodo para aislar sus vínculos.';
+    }
+  });
+
+  /** All provider↔insured links in view, ranked by alerts + shared claims. */
+  protected readonly allLinks = computed(() => {
     const labels = new Map(this.graphNodes().map((n) => [n.id, n.label]));
     const restrictiva = new Map(
       this.graphNodes().filter((n) => n.kind === 'proveedor').map((n) => [n.id, n.lista_restrictiva]),
     );
     return [...this.graphEdges()]
       .sort((a, b) => b.alertas - a.alertas || b.casos_compartidos - a.casos_compartidos)
-      .slice(0, 8)
       .map((e) => ({
         provId: e.proveedor_id,
         provLabel: labels.get(e.proveedor_id) ?? e.proveedor_id,
@@ -357,6 +567,15 @@ export class NetworkPage {
       }));
   });
 
+  /** Zero-based rank of the first row on the current page (for the "#" column). */
+  protected readonly linksRankOffset = computed(() => this.linksPage() * this.linksPageSize());
+
+  /** Links for the current page only. */
+  protected readonly pagedLinks = computed(() => {
+    const start = this.linksRankOffset();
+    return this.allLinks().slice(start, start + this.linksPageSize());
+  });
+
   /** Narrowed layout for the node-link graph (matriz uses a separate component). */
   protected readonly nodeLayout = computed<'columnas' | 'estrella' | 'fuerza'>(() => {
     const l = this.graphLayout();
@@ -364,23 +583,46 @@ export class NetworkPage {
   });
 
   protected readonly graphSubtitle = computed(() => {
-    const provs = this.graphNodes().filter((n) => n.kind === 'proveedor').length;
-    const links = this.graphEdges().length;
+    const view = this.graphView();
+    const links = view.edges.length;
     if (links === 0) return 'sin vínculos';
-    return `${provs} proveedor${provs === 1 ? '' : 'es'} · ${links} vínculo${links === 1 ? '' : 's'}`;
+    const nodes = view.nodes.length;
+    return `${nodes} nodo${nodes === 1 ? '' : 's'} · ${links} vínculo${links === 1 ? '' : 's'}`;
   });
 
-  protected onOpenNode(node: { id: string; kind: 'proveedor' | 'asegurado' }): void {
-    const path = node.kind === 'proveedor' ? '/providers' : '/asegurados';
+  protected onOpenNode(node: { id: string; kind: NetworkNodeKind }): void {
+    const path =
+      node.kind === 'proveedor'
+        ? '/providers'
+        : node.kind === 'asegurado'
+          ? '/asegurados'
+          : '/claims';
     void this.router.navigate([path, node.id]);
+  }
+
+  protected setRelationMode(value: RelationMode): void {
+    this.relationMode.set(value);
+    // Matriz is provider↔insured only — fall back when leaving that mode.
+    if (value !== 'prov_aseg' && this.graphLayout() === 'matriz') {
+      this.graphLayout.set('columnas');
+    }
+  }
+
+  protected relationChipClasses(value: RelationMode): string {
+    return value === this.relationMode()
+      ? 'bg-brand-soft border-brand text-brand-ink'
+      : 'bg-surface border-line text-ink-2 hover:bg-soft';
   }
 
   protected setFilter(value: RamoFilter): void {
     this.filter.set(value);
+    this.linksPage.set(0);
+    this.providersPage.set(0);
   }
 
   protected setGraphTier(value: GraphTierFilter): void {
     this.graphTier.set(value);
+    this.linksPage.set(0);
   }
 
   protected setGraphLayout(value: GraphLayout): void {

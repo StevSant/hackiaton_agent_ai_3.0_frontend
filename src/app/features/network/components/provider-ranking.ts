@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+// rankOffset lets the page keep a global rank number across paginated slices.
 
 import { RiskBar } from '@shared/ui/risk-bar';
 import { formatMoney, initials } from '@shared/utils';
@@ -20,7 +21,7 @@ import type { Provider } from '../models';
         @for (provider of sorted(); track provider.id; let rank = $index) {
           <div class="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-4 px-5 py-3.5 hover:bg-soft/50 transition-colors">
             <div class="flex flex-col items-center gap-1">
-              <span class="text-[10px] font-mono text-ink-4 tabular-nums">{{ rank + 1 }}</span>
+              <span class="text-[10px] font-mono text-ink-4 tabular-nums">{{ rankOffset() + rank + 1 }}</span>
               <div
                 class="w-9 h-9 rounded-md grid place-items-center font-semibold text-[11px] text-white shrink-0"
                 [style.background]="provider.color"
@@ -63,6 +64,7 @@ import type { Provider } from '../models';
 })
 export class ProviderRanking {
   readonly providers = input.required<readonly Provider[]>();
+  readonly rankOffset = input<number>(0);
 
   protected readonly initials = initials;
   protected readonly money = formatMoney;

@@ -16,7 +16,7 @@ export interface ProviderDto {
   ramos?: string[];
 }
 
-export type NetworkNodeKind = 'proveedor' | 'asegurado';
+export type NetworkNodeKind = 'proveedor' | 'asegurado' | 'caso';
 
 export interface NetworkNodeDto {
   id: string;
@@ -28,6 +28,8 @@ export interface NetworkNodeDto {
   monto: number;
   lista_restrictiva: boolean;
   ramos?: string[];
+  // Only set on synthesized `caso` nodes — drives tier-based coloring.
+  tier?: string;
 }
 
 export interface NetworkEdgeDto {
@@ -38,9 +40,24 @@ export interface NetworkEdgeDto {
   monto: number;
 }
 
+/** A single claim (siniestro) bridging a provider and an insured. */
+export interface NetworkClaimDto {
+  id: string;
+  label: string;
+  proveedor_id: string | null;
+  asegurado_id: string;
+  ramo: string;
+  ciudad: string;
+  monto: number;
+  score: number;
+  tier: string;
+  alerta: boolean;
+}
+
 export interface NetworkRelationsDto {
   nodes: NetworkNodeDto[];
   edges: NetworkEdgeDto[];
+  casos?: NetworkClaimDto[];
 }
 
 export interface ProviderCreate {
