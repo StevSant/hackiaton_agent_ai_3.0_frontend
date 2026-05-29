@@ -2,7 +2,8 @@
 // backendUrl points to the deployed Cloud Run backend (not localhost).
 export const environment = {
   production: true,
-  backendUrl: 'https://fraudia-backend-lxnymgm7dq-uc.a.run.app',
+  // backendUrl: 'https://fraudia-backend-lxnymgm7dq-uc.a.run.app',
+  backendUrl: 'https://hackiaton-agent-ai-3-0-backend.onrender.com',
   apiPrefix: '/api/v1',
   demoCredentials: {
     analista: { email: 'analista@demo.com', password: 'Demo.Analista2026' },

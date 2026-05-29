@@ -35,8 +35,8 @@ import type { Claim } from '../models';
       </div>
       @if (score() === null) {
         <ui-empty-state
-          title="Detector de anomalía no cargado"
-          sub="Entrena el IsolationForest en notebooks/02_modelo_fraude.ipynb para activar esta vista."
+          title="Modelo no aplicable a este caso"
+          sub="Este siniestro no cumple los requisitos del detector de anomalías para calcular un indicador de atipicidad."
         />
       } @else {
         <div class="px-5 py-4">
