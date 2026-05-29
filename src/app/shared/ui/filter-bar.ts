@@ -45,7 +45,7 @@ export type FilterValue = Record<string, string>;
                 <input
                   type="search"
                   [placeholder]="c.placeholder ?? 'Buscar…'"
-                  [value]="value()[c.key] ?? ''"
+                  [value]="currentValue(c)"
                   (input)="onSearch(c.key, $any($event.target).value)"
                 />
               </label>
@@ -56,7 +56,7 @@ export type FilterValue = Record<string, string>;
                   <ui-icon [name]="c.icon" [size]="16" />
                 }
                 <select
-                  [value]="value()[c.key] ?? emptyOf(c)"
+                  [value]="currentValue(c)"
                   (change)="patch(c.key, $any($event.target).value)"
                 >
                   @for (o of c.options ?? []; track o.value) {
@@ -70,7 +70,7 @@ export type FilterValue = Record<string, string>;
                 <ui-icon [name]="c.icon ?? 'calendar_today'" [size]="16" />
                 <input
                   type="date"
-                  [value]="value()[c.key] ?? ''"
+                  [value]="currentValue(c)"
                   (input)="patch(c.key, $any($event.target).value)"
                 />
               </label>
@@ -79,7 +79,7 @@ export type FilterValue = Record<string, string>;
               <div class="flex items-center gap-1.5 flex-wrap">
                 @for (o of c.options ?? []; track o.value) {
                   <ui-chip
-                    [active]="(value()[c.key] ?? emptyOf(c)) === o.value"
+                    [active]="currentValue(c) === o.value"
                     (click)="patch(c.key, o.value)"
                   >
                     @if (o.icon) {
@@ -111,10 +111,9 @@ export class FilterBar {
   private readonly searchTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   protected readonly activeTags = computed<FilterTag[]>(() => {
-    const v = this.value();
     const tags: FilterTag[] = [];
     for (const c of this.controls()) {
-      const current = v[c.key] ?? this.emptyOf(c);
+      const current = this.currentValue(c);
       if (current === this.emptyOf(c) || current === '') continue;
       tags.push({ key: c.key, label: this.tagLabel(c, current) });
     }
@@ -123,6 +122,12 @@ export class FilterBar {
 
   protected emptyOf(c: FilterControl): string {
     return c.emptyValue ?? '';
+  }
+
+  /** Current value for a control, falling back to its empty sentinel. */
+  protected currentValue(c: FilterControl): string {
+    const v = this.value()[c.key];
+    return v ?? this.emptyOf(c);
   }
 
   protected patch(key: string, value: string): void {
