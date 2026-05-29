@@ -15,6 +15,7 @@ import { SegmentedTabs, type SegmentedTab } from '@shared/ui/segmented-tabs';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
 import {
   bindListKeyboardNav,
+  bindSectionArrowNav,
   formatDateTime,
   ramoIcon,
   ramoLabel,
@@ -306,6 +307,7 @@ export class BandejaPage {
       focusedIndex: this.listFocusIndex,
       onOpen: (id) => this.openCase(id),
     });
+    bindSectionArrowNav(this.destroyRef, this.shortcuts, this.router);
 
     effect(() => {
       this.sort.key(); // re-sorting jumps back to the first page

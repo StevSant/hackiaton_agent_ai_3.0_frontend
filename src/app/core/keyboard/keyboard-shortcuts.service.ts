@@ -11,6 +11,8 @@ const APP_SHORTCUT_CATALOG: readonly ShortcutHelpEntry[] = [
   { keys: '?', label: 'Mostrar u ocultar esta ayuda', group: 'General' },
   { keys: '1', label: 'Subir en el menú lateral', group: 'Menú' },
   { keys: '2', label: 'Bajar en el menú lateral', group: 'Menú' },
+  { keys: '←', label: 'Sección anterior (en listas)', group: 'Menú' },
+  { keys: '→', label: 'Sección siguiente (en listas)', group: 'Menú' },
   { keys: '/', label: 'Enfocar búsqueda', group: 'Lista' },
   { keys: 'J  ·  ↑', label: 'Subir en la lista', group: 'Lista' },
   { keys: 'K  ·  ↓', label: 'Bajar en la lista', group: 'Lista' },

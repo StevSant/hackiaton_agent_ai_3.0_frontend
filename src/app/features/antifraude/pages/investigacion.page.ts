@@ -12,6 +12,7 @@ import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
 import {
   bindListKeyboardNav,
+  bindSectionArrowNav,
   byTriagePriority,
   CLAIM_EXPORT_COLUMNS,
   exportClaims,
@@ -287,6 +288,7 @@ export class InvestigacionPage {
       focusedIndex: this.listFocusIndex,
       onOpen: (id) => this.openCase(id),
     });
+    bindSectionArrowNav(this.destroyRef, this.shortcuts, this.router);
 
     effect(() => {
       this.sort.key(); // re-sorting jumps the analyst back to the first page

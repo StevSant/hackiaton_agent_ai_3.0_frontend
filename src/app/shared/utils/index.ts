@@ -48,7 +48,7 @@ export { compareValues } from './sort/compare-values';
 export { sortRows } from './sort/sort-rows';
 export { TableSortController } from './sort/table-sort-controller';
 export { bindListKeyboardNav } from './list-keyboard-nav';
-export { bindSectionKeyboardNav } from './section-keyboard-nav';
+export { bindSectionArrowNav, bindSectionKeyboardNav } from './section-keyboard-nav';
 export {
   bindShortcutHandlers,
   focusKeyboardSearch,
