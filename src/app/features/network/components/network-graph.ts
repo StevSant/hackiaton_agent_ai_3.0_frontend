@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 
+import { Icon } from '@shared/ui/icon';
 import { formatMoneyShort } from '@shared/utils';
 import type { NetworkEdgeDto, NetworkNodeDto } from '@core/api/clients/network.api';
 
@@ -50,6 +51,7 @@ function riskFromRatio(alertas: number, casos: number): Risk {
 @Component({
   selector: 'network-graph',
   standalone: true,
+  imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col h-full min-h-[420px]">
@@ -58,7 +60,34 @@ function riskFromRatio(alertas: number, casos: number): Risk {
           No hay relaciones proveedor–asegurado para los filtros actuales.
         </div>
       } @else {
-        <div class="flex-1 relative px-4 py-4 overflow-x-hidden overflow-y-auto" (mouseleave)="hoveredId.set(null)">
+        @if (focusedNode(); as fn) {
+          <div class="flex items-center gap-2 mx-4 mt-3 px-3 py-2 rounded-lg border border-brand bg-brand-soft text-[12px]">
+            <ui-icon name="filter_center_focus" [size]="15" class="text-brand-ink" />
+            <span class="text-ink-2">
+              Mostrando vínculos de <span class="font-semibold text-ink">{{ fn.label }}</span> ·
+              {{ linkCount(fn.id) }} vínculo{{ linkCount(fn.id) === 1 ? '' : 's' }}
+            </span>
+            <button
+              type="button"
+              class="ml-auto text-brand-ink font-medium hover:underline"
+              (click)="openNode.emit({ id: fn.id, kind: fn.kind })"
+            >
+              Abrir detalle
+            </button>
+            <button
+              type="button"
+              class="text-ink-3 hover:text-ink font-medium"
+              (click)="focusId.set(null)"
+            >
+              Ver todo
+            </button>
+          </div>
+        }
+        <div
+          class="flex-1 relative px-4 py-4 overflow-x-hidden overflow-y-auto"
+          (mouseleave)="hoveredId.set(null)"
+          (click)="focusId.set(null)"
+        >
           <div
             class="relative"
             [class]="layout() === 'estrella' ? 'w-full max-w-[560px] aspect-square mx-auto' : 'w-full'"
@@ -102,7 +131,7 @@ function riskFromRatio(alertas: number, casos: number): Risk {
                 (mouseenter)="hoveredId.set(n.id)"
                 (focus)="hoveredId.set(n.id)"
                 (blur)="hoveredId.set(null)"
-                (click)="openNode.emit({ id: n.id, kind: n.kind })"
+                (click)="onNodeClick(n, $event)"
               >
                 <span class="px-1 text-center leading-[1.05] text-[9.5px] font-medium line-clamp-2">{{ n.label }}</span>
               </button>
@@ -139,7 +168,7 @@ function riskFromRatio(alertas: number, casos: number): Risk {
                     Lista restrictiva
                   </div>
                 }
-                <div class="mt-2 text-[10.5px] text-ink-3 italic">Clic para abrir el detalle</div>
+                <div class="mt-2 text-[10.5px] text-ink-3 italic">Clic para aislar sus vínculos</div>
               </div>
             }
           </div>
@@ -167,6 +196,11 @@ export class NetworkGraph {
   readonly openNode = output<{ id: string; kind: 'proveedor' | 'asegurado' }>();
 
   protected readonly hoveredId = signal<string | null>(null);
+  /** Sticky focus set by clicking a node — isolates its sub-network. */
+  protected readonly focusId = signal<string | null>(null);
+
+  /** Focus wins over hover for highlight/dim logic. */
+  private readonly activeId = computed(() => this.focusId() ?? this.hoveredId());
 
   /** Top providers by alerts, then the insured each connects to (capped). */
   private readonly visible = computed(() => {
@@ -302,7 +336,7 @@ export class NetworkGraph {
   });
 
   private readonly connectedIds = computed<Set<string>>(() => {
-    const id = this.hoveredId();
+    const id = this.activeId();
     if (!id) return new Set();
     const set = new Set<string>([id]);
     for (const e of this.placedEdges()) {
@@ -318,13 +352,25 @@ export class NetworkGraph {
     return this.placedNodes().find((n) => n.id === id) ?? null;
   });
 
+  protected readonly focusedNode = computed<PlacedNode | null>(() => {
+    const id = this.focusId();
+    if (!id) return null;
+    return this.placedNodes().find((n) => n.id === id) ?? null;
+  });
+
+  protected onNodeClick(n: PlacedNode, event: MouseEvent): void {
+    // Stop the background handler (which clears focus) from firing.
+    event.stopPropagation();
+    this.focusId.update((cur) => (cur === n.id ? null : n.id));
+  }
+
   protected isDimmed(id: string): boolean {
     const connected = this.connectedIds();
     return connected.size > 0 && !connected.has(id);
   }
 
   protected isFocused(id: string): boolean {
-    return this.hoveredId() === id;
+    return this.activeId() === id;
   }
 
   protected linkCount(id: string): number {
@@ -349,7 +395,7 @@ export class NetworkGraph {
   }
 
   protected edgeOpacity(e: PlacedEdge): number {
-    const id = this.hoveredId();
+    const id = this.activeId();
     if (!id) return e.risk === 'alert' ? 0.4 : e.risk === 'warn' ? 0.32 : 0.16;
     return e.provId === id || e.asegId === id ? 0.9 : 0.04;
   }

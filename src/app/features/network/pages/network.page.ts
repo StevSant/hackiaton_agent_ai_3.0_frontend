@@ -153,6 +153,42 @@ type GraphLayout = 'columnas' | 'estrella';
       <network-ramo-distribution-card />
     </div>
 
+    @if (topLinks().length > 0) {
+      <div class="bg-surface border border-line rounded-lg shadow-1 overflow-hidden mb-5">
+        <div class="px-5 py-3.5 border-b border-line">
+          <h3 class="text-[13px] font-semibold m-0">Vínculos más sospechosos</h3>
+          <div class="text-[12px] text-ink-3 mt-0.5">
+            Pares proveedor–asegurado ordenados por alertas y siniestros compartidos.
+          </div>
+        </div>
+        <ul class="divide-y divide-line">
+          @for (link of topLinks(); track link.provId + link.asegLabel; let i = $index) {
+            <li
+              class="flex items-center gap-3 px-5 py-3 hover:bg-soft cursor-pointer"
+              (click)="onOpenNode({ id: link.provId, kind: 'proveedor' })"
+            >
+              <span class="w-6 text-[12px] font-semibold text-ink-3 tabular-nums shrink-0">{{ i + 1 }}</span>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap text-[13px]">
+                  <span class="font-medium text-ink truncate">{{ link.provLabel }}</span>
+                  <ui-icon name="sync_alt" [size]="13" class="text-ink-4" />
+                  <span class="text-ink-2 truncate">{{ link.asegLabel }}</span>
+                  @if (link.listaRestrictiva) {
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-tier-red-soft text-tier-red-ink border border-[var(--tier-red)]">Lista restrictiva</span>
+                  }
+                </div>
+              </div>
+              <div class="flex items-center gap-4 shrink-0 text-[12px] tabular-nums">
+                <span class="text-tier-red-ink font-semibold">{{ link.alertas }} alertas</span>
+                <span class="text-ink-3">{{ link.casos }} siniestros</span>
+                <span class="text-ink-2 font-medium w-16 text-right">{{ link.monto }}</span>
+              </div>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+
     @if (filteredProviders().length === 0) {
       <div class="bg-surface border border-line rounded-lg shadow-1 px-5 py-10 text-center text-ink-3 text-[13px]">
         Sin proveedores en este ramo.
@@ -281,6 +317,26 @@ export class NetworkPage {
     return this.relations().nodes.filter((n) =>
       n.kind === 'proveedor' ? provIds.has(n.id) : asegIds.has(n.id),
     );
+  });
+
+  /** Strongest provider↔insured links in view, ranked by alerts + shared claims. */
+  protected readonly topLinks = computed(() => {
+    const labels = new Map(this.graphNodes().map((n) => [n.id, n.label]));
+    const restrictiva = new Map(
+      this.graphNodes().filter((n) => n.kind === 'proveedor').map((n) => [n.id, n.lista_restrictiva]),
+    );
+    return [...this.graphEdges()]
+      .sort((a, b) => b.alertas - a.alertas || b.casos_compartidos - a.casos_compartidos)
+      .slice(0, 8)
+      .map((e) => ({
+        provId: e.proveedor_id,
+        provLabel: labels.get(e.proveedor_id) ?? e.proveedor_id,
+        asegLabel: labels.get(e.asegurado_id) ?? e.asegurado_id,
+        casos: e.casos_compartidos,
+        alertas: e.alertas,
+        monto: formatMoneyShort(e.monto),
+        listaRestrictiva: restrictiva.get(e.proveedor_id) ?? false,
+      }));
   });
 
   protected readonly graphSubtitle = computed(() => {
