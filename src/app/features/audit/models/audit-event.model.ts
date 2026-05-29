@@ -3,6 +3,8 @@ export type AuditAction =
   | 'apertura'
   | 'escalamiento'
   | 'consulta_ia'
+  | 'analisis_consenso'
+  | 'analisis_narrativa'
   | 'cambio_regla'
   | 'cierre'
   | 'dictamen'

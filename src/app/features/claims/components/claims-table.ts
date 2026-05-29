@@ -82,6 +82,16 @@ import type { Claim } from '../models';
                       {{ rb.label }}
                     </span>
                   }
+                  @if (panelBadge(c); as pb) {
+                    <span
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
+                      [class]="pb.chip"
+                      [attr.title]="pb.title"
+                    >
+                      <ui-icon name="groups" [size]="11" />
+                      {{ pb.label }}
+                    </span>
+                  }
                 </div>
               </td>
               <td class="text-ink-4">
@@ -114,6 +124,27 @@ export class ClaimsTable {
       : sev === 'med'
         ? 'bg-tier-yellow-soft text-tier-yellow-ink'
         : 'bg-tier-green-soft text-tier-green-ink';
+  }
+
+  // Advisory marker — the multi-agent panel weighed in. Never reflects the score
+  // (the score ring is engine-derived); flags falso positivo / divergence so the
+  // triager knows a human-review signal exists. Falso-positivo takes precedence.
+  protected panelBadge(c: Claim): { label: string; chip: string; title: string } | null {
+    if (c.panel_falso_positivo) {
+      return {
+        label: 'Posible falso positivo',
+        chip: 'bg-tier-yellow-soft text-tier-yellow-ink',
+        title: 'El panel multi-agente sugiere posible falso positivo — requiere revisión humana',
+      };
+    }
+    if (c.panel_discrepa) {
+      return {
+        label: 'Panel discrepa',
+        chip: 'bg-soft text-ink-2 border border-line',
+        title: 'El consenso del panel multi-agente difiere del nivel del motor',
+      };
+    }
+    return null;
   }
 
   protected reviewBadge(c: Claim): { label: string; icon: string; chip: string } | null {

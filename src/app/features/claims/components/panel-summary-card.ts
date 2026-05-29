@@ -23,9 +23,14 @@ import type { Claim } from '@shared/models';
       <div class="flex items-center justify-between gap-3 px-5 pt-3.5">
         <div class="flex items-center gap-2">
           <ui-icon name="groups" [size]="16" [fill]="true" />
-          <h3 class="text-[13px] font-semibold m-0" style="color: var(--brand-ink)">
-            Análisis multi-agente
-          </h3>
+          <div>
+            <h3 class="text-[13px] font-semibold m-0" style="color: var(--brand-ink)">
+              Análisis multi-agente
+            </h3>
+            <p class="text-[11px] m-0" style="color: var(--brand-ink); opacity: 0.75">
+              Revisión profunda bajo demanda · 4 especialistas debaten y emiten un consenso
+            </p>
+          </div>
         </div>
         <a
           [routerLink]="['/fraud-panel', claim().id]"

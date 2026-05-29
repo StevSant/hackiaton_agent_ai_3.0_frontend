@@ -1000,7 +1000,7 @@ export interface components {
          * AuditAction
          * @enum {string}
          */
-        AuditAction: "apertura" | "escalamiento" | "consulta_ia" | "cambio_regla" | "cierre" | "dictamen" | "export";
+        AuditAction: "apertura" | "escalamiento" | "consulta_ia" | "analisis_consenso" | "analisis_narrativa" | "cambio_regla" | "cierre" | "dictamen" | "export";
         /**
          * AuditActor
          * @enum {string}
@@ -1315,6 +1315,21 @@ export interface components {
             proveedor?: string | null;
             /** Proveedor Id */
             proveedor_id?: string | null;
+            /**
+             * Panel Revisado
+             * @default false
+             */
+            panel_revisado: boolean;
+            /**
+             * Panel Discrepa
+             * @default false
+             */
+            panel_discrepa: boolean;
+            /**
+             * Panel Falso Positivo
+             * @default false
+             */
+            panel_falso_positivo: boolean;
         };
         /** ClaimTimelineEvent */
         ClaimTimelineEvent: {

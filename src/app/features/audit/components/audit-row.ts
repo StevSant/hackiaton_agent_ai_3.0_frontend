@@ -53,6 +53,16 @@ export class AuditRow {
     apertura: { icon: 'visibility', label: 'Apertura', chip: 'bg-soft text-ink-2' },
     escalamiento: { icon: 'flag', label: 'Escalamiento', chip: 'bg-tier-red-soft text-tier-red-ink' },
     consulta_ia: { icon: 'forum', label: 'Consulta IA', chip: 'bg-brand-soft text-brand-ink' },
+    analisis_consenso: {
+      icon: 'groups',
+      label: 'Análisis multi-agente',
+      chip: 'bg-brand-soft text-brand-ink',
+    },
+    analisis_narrativa: {
+      icon: 'psychology',
+      label: 'Análisis de narrativa',
+      chip: 'bg-brand-soft text-brand-ink',
+    },
     cambio_regla: { icon: 'tune', label: 'Cambio de regla', chip: 'bg-tier-yellow-soft text-tier-yellow-ink' },
     cierre: { icon: 'check', label: 'Cierre', chip: 'bg-tier-green-soft text-tier-green-ink' },
     dictamen: { icon: 'gavel', label: 'Dictamen', chip: 'bg-brand-soft text-brand-ink' },

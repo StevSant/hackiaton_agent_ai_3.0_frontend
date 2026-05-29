@@ -17,6 +17,18 @@ import type { Claim } from '../models';
           <div class="text-[11px] font-semibold uppercase tracking-wider" [style.color]="ink()">Acción sugerida</div>
         </div>
         <div class="text-[13.5px] font-medium" [style.color]="ink()">{{ action() }}</div>
+        @if (panel(); as p) {
+          <div class="flex items-center gap-1.5 mt-2.5 text-[11px] font-medium" [style.color]="ink()">
+            <ui-icon name="groups" [size]="12" [fill]="true" />
+            <span>Recomendación del panel multi-agente</span>
+          </div>
+          <div class="text-[13px] mt-0.5" [style.color]="ink()">{{ p.accion_recomendada }}</div>
+          @if (p.posible_falso_positivo) {
+            <div class="text-[11.5px] mt-1.5 font-medium" [style.color]="ink()">
+              ⚠ Posible falso positivo — requiere revisión humana
+            </div>
+          }
+        }
         <p class="text-[11.5px] mt-2 mb-0 opacity-80" [style.color]="ink()">
           Recuerda: este es un score de posible fraude, no una acusación. La decisión final es siempre humana.
         </p>
@@ -28,6 +40,7 @@ export class RecommendationCard {
   readonly claim = input.required<Claim>();
 
   protected readonly action = computed(() => suggestedAction(this.claim()));
+  protected readonly panel = computed(() => this.claim().panel_analysis?.consensus ?? null);
 
   protected readonly bg = computed(() => {
     const t = this.claim().nivel;

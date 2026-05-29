@@ -343,6 +343,9 @@ function summaryToClaim(row: ClaimSummaryDto): Claim {
     timeline: [],
     documentos: [],
     review: { ...DEFAULT_REVIEW, status: row.review_status },
+    panel_revisado: row.panel_revisado ?? false,
+    panel_discrepa: row.panel_discrepa ?? false,
+    panel_falso_positivo: row.panel_falso_positivo ?? false,
   };
 }
 
@@ -397,6 +400,13 @@ function dtoToClaim(dto: ClaimDto): Claim {
     resumen_editado: dto.resumen_editado ?? null,
     narrative_analysis: dto.narrative_analysis ?? null,
     panel_analysis: dto.panel_analysis ?? null,
+    // Derive the lightweight panel markers from the full consensus so a detail
+    // fetch keeps the bandeja chip consistent (the summary path sets them too).
+    panel_revisado: dto.panel_analysis != null,
+    panel_discrepa:
+      dto.panel_analysis?.consensus != null &&
+      dto.panel_analysis.consensus.nivel_final !== dto.nivel,
+    panel_falso_positivo: dto.panel_analysis?.consensus?.posible_falso_positivo ?? false,
     ahorro: dto.ahorro ?? null,
   };
 }

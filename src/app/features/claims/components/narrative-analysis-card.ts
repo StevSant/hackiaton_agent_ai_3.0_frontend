@@ -19,7 +19,12 @@ interface EntityGroup {
       <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
         <div class="flex items-center gap-2">
           <ui-icon name="psychology" [size]="16" />
-          <h3 class="text-[13px] font-semibold m-0">Análisis NLP de la narrativa</h3>
+          <div>
+            <h3 class="text-[13px] font-semibold m-0">Análisis NLP de la narrativa</h3>
+            <p class="text-[11px] text-ink-3 m-0">
+              Lectura automática al abrir el caso · alimenta la señal FS-09
+            </p>
+          </div>
         </div>
         @if (analysis()) {
           <span

@@ -71,6 +71,12 @@ export interface Claim {
   // Cached multi-agent panel debate. Null until a panel run completes. Advisory
   // only — surfaced as a summary here; replayed in full on /fraud-panel.
   panel_analysis?: PanelAnalysis | null;
+  // Lightweight advisory panel markers — carried on list rows (where the full
+  // panel_analysis isn't fetched) so the bandeja can show a chip. Never affect
+  // the score/tier (§2.10).
+  panel_revisado?: boolean;
+  panel_discrepa?: boolean;
+  panel_falso_positivo?: boolean;
   // Potential savings estimate — null until backend estimate_savings runs.
   ahorro?: SavingsEstimate | null;
 }
