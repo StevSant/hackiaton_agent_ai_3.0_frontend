@@ -137,7 +137,8 @@ type TabKey = 'activos' | 'historico';
                       <th>Asegurado</th>
                       <th>Ciudad</th>
                       <th class="text-right">Score</th>
-                      <th>Fecha</th>
+                      <th>Dictamen</th>
+                      <th>Fecha dictamen</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -156,7 +157,12 @@ type TabKey = 'activos' | 'historico';
                         <td>{{ h.asegurado }}</td>
                         <td class="text-[12.5px]">{{ h.ciudad }}</td>
                         <td class="text-right tabular-nums">{{ h.score }}</td>
-                        <td class="text-[12px] text-ink-3 tabular-nums">{{ formatDateTime(h.fecha_ocurrencia) ?? '—' }}</td>
+                        <td>
+                          <span class="inline-flex items-center rounded-full bg-soft px-2 py-0.5 text-[11px] font-semibold text-ink-2">
+                            {{ dictamenLabel(h.dictamen_outcome) }}
+                          </span>
+                        </td>
+                        <td class="text-[12px] text-ink-3 tabular-nums">{{ formatDateTime(h.dictaminado_at) ?? '—' }}</td>
                       </tr>
                     }
                   </tbody>
@@ -216,6 +222,13 @@ export class BandejaPage {
   });
 
   protected readonly historicoRows = computed<ClaimSummaryDto[]>(() => this.store.historico());
+  protected readonly sortedHistoricoRows = computed<ClaimSummaryDto[]>(() =>
+    [...this.historicoRows()].sort((a, b) =>
+      (b.dictaminado_at ?? b.fecha_ocurrencia ?? '').localeCompare(
+        a.dictaminado_at ?? a.fecha_ocurrencia ?? '',
+      ),
+    ),
+  );
 
   protected readonly tabs = computed<SegmentedTab[]>(() => [
     { key: 'activos', label: 'Activos', count: this.activeRows().length },
@@ -229,7 +242,7 @@ export class BandejaPage {
   });
 
   protected readonly historicoPage = computed(() => {
-    const list = this.historicoRows();
+    const list = this.sortedHistoricoRows();
     const start = this.page() * this.pageSize();
     return list.slice(start, start + this.pageSize());
   });
@@ -285,6 +298,19 @@ export class BandejaPage {
 
   protected openCase(id: string): void {
     void this.router.navigate(['/claims', id]);
+  }
+
+  protected dictamenLabel(outcome: ClaimSummaryDto['dictamen_outcome']): string {
+    switch (outcome) {
+      case 'confirmado_sospecha':
+        return 'Sospecha confirmada';
+      case 'descartado':
+        return 'Sospecha descartada';
+      case 'requiere_mas_info':
+        return 'Requiere más información';
+      default:
+        return 'Dictamen emitido';
+    }
   }
 
   protected reload(): void {
