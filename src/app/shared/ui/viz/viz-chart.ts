@@ -14,52 +14,39 @@ import {
 import type { ECharts, EChartsOption } from 'echarts';
 
 import { Icon } from '@shared/ui/icon';
-import type { ChartPayload, ChartType } from '../models';
+import { loadECharts } from './echarts-loader';
+import type { ChartVisual, VizChartType } from './visual.model';
+import {
+  VIZ_PALETTE as PALETTE,
+  AXIS_TEXT,
+  TIER_COLOR,
+  TOOLTIP_BG,
+  TOOLTIP_BORDER,
+} from './viz-theme';
 
-const PALETTE = [
-  '#6286B8',
-  '#7A9CC9',
-  '#ec4899',
-  '#f59e0b',
-  '#10b981',
-  '#06b6d4',
-  '#ef4444',
-  '#84cc16',
-];
-
-const TYPE_ICON: Record<ChartType, string> = {
+const TYPE_ICON: Record<VizChartType, string> = {
   bar: 'bar_chart',
   horizontal_bar: 'align_horizontal_left',
   line: 'show_chart',
   pie: 'pie_chart',
   doughnut: 'donut_large',
   scatter: 'scatter_plot',
+  stacked_tier: 'stacked_bar_chart',
+  dotplot: 'scatter_plot',
 };
 
-const TYPE_LABEL: Record<ChartType, string> = {
+const TYPE_LABEL: Record<VizChartType, string> = {
   bar: 'Barras',
   horizontal_bar: 'Barras horizontales',
   line: 'Línea',
   pie: 'Torta',
   doughnut: 'Dona',
   scatter: 'Dispersión',
+  stacked_tier: 'Composición por nivel',
+  dotplot: 'Distribución',
 };
 
-const AXIS_TEXT = '#94a3b8'; // slate-400 — readable on light and dark surfaces
-
 const CLAIM_ID_RE = /^(SIN|IMP|CL)-/i;
-
-// Loaded once on first chart render and reused across instances — ECharts is
-// ~1.2 MB gzipped so we keep it out of the initial app bundle.
-type EChartsModule = typeof import('echarts');
-let echartsModulePromise: Promise<EChartsModule> | null = null;
-
-function loadECharts(): Promise<EChartsModule> {
-  if (echartsModulePromise === null) {
-    echartsModulePromise = import('echarts');
-  }
-  return echartsModulePromise;
-}
 
 function escapeHtml(value: string): string {
   return value
@@ -118,15 +105,97 @@ function buildTooltipHtml(
   return `<div style="min-width:200px;max-width:320px">${header}${seriesHtml}${metaHtml}${hint}</div>`;
 }
 
-function buildOption(payload: ChartPayload, type: ChartType): EChartsOption {
+function buildOption(payload: ChartVisual['data'], type: VizChartType): EChartsOption {
+  if (type === 'stacked_tier') {
+    return {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        backgroundColor: TOOLTIP_BG,
+        borderColor: TOOLTIP_BORDER,
+        borderWidth: 1,
+        textStyle: { color: '#e2e8f0' },
+      },
+      legend: { top: 0, textStyle: { color: AXIS_TEXT } },
+      grid: { left: 8, right: 16, top: 28, bottom: 8, containLabel: true },
+      xAxis: {
+        type: 'value',
+        axisLabel: { color: AXIS_TEXT },
+        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.18)' } },
+      },
+      yAxis: { type: 'category', data: payload.labels, axisLabel: { color: AXIS_TEXT }, inverse: true },
+      series: payload.series.map((s) => ({
+        name: s.name,
+        type: 'bar',
+        stack: 'tier',
+        data: s.data,
+        itemStyle: {
+          color: TIER_COLOR[s.name.toLowerCase() as 'verde' | 'amarillo' | 'rojo'] ?? undefined,
+        },
+        barMaxWidth: 28,
+      })),
+    } as EChartsOption;
+  }
+
+  if (type === 'dotplot') {
+    const first = payload.series[0];
+    return {
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: TOOLTIP_BG,
+        borderColor: TOOLTIP_BORDER,
+        borderWidth: 1,
+        textStyle: { color: '#e2e8f0' },
+        formatter: (p: unknown) => {
+          const pt = p as { value: [number, number]; color: string };
+          const idx = pt.value?.[0] ?? -1;
+          const label = idx >= 0 ? payload.labels[idx] : '';
+          const meta = idx >= 0 ? payload.meta?.[idx] : undefined;
+          return buildTooltipHtml(label, meta, [
+            { name: first?.name ?? '', value: String(pt.value?.[1] ?? ''), color: pt.color },
+          ]);
+        },
+      },
+      grid: { left: 8, right: 16, top: 12, bottom: 24, containLabel: true },
+      xAxis: {
+        type: 'value',
+        min: 0,
+        max: 100,
+        name: payload.unit ?? undefined,
+        nameTextStyle: { color: AXIS_TEXT },
+        axisLabel: { color: AXIS_TEXT },
+        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.18)' } },
+      },
+      yAxis: { type: 'category', data: [''], axisLine: { show: false }, axisTick: { show: false } },
+      series: [
+        {
+          type: 'scatter',
+          symbolSize: 13,
+          data: (first?.data ?? []).map((v, idx) => [v, 0, idx]),
+          itemStyle: {
+            color: (params: unknown) => {
+              const value = (params as { value: number[] }).value[0];
+              if (value <= 40) return TIER_COLOR.verde;
+              if (value <= 75) return TIER_COLOR.amarillo;
+              return TIER_COLOR.rojo;
+            },
+            opacity: 0.85,
+            borderColor: 'rgba(2,6,23,0.6)',
+            borderWidth: 1.5,
+          },
+        },
+      ],
+    } as EChartsOption;
+  }
+
   if (type === 'pie' || type === 'doughnut') {
     const first = payload.series[0];
     return {
-      color: PALETTE,
+      color: [...PALETTE],
       tooltip: {
         trigger: 'item',
-        backgroundColor: 'rgba(15,23,42,0.96)',
-        borderColor: 'rgba(99,102,241,0.45)',
+        backgroundColor: TOOLTIP_BG,
+        borderColor: TOOLTIP_BORDER,
         borderWidth: 1,
         padding: [10, 12],
         textStyle: { color: '#e2e8f0' },
@@ -204,12 +273,12 @@ function buildOption(payload: ChartPayload, type: ChartType): EChartsOption {
   };
 
   return {
-    color: PALETTE,
+    color: [...PALETTE],
     tooltip: {
       trigger: type === 'scatter' ? 'item' : 'axis',
       axisPointer: { type: 'shadow' },
-      backgroundColor: 'rgba(15,23,42,0.96)',
-      borderColor: 'rgba(99,102,241,0.45)',
+      backgroundColor: TOOLTIP_BG,
+      borderColor: TOOLTIP_BORDER,
       borderWidth: 1,
       padding: [10, 12],
       textStyle: { color: '#e2e8f0' },
@@ -250,9 +319,9 @@ function buildOption(payload: ChartPayload, type: ChartType): EChartsOption {
   } as EChartsOption;
 }
 
-/** Renders a ChartPayload with ECharts and lets the user switch chart types. */
+/** Renders a ChartVisual['data'] with ECharts and lets the user switch chart types. */
 @Component({
-  selector: 'agent-chart',
+  selector: 'viz-chart',
   standalone: true,
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -295,33 +364,26 @@ function buildOption(payload: ChartPayload, type: ChartType): EChartsOption {
     </div>
   `,
 })
-export class AgentChart implements OnDestroy {
-  readonly payload = input.required<ChartPayload>();
+export class VizChart implements OnDestroy {
+  readonly payload = input.required<ChartVisual['data']>();
   readonly openCase = output<string>();
-  /** CHANGE 2 — emits the chart as a PNG data URL whenever it (re)renders, so the
-   *  page can register it on the store for embedding in the downloaded .docx. */
+  /** Emits the chart as a PNG data URL whenever it (re)renders. */
   readonly chartRendered = output<string>();
 
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('host');
-  protected readonly selectedType = linkedSignal<ChartType>(() => this.payload().chart_type);
+  protected readonly selectedType = linkedSignal<VizChartType>(() => this.payload().chart_type);
   protected readonly citations = computed(() => this.payload().citations ?? []);
   private readonly option = computed(() => buildOption(this.payload(), this.selectedType()));
 
   private chart: ECharts | null = null;
-  private echartsModule: EChartsModule | null = null;
   private observer: ResizeObserver | null = null;
   private setOptionRaf: number | null = null;
 
   constructor() {
     afterNextRender(async () => {
       const echarts = await loadECharts();
-      this.echartsModule = echarts;
       this.chart = echarts.init(this.host().nativeElement, undefined, { renderer: 'canvas' });
       this.chart.setOption(this.option());
-      // Capture the PNG on ECharts' `finished` event — getDataURL right after
-      // setOption (esp. with lazyUpdate) returns a blank canvas because the
-      // render hasn't painted yet. `finished` fires once rendering completes,
-      // so the captured image is the real chart. Fires on initial + updates.
       this.chart.on('finished', () => this.emitChartImage());
       this.chart.on('click', (params) => {
         if (params.componentType !== 'series') return;
@@ -335,10 +397,6 @@ export class AgentChart implements OnDestroy {
         }
         if (label) this.openCase.emit(label);
       });
-      // Defer resize to next frame so the resize call can't synchronously
-      // trigger the layout that retriggers the observer — otherwise the
-      // browser logs "ResizeObserver loop completed with undelivered
-      // notifications" which Angular's global error listener picks up.
       this.observer = new ResizeObserver(() => {
         requestAnimationFrame(() => this.chart?.resize());
       });
@@ -346,19 +404,14 @@ export class AgentChart implements OnDestroy {
     });
     effect(() => {
       const option = this.option();
-      // Coalesce rapid option changes into one rAF flush so that streamed
-      // input updates don't trigger a layout thrash inside ECharts.
       if (this.setOptionRaf !== null) cancelAnimationFrame(this.setOptionRaf);
       this.setOptionRaf = requestAnimationFrame(() => {
         this.setOptionRaf = null;
-        // No explicit capture here — the `finished` handler re-captures once
-        // this update finishes painting (synchronous capture would be blank).
         this.chart?.setOption(option, { notMerge: true, lazyUpdate: true });
       });
     });
   }
 
-  /** Capture the current chart as a white-background PNG data URL and emit it. */
   private emitChartImage(): void {
     if (!this.chart) return;
     const dataUrl = this.chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
@@ -371,11 +424,11 @@ export class AgentChart implements OnDestroy {
     this.chart?.dispose();
   }
 
-  protected icon(type: ChartType): string {
+  protected icon(type: VizChartType): string {
     return TYPE_ICON[type];
   }
 
-  protected label(type: ChartType): string {
+  protected label(type: VizChartType): string {
     return TYPE_LABEL[type];
   }
 }

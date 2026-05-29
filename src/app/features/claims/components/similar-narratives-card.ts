@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import { EmptyState } from '@shared/ui/empty-state';
 import { Icon } from '@shared/ui/icon';
+import { expandInsuranceJargon } from '@shared/utils';
 import type { Claim, SimilarClaim } from '../models';
 
 /**
@@ -50,7 +51,7 @@ import type { Claim, SimilarClaim } from '../models';
                   {{ similarityPct(s) }}% similar
                 </span>
               </div>
-              <p class="text-[12.5px] text-ink-2 m-0 line-clamp-2">{{ s.snippet }}</p>
+              <p class="text-[12.5px] text-ink-2 m-0 line-clamp-2">{{ snippet(s) }}</p>
             </a>
           }
         </div>
@@ -69,6 +70,10 @@ export class SimilarNarrativesCard {
 
   protected similarityPct(s: SimilarClaim): number {
     return Math.round(s.similarity * 100);
+  }
+
+  protected snippet(s: SimilarClaim): string {
+    return expandInsuranceJargon(s.snippet);
   }
 
   protected similarityChipClass(similarity: number): string {

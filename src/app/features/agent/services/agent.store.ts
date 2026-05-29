@@ -6,14 +6,18 @@ import { ConversationsApi } from '@core/api/clients/conversations.api';
 import { environment } from '@core/config/env';
 import { AppError } from '@core/errors/app-error';
 import { SseClient } from '@core/realtime/sse.client';
+import type { components } from '@core/api/generated/schema';
+import type { AgentVisual } from '@shared/ui/viz';
 import type {
   AgentMessage,
   AgentStep,
-  ChartPayload,
   ConversationDocument,
   DocumentPayload,
   TableRow,
 } from '../models';
+
+/** Legacy persisted chart shape (replaced by visual_payload; only read on replay). */
+type StoredChartData = components['schemas']['ChartData'];
 import type { ChatContext } from '../models/chat-context';
 import { ConversationsStore } from './conversations.store';
 import { buildCaseWelcomeMessage } from '../utils/case-context-message';
@@ -23,6 +27,14 @@ import type { Asegurado, Claim, Provider } from '@shared/models';
 
 let nextId = 0;
 const newId = (): string => `m_${Date.now()}_${++nextId}`;
+
+/**
+ * Tail-recovery tuning: when a stream dies without `done`, the backend may
+ * still be persisting the assistant message — retry the GET a couple of
+ * times before giving up. Plumbing constants, not business thresholds.
+ */
+const RECOVERY_MAX_RETRIES = 2;
+const RECOVERY_RETRY_DELAY_MS = 1500;
 
 const DEFAULT_WELCOME =
   'Hola, soy Centinela IA. Puedo ayudarte a explorar tu bandeja: rankings, patrones, casos atípicos y resúmenes ejecutivos. ¿En qué te puedo ayudar?';
@@ -57,9 +69,9 @@ interface ToolResultEvent {
   data: { call_id: string; result: unknown };
 }
 
-interface ChartEvent {
-  type: 'chart';
-  data: ChartPayload;
+interface VisualEvent {
+  type: 'visual';
+  data: AgentVisual;
 }
 
 interface DocumentEvent {
@@ -74,7 +86,7 @@ type AgentStreamEvent =
   | AgentStepEvent
   | ToolCallEvent
   | ToolResultEvent
-  | ChartEvent
+  | VisualEvent
   | DocumentEvent;
 
 // Shape of the transparency_metadata JSONB column persisted by the backend.
@@ -150,6 +162,7 @@ function buildStepsFromMetadata(meta: TransparencyMetadata | null | undefined): 
 const NODE_LABEL: Record<string, string> = {
   react_step: 'Razonamiento',
   compose: 'Componiendo respuesta',
+  visual_pending: 'Preparando visualización',
 };
 
 function nodeLabel(node: string): string {
@@ -278,8 +291,8 @@ export class AgentStore {
    */
   private readonly _pendingDocumentContext = signal<DocumentContext | null>(null);
   /**
-   * CHANGE 2 — PNG data URL of the most recent chart rendered in this conversation.
-   * Set by `agent-chart.ts` on render; read by the canvas panel to embed in the .docx.
+   * PNG data URL of the most recent chart rendered in this conversation.
+   * Set by viz-dispatcher (chartRendered event); read by the canvas panel to embed in the .docx.
    */
   private readonly _latestChartImage = signal<string | null>(null);
 
@@ -368,7 +381,7 @@ export class AgentStore {
     this._pendingDocumentContext.set(null);
   }
 
-  /** CHANGE 2 — register the latest chart's PNG data URL (called by agent-chart). */
+  /** Register the latest chart's PNG data URL (emitted by viz-dispatcher chartRendered). */
   setLatestChartImage(dataUrl: string): void {
     this._latestChartImage.set(dataUrl);
   }
@@ -463,14 +476,22 @@ export class AgentStore {
       this._activeDocumentId.set(null);
       this._messages.set(
         detail.messages.map((m) => {
-          // chart_payload and transparency_metadata only exist on persisted
-          // assistant messages and are typed only after `pnpm gen:api` picks up
-          // the new backend schema. Read both defensively.
+          // chart_payload, visual_payload, and transparency_metadata only exist on
+          // persisted assistant messages. Read all defensively.
           const raw = m as unknown as {
-            chart_payload?: ChartPayload | null;
+            chart_payload?: StoredChartData | null;
+            visual_payload?: AgentVisual[] | null;
             transparency_metadata?: TransparencyMetadata | null;
           };
-          const chart = raw.chart_payload ?? undefined;
+          // Prefer the new visual_payload; fall back to legacy chart_payload wrapped as
+          // a ChartVisual so old messages still render through viz-dispatcher.
+          const legacyChart = raw.chart_payload ?? undefined;
+          const visuals: AgentVisual[] | undefined =
+            raw.visual_payload?.length
+              ? raw.visual_payload
+              : legacyChart !== undefined
+                ? [{ kind: 'chart', data: { ...legacyChart, meta: legacyChart.meta ?? undefined } }]
+                : undefined;
           const steps = buildStepsFromMetadata(raw.transparency_metadata);
           // Restore table payload from the first list-shaped tool_call result.
           const tablePayload = (raw.transparency_metadata?.tool_calls ?? []).reduce<TableRow[] | undefined>(
@@ -484,11 +505,9 @@ export class AgentStore {
             role: m.role,
             content: m.content,
             steps,
-            chart,
-            // Already-rendered charts skip the "Ver como gráfico" affordance.
-            chartAccepted: chart !== undefined ? true : undefined,
             tablePayload: tablePayload ?? null,
             documentPayload,
+            visuals,
           };
         }),
       );
@@ -533,15 +552,6 @@ export class AgentStore {
     }
   }
 
-  /** Toggle visibility of the chart attached to a message. */
-  toggleChart(messageId: string): void {
-    this._messages.update((messages) =>
-      messages.map((msg) =>
-        msg.id === messageId ? { ...msg, chartAccepted: !(msg.chartAccepted === true) } : msg,
-      ),
-    );
-  }
-
   /** Toggle visibility of the table attached to a message (shown by default). */
   toggleTable(messageId: string): void {
     this._messages.update((messages) =>
@@ -574,6 +584,10 @@ export class AgentStore {
 
     const assistantId = newId();
     let assistantAdded = false;
+    // Whether the backend's final `done` event arrived. A stream that ends
+    // without it lost its tail (visuals/document) mid-flight — recoverable
+    // from the persisted message.
+    let sawDone = false;
     const ensureAssistantBubble = (): void => {
       if (assistantAdded) return;
       assistantAdded = true;
@@ -620,13 +634,13 @@ export class AgentStore {
       );
     };
 
-    const attachChart = (chart: ChartPayload): void => {
+    const attachVisual = (visual: AgentVisual): void => {
       ensureAssistantBubble();
-      // Charts now arrive only when the analyst explicitly asked — no intermediate
-      // "Ver como gráfico" gate; render immediately.
       this._messages.update((messages) =>
         messages.map((msg) =>
-          msg.id === assistantId ? { ...msg, chart, chartAccepted: true } : msg,
+          msg.id === assistantId
+            ? { ...msg, visuals: [...(msg.visuals ?? []), visual], visualsPending: false }
+            : msg,
         ),
       );
     };
@@ -673,6 +687,15 @@ export class AgentStore {
                 label: nodeLabel(event.data.node),
                 detail: thought || undefined,
               });
+              // Mark that a visual is being computed so the bubble can show a skeleton.
+              if (event.data.node === 'visual_pending') {
+                ensureAssistantBubble();
+                this._messages.update((messages) =>
+                  messages.map((msg) =>
+                    msg.id === assistantId ? { ...msg, visualsPending: true } : msg,
+                  ),
+                );
+              }
               break;
             }
             case 'tool_call':
@@ -689,8 +712,8 @@ export class AgentStore {
               if (rows) attachTable(rows);
               break;
             }
-            case 'chart':
-              attachChart(event.data);
+            case 'visual':
+              attachVisual(event.data);
               break;
             case 'document':
               attachDocument(event.data);
@@ -718,6 +741,7 @@ export class AgentStore {
               ]);
               break;
             case 'done':
+              sawDone = true;
               this._thinking.set(false);
               this._responding.set(false);
               void this.conversationsStore.refresh();
@@ -736,11 +760,22 @@ export class AgentStore {
                 content: 'Lo siento, no pude generar una respuesta.',
               },
             ]);
+            return;
           }
+          // Stream closed without `done` — the tail events were lost but the
+          // backend likely persisted everything. Graft from the DB.
+          if (!sawDone) void this.recoverMissedTail(assistantId);
         },
         error: () => {
           this._thinking.set(false);
           this._responding.set(false);
+          if (assistantAdded) {
+            // The connection died after the answer started streaming — try to
+            // recover the persisted tail instead of replacing a usable partial
+            // answer with an error bubble.
+            void this.recoverMissedTail(assistantId);
+            return;
+          }
           this._messages.update((messages) => [
             ...messages,
             {
@@ -751,5 +786,59 @@ export class AgentStore {
           ]);
         },
       });
+  }
+
+  /**
+   * Tail recovery for a stream that ended without `done`. The backend persists
+   * the assistant message (content + visual_payload + document) BEFORE the SSE
+   * tail flushes, so a dropped/refreshed connection can lose trailing events
+   * while the data already sits in the DB. Fetch the conversation and graft the
+   * missing pieces onto the live bubble.
+   *
+   * Guard: only graft when the persisted content matches the streamed content —
+   * a mismatch means this turn never persisted (the "last assistant message"
+   * belongs to a previous turn) and grafting would attach stale visuals.
+   * Retries because persistence may still be in flight when the stream dies.
+   */
+  private async recoverMissedTail(assistantId: string, attempt = 0): Promise<void> {
+    const convId = this._conversationId();
+    const live = this._messages().find((m) => m.id === assistantId);
+    if (!convId || !live?.content) return;
+
+    const retry = (): void => {
+      if (attempt < RECOVERY_MAX_RETRIES) {
+        setTimeout(() => void this.recoverMissedTail(assistantId, attempt + 1), RECOVERY_RETRY_DELAY_MS);
+      }
+    };
+
+    try {
+      const detail = await firstValueFrom(this.conversationsApi.get(convId));
+      const last = [...detail.messages].reverse().find((m) => m.role === 'assistant');
+      const raw = last as unknown as {
+        content?: string;
+        visual_payload?: AgentVisual[] | null;
+        transparency_metadata?: TransparencyMetadata | null;
+      } | undefined;
+      if (!raw?.content || raw.content !== live.content) {
+        retry();
+        return;
+      }
+      const visuals = raw.visual_payload ?? [];
+      const documentPayload = raw.transparency_metadata?.document_payload ?? null;
+      this._messages.update((messages) =>
+        messages.map((msg) => {
+          if (msg.id !== assistantId) return msg;
+          return {
+            ...msg,
+            visuals: msg.visuals?.length ? msg.visuals : visuals.length ? visuals : msg.visuals,
+            visualsPending: false,
+            documentPayload: msg.documentPayload ?? documentPayload,
+          };
+        }),
+      );
+      void this.conversationsStore.refresh();
+    } catch {
+      retry(); // best-effort — a failed GET here must never break the chat
+    }
   }
 }

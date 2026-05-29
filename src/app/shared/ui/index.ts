@@ -1,4 +1,5 @@
 export { Icon } from './icon';
+export { AgentEye } from './agent-eye';
 export { RiskRing } from './risk-ring';
 export { RiskBar } from './risk-bar';
 export { RiskBadge } from './risk-badge';

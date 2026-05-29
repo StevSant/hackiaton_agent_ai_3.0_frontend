@@ -4,6 +4,9 @@ import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { Modal } from '@shared/ui/modal';
 import type { FraudRule } from '@shared/models';
+import { ruleFormula } from '../utils/rule-formula';
+import { thresholdHelp } from '../utils/threshold-help';
+import { thresholdLabel } from '../utils/threshold-labels';
 
 /**
  * Edits the numeric thresholds of an existing rule. Renders one number input per
@@ -20,18 +23,35 @@ import type { FraudRule } from '@shared/models';
     <ui-modal
       [open]="open()"
       [title]="'Editar umbrales · ' + (rule()?.code ?? '')"
-      subtitle="Ajusta los umbrales de la regla. Al guardar, Centinela recalcula el score de todos los siniestros."
+      subtitle="Los cambios se guardan al instante; usa «Recalcular scores» para aplicarlos a los siniestros existentes."
       size="md"
       (close)="onClose()"
     >
       <form class="px-5 py-5 flex flex-col gap-4" (submit)="onSubmit($event)">
+        @if (rule(); as r) {
+          <div class="rounded-md bg-soft border border-line px-3.5 py-2.5">
+            <p class="text-[13px] font-medium m-0">{{ r.titulo }}</p>
+            <p class="text-[12px] text-ink-3 m-0 mt-0.5">{{ r.descripcion }}</p>
+          </div>
+        }
+        @if (formula(); as f) {
+          <div class="rounded-md bg-brand-soft border border-[color-mix(in_oklch,var(--brand)_30%,var(--border))] px-3.5 py-2.5">
+            <p class="text-[11px] uppercase tracking-wide font-semibold text-brand-ink m-0 mb-1">Con los valores actuales</p>
+            <p class="text-[12.5px] text-ink m-0 leading-snug">{{ f }}</p>
+          </div>
+        }
         @if (keys().length === 0) {
           <p class="text-[13px] text-ink-3 m-0">Esta regla no tiene umbrales configurables.</p>
         } @else {
-          <div class="flex flex-col gap-3">
+          <div class="flex flex-col gap-3.5">
             @for (k of keys(); track k) {
-              <div class="grid grid-cols-[1fr_140px] gap-3 items-center">
-                <label class="text-[13px] font-mono text-ink-2">{{ k }}</label>
+              <div class="grid grid-cols-[1fr_140px] gap-3 items-start">
+                <div class="min-w-0">
+                  <label class="text-[13px] text-ink font-medium" [title]="k">{{ label(k) }}</label>
+                  @if (help(k); as h) {
+                    <p class="text-[11.5px] text-ink-3 m-0 mt-0.5 leading-snug">{{ h }}</p>
+                  }
+                </div>
                 <input
                   type="number"
                   step="any"
@@ -52,7 +72,7 @@ import type { FraudRule } from '@shared/models';
           <ui-button (click)="onClose()">Cancelar</ui-button>
           <ui-button variant="primary" [disabled]="!canSubmit()" (click)="onSubmit($event)">
             <ui-icon name="save" [size]="14" />
-            Guardar y recalcular
+            Guardar cambios
           </ui-button>
         </div>
       </footer>
@@ -78,6 +98,20 @@ export class RuleThresholdModal {
   }
 
   protected readonly keys = computed(() => Object.keys(this.rule()?.thresholds ?? {}).sort());
+
+  // Live plain-language reading of the edited values — updates as the user types.
+  protected readonly formula = computed(() => {
+    const code = this.rule()?.code;
+    return code ? ruleFormula(code, this.values()) : null;
+  });
+
+  protected label(key: string): string {
+    return thresholdLabel(key);
+  }
+
+  protected help(key: string): string {
+    return thresholdHelp(this.rule()?.code ?? '', key);
+  }
 
   protected readonly canSubmit = computed(() => !this.saving() && this.keys().length > 0);
 

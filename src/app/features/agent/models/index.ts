@@ -13,5 +13,4 @@ export type {
   ConversationSummary,
   MessageOut,
 } from './conversation.model';
-export type { ChartPayload, ChartSeries, ChartType } from './chart.model';
 export type { ClaimTablePayload } from './claim-table.model';

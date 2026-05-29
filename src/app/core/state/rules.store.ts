@@ -1,13 +1,35 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { RulesApi, type RuleConfigDto, type RuleConfigPatchDto } from '@core/api/clients/rules.api';
+import {
+  RulesApi,
+  type RescoreStatusDto,
+  type RuleConfigDto,
+  type RuleConfigPatchDto,
+} from '@core/api/clients/rules.api';
 import { AuthStore } from '@core/auth/auth.store';
 import { AppError } from '@core/errors/app-error';
 import type { FraudRule } from '@shared/models';
 
 // Bump suffix to invalidate cached payloads after a schema change.
 const CACHE_KEY = 'centinela:rules-catalog:v1';
+// Count of rule edits saved since the last full rescore (survives a refresh).
+const PENDING_KEY = 'centinela:rules-pending-rescore';
+
+function readPending(): number {
+  if (typeof window === 'undefined') return 0;
+  const n = Number(window.localStorage.getItem(PENDING_KEY) ?? '0');
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function writePending(n: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(PENDING_KEY, String(n));
+  } catch {
+    // storage quota / disabled — silently skip
+  }
+}
 
 function dtoToRule(dto: RuleConfigDto): FraudRule {
   return {
@@ -44,6 +66,9 @@ function writeCache(rules: FraudRule[]): void {
   }
 }
 
+// Poll cadence for the background rescore job's status (ms).
+const RESCORE_POLL_MS = 1200;
+
 @Injectable({ providedIn: 'root' })
 export class RulesStore {
   private readonly api = inject(RulesApi);
@@ -53,14 +78,25 @@ export class RulesStore {
   private readonly _loading = signal<boolean>(false);
   private readonly _error = signal<AppError | null>(null);
   private readonly _hydratedFromCache = signal<boolean>(readCache() !== null);
-  // Rule code currently being saved (PATCH in flight); null when idle. A PATCH
-  // triggers a full backend rescore, so this gates UI affordances meanwhile.
+  // Rule code currently being saved (PATCH in flight); null when idle.
   private readonly _saving = signal<string | null>(null);
+  // Edits saved since the last rescore — drives the "Recalcular" affordance.
+  private readonly _pendingChanges = signal<number>(readPending());
+  // Latest progress snapshot of the background rescore job; null when idle.
+  private readonly _rescoreProgress = signal<RescoreStatusDto | null>(null);
+  private readonly _rescoring = signal<boolean>(false);
+  // Result of the last completed rescore (cleared on the next rule edit).
+  private readonly _lastRescore = signal<RescoreStatusDto | null>(null);
+  private _pollTimer: ReturnType<typeof setInterval> | null = null;
 
   readonly rules = this._rules.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
   readonly saving = this._saving.asReadonly();
+  readonly pendingChanges = this._pendingChanges.asReadonly();
+  readonly rescoreProgress = this._rescoreProgress.asReadonly();
+  readonly rescoring = this._rescoring.asReadonly();
+  readonly lastRescore = this._lastRescore.asReadonly();
   // True while we have no data (no cache, no fetched payload yet) AND a fetch
   // is in flight — the page uses this to decide whether to show a skeleton vs.
   // render the (possibly stale) cached rows while a background revalidate runs.
@@ -87,6 +123,8 @@ export class RulesStore {
       this.lastUserId = userId;
       if (userId) {
         void this.loadList();
+        // A background rescore may be mid-flight from before a refresh.
+        void this.resumeRescoreIfRunning();
       } else {
         this._rules.set([]);
         this._hydratedFromCache.set(false);
@@ -143,13 +181,106 @@ export class RulesStore {
       const dto = await firstValueFrom(this.api.patchRule(code, body));
       this.applyLocal(code, dtoToRule(dto));
       writeCache(this._rules());
-      // The PATCH rescored every claim — refresh counts/enabled across the table.
-      void this.loadList();
+      // Edits no longer rescore server-side — track them so the analyst can
+      // batch several changes and apply them with ONE explicit rescore.
+      this._lastRescore.set(null);
+      this._pendingChanges.update((n) => n + 1);
+      writePending(this._pendingChanges());
     } catch (err) {
       this.applyLocal(code, rollback); // revert the optimistic change
       this._error.set(err instanceof AppError ? err : new AppError('unknown', String(err)));
     } finally {
       this._saving.set(null);
+    }
+  }
+
+  /** Start the background rescore job and poll its progress until it settles. */
+  async rescore(): Promise<void> {
+    if (this._rescoring()) return;
+    this._rescoring.set(true);
+    this._rescoreProgress.set(null);
+    this._lastRescore.set(null);
+    this._error.set(null);
+    try {
+      // 202 returns immediately — the job runs server-side, detached.
+      const status = await firstValueFrom(this.api.startRescore());
+      this.applyRescoreStatus(status);
+      if (status.status === 'running') this.beginPolling();
+    } catch (err) {
+      this._rescoring.set(false);
+      this._error.set(err instanceof AppError ? err : new AppError('unknown', String(err)));
+    }
+  }
+
+  /** Adopt an already-running job after a page refresh / late navigation. */
+  async resumeRescoreIfRunning(): Promise<void> {
+    if (this._rescoring()) return;
+    try {
+      const status = await firstValueFrom(this.api.rescoreStatus());
+      if (status.status === 'running') {
+        this._rescoring.set(true);
+        this._rescoreProgress.set(status);
+        this.beginPolling();
+      }
+    } catch {
+      // status probe is best-effort — the page works without it
+    }
+  }
+
+  private beginPolling(): void {
+    this.stopPolling();
+    this._pollTimer = setInterval(() => void this.pollRescore(), RESCORE_POLL_MS);
+  }
+
+  private stopPolling(): void {
+    if (this._pollTimer !== null) {
+      clearInterval(this._pollTimer);
+      this._pollTimer = null;
+    }
+  }
+
+  private async pollRescore(): Promise<void> {
+    try {
+      this.applyRescoreStatus(await firstValueFrom(this.api.rescoreStatus()));
+    } catch {
+      // transient poll failure (e.g. dev-server reload) — keep polling
+    }
+  }
+
+  private applyRescoreStatus(status: RescoreStatusDto): void {
+    switch (status.status) {
+      case 'running':
+        this._rescoring.set(true);
+        this._rescoreProgress.set(status);
+        break;
+      case 'done':
+        this.stopPolling();
+        this._rescoring.set(false);
+        this._rescoreProgress.set(null);
+        this._lastRescore.set(status);
+        this._pendingChanges.set(0);
+        writePending(0);
+        void this.loadList(); // refresh activation counts with the new scores
+        break;
+      case 'error':
+        this.stopPolling();
+        this._rescoring.set(false);
+        this._rescoreProgress.set(null);
+        this._error.set(
+          new AppError('rescore_failed', status.error ?? 'El recálculo falló.'),
+        );
+        break;
+      case 'idle':
+        // Job vanished mid-poll (server restarted) — stop and surface it.
+        if (this._rescoring()) {
+          this.stopPolling();
+          this._rescoring.set(false);
+          this._rescoreProgress.set(null);
+          this._error.set(
+            new AppError('rescore_interrupted', 'El recálculo se interrumpió. Vuelve a lanzarlo.'),
+          );
+        }
+        break;
     }
   }
 }

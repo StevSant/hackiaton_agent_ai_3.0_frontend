@@ -18,8 +18,13 @@ export function resolveClaimBackNavigation(
   returnTo: string | null | undefined,
   roleCode: string | null | undefined,
 ): { path: string; label: string } {
-  if (returnTo === INSIGHTS_CLAIM_RETURN.path) {
-    return INSIGHTS_CLAIM_RETURN;
+  // Honor insights sub-pages too (/insights/ciudad/…, /insights/ramo/…) —
+  // back() uses navigateByUrl, so the full path incl. query string round-trips.
+  if (
+    returnTo === INSIGHTS_CLAIM_RETURN.path ||
+    returnTo?.startsWith(`${INSIGHTS_CLAIM_RETURN.path}/`)
+  ) {
+    return { path: returnTo, label: INSIGHTS_CLAIM_RETURN.label };
   }
 
   if (roleCode === 'antifraude') {

@@ -23,13 +23,17 @@ export const RAMO_KEYS: readonly RamoKey[] = [
   'otros',
 ];
 
-/** Backend labels that should map to a catalog icon but keep their display name. */
+/** Backend labels that should map to a catalog icon but keep their display name.
+ * MUST mirror backend app/domain/ramos.py so client-side ramo aggregations
+ * (drill-down page, claims filter) match the donut's backend-computed slices. */
 const RAMO_ALIASES: Record<string, RamoKey> = {
   incendio: 'hogar',
   'accidentes personales': 'salud',
-  transporte: 'vehiculos',
+  transporte: 'generales',
+  'mercancias en transito': 'generales',
   fianzas: 'generales',
   'equipo electronico': 'generales',
+  'responsabilidad civil comercial': 'generales',
 };
 
 function stripAccents(value: string): string {

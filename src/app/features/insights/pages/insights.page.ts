@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 
 import { ExportButton } from '@shared/ui/export-button';
 import { PageHeader } from '@shared/ui/page-header';
@@ -43,12 +44,14 @@ import { exportInsightsCsv } from '../utils/export-insights';
           <insights-ecuador-map class="w-full h-full" />
         </div>
 
+<!-- lg:justify-between distributes leftover viewport height between the cards
+     instead of pooling it as dead space under the last one. -->
         <aside
-          class="insights-sidebar w-full lg:w-[280px] shrink-0 flex flex-col gap-2 min-h-0 scroll-pretty"
+          class="insights-sidebar w-full lg:w-[280px] shrink-0 flex flex-col gap-2 lg:justify-between min-h-0 scroll-pretty"
         >
           <insights-fraud-tendency class="shrink-0" />
           <insights-potential-savings class="shrink-0" [compact]="true" />
-          <insights-claim-type-donut class="shrink-0" />
+          <insights-claim-type-donut class="shrink-0" (open)="openRamo($event)" />
           <insights-quarterly-outlook class="shrink-0" />
         </aside>
       </div>
@@ -58,6 +61,7 @@ import { exportInsightsCsv } from '../utils/export-insights';
 export class InsightsPage implements OnInit {
   private readonly claims = inject(ClaimsStore);
   private readonly insights = inject(InsightsStore);
+  private readonly router = inject(Router);
 
   ngOnInit(): void {
     void this.insights.load();
@@ -66,5 +70,9 @@ export class InsightsPage implements OnInit {
 
   protected onExport(): void {
     exportInsightsCsv(this.claims.claims());
+  }
+
+  protected openRamo(ramoKey: string): void {
+    void this.router.navigate(['/insights', 'ramo', ramoKey]);
   }
 }

@@ -10,7 +10,7 @@ import {
 import type { TtsState } from '@core/tts/text-to-speech.service';
 import { MarkdownPipe } from '@shared/pipes';
 import { Icon } from '@shared/ui/icon';
-import { AgentChart } from './agent-chart';
+import { VizDispatcher } from '@shared/ui/viz';
 import { AgentEyeIcon } from './agent-eye-icon';
 import { AgentSteps } from './agent-steps';
 import { AgentTable } from './agent-table';
@@ -21,7 +21,7 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
 @Component({
   selector: 'agent-chat-message',
   standalone: true,
-  imports: [AgentSteps, MarkdownPipe, Icon, AgentChart, AgentEyeIcon, AgentTable, ChatDocumentCard],
+  imports: [AgentSteps, MarkdownPipe, Icon, VizDispatcher, AgentEyeIcon, AgentTable, ChatDocumentCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="w-full flex gap-3 items-start" [class.justify-end]="isUser()">
@@ -61,28 +61,18 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
               <div class="markdown-body" [innerHTML]="message().content | markdown"></div>
             }
 
-            <!-- Chart rendered INSIDE the message bubble, like the inline table. -->
-            @if (chart(); as chartData) {
-              @if (uiPrefs.showCharts()) {
-                @if (chartAccepted()) {
-                  <agent-chart
-                    class="block mt-2"
-                    [payload]="chartData"
-                    (openCase)="openCase.emit($event)"
-                    (chartRendered)="chartRendered.emit($event)"
-                  />
-                }
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-ink bg-brand-soft border border-line rounded-lg px-2.5 py-1.5 mt-2 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  [attr.aria-pressed]="chartAccepted()"
-                  (click)="toggleChart.emit(message().id)"
-                >
-                  <ui-icon [name]="chartAccepted() ? 'visibility_off' : 'bar_chart'" [size]="15" />
-                  {{ chartAccepted() ? 'Ocultar gráfico' : 'Ver como gráfico' }}
-                </button>
+            <!-- Structured visuals rendered via viz-dispatcher (Phase 2). -->
+            @if (uiPrefs.showCharts() && visuals().length) {
+              @for (v of visuals(); track $index + '-' + (v.kind === 'chart' ? v.data.message_id : v.message_id)) {
+                <viz-dispatcher
+                  class="block mt-2"
+                  [visual]="v"
+                  (openCase)="openCase.emit($event)"
+                  (chartRendered)="chartRendered.emit($event)"
+                />
               }
-            } @else if (chartPending() && uiPrefs.showCharts()) {
+            }
+            @if (visualsPending() && uiPrefs.showCharts()) {
               <div class="rounded-xl border border-line bg-soft p-3 mt-2 w-full">
                 <div class="flex items-center gap-2 mb-2">
                   <ui-icon name="bar_chart" [size]="14" class="text-ink-3" />
@@ -92,8 +82,10 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
               </div>
             }
 
-            <!-- Fallback table (when the prose has none) — also INSIDE the bubble. -->
-            @if (!documentPayload() && !proseHasTable() && tablePayload(); as rows) {
+            <!-- Fallback table: only when the prose has none AND the server emitted
+                 no structured visual (a server visual is authoritative — avoids a
+                 duplicate table when the agent already chose a table visual). -->
+            @if (!documentPayload() && !proseHasTable() && !visuals().length && tablePayload(); as rows) {
               @if (tableAccepted()) {
                 <agent-table class="block mt-2" [rows]="rows" (openCase)="openCase.emit($event)" />
               }
@@ -171,11 +163,10 @@ export class ChatMessage {
 
   readonly openCase = output<string>();
   readonly ttsToggle = output<string>();
-  readonly toggleChart = output<string>();
   readonly toggleTable = output<string>();
   /** Opens the artifact side panel — payload is { titulo, contenidoMarkdown }. */
   readonly openCanvas = output<{ titulo: string; contenidoMarkdown: string }>();
-  /** CHANGE 2 — bubbles the rendered chart's PNG data URL up to the page → store. */
+  /** Bubbles the rendered chart's PNG data URL up to the page → store. */
   readonly chartRendered = output<string>();
 
   protected readonly uiPrefs = inject(ChatUiPrefsStore);
@@ -184,9 +175,8 @@ export class ChatMessage {
   protected readonly hasContent = computed(() => this.message().content.length > 0);
   protected readonly isEmpty = computed(() => !this.isUser() && !this.hasContent());
   protected readonly steps = computed(() => (this.isUser() ? [] : (this.message().steps ?? [])));
-  protected readonly chart = computed(() => this.message().chart ?? null);
-  protected readonly chartAccepted = computed(() => this.message().chartAccepted === true);
-  protected readonly chartPending = computed(() => this.message().chartPending === true);
+  protected readonly visuals = computed(() => this.message().visuals ?? []);
+  protected readonly visualsPending = computed(() => this.message().visualsPending === true);
   protected readonly tablePayload = computed(() => this.message().tablePayload ?? null);
   // Tables are shown by default; only an explicit toggle to false hides them.
   protected readonly tableAccepted = computed(() => this.message().tableAccepted !== false);

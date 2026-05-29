@@ -53,15 +53,19 @@ import { featureLabel } from '../utils/feature-labels';
               />
               <div>
                 <p class="text-[13.5px] m-0 mb-0.5 font-medium">{{ label(f.feature) }}</p>
-                <span class="font-mono text-[10.5px] text-ink-4">{{ f.feature }}</span>
+                <span class="text-[11px] text-ink-4">
+                  {{ f.direction === 'up' ? 'Eleva la probabilidad del modelo' : 'Reduce la probabilidad del modelo' }}
+                </span>
               </div>
               <span
-                class="font-mono text-[12px] tabular-nums"
-                [style.color]="
-                  f.direction === 'up' ? 'var(--tier-red-ink)' : 'var(--tier-green-ink)'
+                class="text-[11.5px] font-medium px-2 py-0.5 rounded"
+                [class]="
+                  f.direction === 'up'
+                    ? 'bg-tier-red-soft text-tier-red-ink'
+                    : 'bg-tier-green-soft text-tier-green-ink'
                 "
               >
-                {{ f.direction === 'up' ? '+' : '' }}{{ f.shap_value.toFixed(3) }}
+                {{ impactLabel($index) }}
               </span>
             </div>
           }
@@ -97,5 +101,10 @@ export class MlFactorsCard {
 
   protected label(feature: string): string {
     return featureLabel(feature);
+  }
+
+  /** Factors arrive ordered by influence — rank reads better than a raw SHAP number. */
+  protected impactLabel(index: number): string {
+    return index === 0 ? 'Factor principal' : index === 1 ? 'Segundo factor' : 'Tercer factor';
   }
 }

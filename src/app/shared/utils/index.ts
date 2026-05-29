@@ -1,4 +1,10 @@
 export { riskTier, riskTierLabel, type RiskTier } from './risk-tier';
+export {
+  AGENT_PERSONAS,
+  SPECIALIST_AGENT_IDS,
+  resolveAgentPersona,
+  type AgentPersona,
+} from './agent-personas';
 export { byTriagePriority } from './triage-order';
 export { formatMoney, formatMoneyShort } from './format-money';
 export { initials } from './initials';
@@ -47,6 +53,7 @@ export { type SortAccessors } from './sort/sort-accessors';
 export { compareValues } from './sort/compare-values';
 export { sortRows } from './sort/sort-rows';
 export { TableSortController } from './sort/table-sort-controller';
+export { expandInsuranceJargon } from './insurance-jargon';
 export { bindListKeyboardNav } from './list-keyboard-nav';
 export { bindSectionArrowNav, bindSectionKeyboardNav } from './section-keyboard-nav';
 export {

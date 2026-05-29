@@ -22,6 +22,7 @@ export interface ClaimTypeSliceDto {
   key: string;
   label: string;
   pct: number;
+  count: number;
 }
 
 export interface QuarterlyOutlookDto {

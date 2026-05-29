@@ -120,7 +120,9 @@ export class AppShell {
           keys: '?',
           label: 'Mostrar u ocultar atajos',
           group: 'General',
-          allowInInput: true,
+          // Lets "?" close the already-open help modal; typing "?" inside an
+          // input/textarea still inserts the character (never opens the modal).
+          allowWhenDialogOpen: true,
           test: (event) => isHelpKey(event),
           run: () => this.shortcuts.toggleHelp(),
         },

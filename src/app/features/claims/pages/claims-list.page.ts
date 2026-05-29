@@ -28,9 +28,13 @@ import {
   byTriagePriority,
   CLAIM_EXPORT_COLUMNS,
   exportClaims,
+  normalizeRamoKey,
   projectClaim,
+  RAMO_KEYS,
+  RAMOS,
   sortRows,
   TableSortController,
+  type RamoKey,
   type RiskTier,
   type SortAccessors,
 } from '@shared/utils';
@@ -161,10 +165,10 @@ export class ClaimsListPage {
   protected readonly exportOpen = signal<boolean>(false);
   protected readonly claimColumns = CLAIM_EXPORT_COLUMNS;
 
-  // Seed filters from URL params (e.g. ?q= after import, ?ciudad= from Insights drill-down)
+  // Seed filters from URL params (e.g. ?q= after import, ?ciudad=/?ramo= from Insights drill-downs)
   protected readonly filters = signal<FilterValue>({
     search: this.route.snapshot.queryParamMap.get('q') ?? '',
-    ramo: '',
+    ramo: this.route.snapshot.queryParamMap.get('ramo') ?? '',
     ciudad: this.route.snapshot.queryParamMap.get('ciudad') ?? '',
     datePreset: 'todos',
     customFrom: '',
@@ -223,16 +227,13 @@ export class ClaimsListPage {
     return { pendientes, escalados, rebotados };
   });
 
-  protected readonly ramoOptions = computed<string[]>(() => {
-    const seen = new Set<string>();
-    const result: string[] = [];
+  // Canonical ramo categories (matches the Insights donut + backend normalize_ramo)
+  protected readonly ramoOptions = computed<RamoKey[]>(() => {
+    const seen = new Set<RamoKey>();
     for (const c of this.store.claims()) {
-      if (c.ramo && !seen.has(c.ramo)) {
-        seen.add(c.ramo);
-        result.push(c.ramo);
-      }
+      seen.add(normalizeRamoKey(c.ramo));
     }
-    return result.sort((a, b) => a.localeCompare(b, 'es'));
+    return RAMO_KEYS.filter((key) => seen.has(key));
   });
 
   protected readonly ciudadOptions = computed<string[]>(() => {
@@ -267,14 +268,14 @@ export class ClaimsListPage {
     );
 
     const controls: FilterControl[] = [
-      { type: 'search', key: 'search', placeholder: 'Buscar por ID, asegurado, ciudad…' },
+      { type: 'search', key: 'search', placeholder: 'Buscar ID, asegurado, ciudad…' },
       {
         type: 'select',
         key: 'ramo',
         label: 'Ramo',
         options: [
           { value: '', label: 'Todos los ramos' },
-          ...this.ramoOptions().map((r) => ({ value: r, label: r })),
+          ...this.ramoOptions().map((key) => ({ value: key, label: RAMOS[key].label })),
         ],
       },
       {
@@ -336,7 +337,7 @@ export class ClaimsListPage {
         } else if (tier !== 'todos' && c.nivel !== tier) {
           return false;
         }
-        if (ramo && c.ramo !== ramo) return false;
+        if (ramo && normalizeRamoKey(c.ramo) !== ramo) return false;
         if (ciudad && c.ciudad !== ciudad) return false;
         if (datePreset !== 'todos') {
           const reportDate = new Date(c.fecha_reporte || c.fecha_ocurrencia);

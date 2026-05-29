@@ -31,6 +31,7 @@ export interface ClaimTypeSlice {
   key: string;
   label: string;
   pct: number;
+  count: number;
   color: string;
 }
 

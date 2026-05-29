@@ -16,6 +16,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { AuthStore } from '@core/auth/auth.store';
 import { Icon } from '@shared/ui/icon';
+import { AGENT_PERSONAS, type AgentPersona } from '@shared/utils';
 
 type Perspective = 'analista' | 'antifraude';
 
@@ -36,26 +37,14 @@ interface MockClaimRow {
   signal: string;
 }
 
-interface MultiAgentPersona {
-  id: string;
-  name: string;
-  role: string;
-  tag: string;
-  accent: string;
-  irisInner: string;
-  gazeClass: string;
-  browAnimClass: string;
-  highlightX: number;
-  highlightY: number;
-  irisRadius: number;
-  browLeft: string;
-  browRight: string;
-  browCrease?: string;
-  lidPath?: string;
+// Persona identity + eye visuals come from the shared registry (single source
+// of truth, reused by the claim-detail chips and the full debate cards). The
+// landing only adds its own orbital-layout fields.
+type MultiAgentPersona = AgentPersona & {
   slotClass: string;
   breatheDelay: string;
   nodeDelay: string;
-}
+};
 
 @Component({
   selector: 'page-landing',
@@ -1660,79 +1649,10 @@ export class LandingPage implements AfterViewInit, OnDestroy {
   ] as const;
 
   protected readonly multiAgents: readonly MultiAgentPersona[] = [
-    {
-      id: 'reglas',
-      name: 'Leslie',
-      role: 'Analista de Reglas',
-      tag: 'Reglas FS / RF',
-      accent: '#60a5fa',
-      irisInner: '#1e40af',
-      gazeClass: 'ma-gaze--centinela',
-      browAnimClass: 'ma-brows--calm',
-      highlightX: 47.2,
-      highlightY: 48,
-      irisRadius: 11.5,
-      browLeft: 'M 23 20 L 42 19',
-      browRight: 'M 77 20 L 58 19',
-      slotClass: 'multiagent-node--tl',
-      breatheDelay: '0ms',
-      nodeDelay: '0.15s',
-    },
-    {
-      id: 'ml',
-      name: 'Naomi',
-      role: 'Analista de ML',
-      tag: 'Modelo y anomalía',
-      accent: '#a78bfa',
-      irisInner: '#5b21b6',
-      gazeClass: 'ma-gaze--vigia',
-      browAnimClass: 'ma-brows--vigia',
-      highlightX: 48.8,
-      highlightY: 46.2,
-      irisRadius: 10.5,
-      browLeft: 'M 21 15 L 39 23',
-      browRight: 'M 79 15 L 61 23',
-      lidPath: 'M 24 41 Q 50 35 76 41 L 72 47 Q 50 43 28 47 Z',
-      slotClass: 'multiagent-node--tr',
-      breatheDelay: '600ms',
-      nodeDelay: '0.35s',
-    },
-    {
-      id: 'narrativa',
-      name: 'Ámbar',
-      role: 'Analista de Narrativa',
-      tag: 'Relato y similares',
-      accent: '#fbbf24',
-      irisInner: '#b45309',
-      gazeClass: 'ma-gaze--relato',
-      browAnimClass: 'ma-brows--sorpresa',
-      highlightX: 48.5,
-      highlightY: 47,
-      irisRadius: 12,
-      browLeft: 'M 24 18 L 41 17',
-      browRight: 'M 76 11 L 59 13',
-      slotClass: 'multiagent-node--bl',
-      breatheDelay: '900ms',
-      nodeDelay: '0.55s',
-    },
-    {
-      id: 'documentos_red',
-      name: 'Iris',
-      role: 'Analista de Documentos',
-      tag: 'Documentos y red',
-      accent: '#fb7185',
-      irisInner: '#be123c',
-      gazeClass: 'ma-gaze--rastreador',
-      browAnimClass: 'ma-brows--rastreador',
-      highlightX: 45.2,
-      highlightY: 46.2,
-      irisRadius: 12.5,
-      browLeft: 'M 20 12 Q 34 8 43 11',
-      browRight: 'M 77 17 L 59 16',
-      slotClass: 'multiagent-node--br',
-      breatheDelay: '1200ms',
-      nodeDelay: '0.75s',
-    },
+    { ...AGENT_PERSONAS['reglas'], slotClass: 'multiagent-node--tl', breatheDelay: '0ms', nodeDelay: '0.15s' },
+    { ...AGENT_PERSONAS['ml'], slotClass: 'multiagent-node--tr', breatheDelay: '600ms', nodeDelay: '0.35s' },
+    { ...AGENT_PERSONAS['narrativa'], slotClass: 'multiagent-node--bl', breatheDelay: '900ms', nodeDelay: '0.55s' },
+    { ...AGENT_PERSONAS['documentos_red'], slotClass: 'multiagent-node--br', breatheDelay: '1200ms', nodeDelay: '0.75s' },
   ];
 
   protected readonly heroValuePoints = [

@@ -10,4 +10,8 @@ export const routes: Routes = [
     path: 'ciudad/:citySlug',
     loadComponent: () => import('./pages/city-insights.page').then((m) => m.CityInsightsPage),
   },
+  {
+    path: 'ramo/:ramoKey',
+    loadComponent: () => import('./pages/ramo-insights.page').then((m) => m.RamoInsightsPage),
+  },
 ];
