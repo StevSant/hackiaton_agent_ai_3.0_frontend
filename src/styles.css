@@ -4172,9 +4172,11 @@ page-insights {
   flex-shrink: 0;
 }
 
+/* On full-bleed surfaces (agent chat) the composer + quick-questions own the
+   bottom edge, so the floating shortcuts FAB would overlap them. Hide it there;
+   the "?" key still opens the shortcuts panel. */
 .centinela-kbd-hint--fullbleed {
-  bottom: 5.5rem;
-  right: 1rem;
+  display: none;
 }
 
 .centinela-kbd-hint__label {
