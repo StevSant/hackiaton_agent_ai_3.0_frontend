@@ -5,8 +5,6 @@ import { environment } from '@core/config/env';
 import { Icon } from '@shared/ui/icon';
 import { AuthStore } from '@core/auth/auth.store';
 import type { RoleCode } from '@core/auth/auth-user.model';
-import { ClaimsStore } from '@core/state/claims.store';
-import { RulesStore } from '@core/state/rules.store';
 
 @Component({
   selector: 'page-login',
@@ -221,24 +219,20 @@ import { RulesStore } from '@core/state/rules.store';
 export class LoginPage {
   protected readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
-  private readonly claims = inject(ClaimsStore);
-  private readonly rules = inject(RulesStore);
 
   protected readonly email = signal<string>(environment.demoCredentials.analista.email);
   protected readonly password = signal<string>(environment.demoCredentials.analista.password);
   protected readonly showPassword = signal<boolean>(false);
   protected readonly remember = signal<boolean>(true);
 
-  private prefetchAfterLogin(): void {
-    void this.claims.loadList().catch(() => undefined);
-    void this.rules.loadList().catch(() => undefined);
-  }
+  // No manual prefetch here: every root store (claims, rules, providers,
+  // asegurados, insights, inbox) auto-loads on the `auth.user()` change that
+  // login() triggers — calling loadList() again only duplicated the requests.
 
   protected async onSubmit(e: Event): Promise<void> {
     e.preventDefault();
     const ok = await this.auth.login(this.email(), this.password());
     if (!ok) return;
-    this.prefetchAfterLogin();
     const landing = this.auth.user()?.roleCode === 'antifraude' ? '/antifraude/bandeja' : '/claims';
     void this.router.navigateByUrl(landing);
   }
@@ -249,7 +243,6 @@ export class LoginPage {
     this.password.set(creds.password);
     const ok = await this.auth.login(creds.email, creds.password);
     if (!ok) return;
-    this.prefetchAfterLogin();
     const landing = role === 'antifraude' ? '/antifraude/bandeja' : '/claims';
     void this.router.navigateByUrl(landing);
   }
