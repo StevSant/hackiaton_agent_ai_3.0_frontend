@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
 
-import { Button } from '@shared/ui/button';
-import { Icon } from '@shared/ui/icon';
+import { ExportButton } from '@shared/ui/export-button';
 import { PageHeader } from '@shared/ui/page-header';
 import { ClaimsStore } from '@core/state/claims.store';
 import { AiAnomaliesPanel } from '../components/ai-anomalies-panel';
@@ -16,8 +15,7 @@ import { exportInsightsCsv } from '../utils/export-insights';
   selector: 'page-insights',
   standalone: true,
   imports: [
-    Button,
-    Icon,
+    ExportButton,
     PageHeader,
     EcuadorHotspotsMap,
     AiAnomaliesPanel,
@@ -32,10 +30,12 @@ import { exportInsightsCsv } from '../utils/export-insights';
         <p class="centinela-page-header__desc" ngProjectAs="[description]">
           Dinámica de fraude y exposición al riesgo regional en Ecuador.
         </p>
-        <ui-button actions ngProjectAs="[actions]" class="shrink-0 text-[11px] px-2.5 py-1 h-auto" (click)="onExport()">
-          <ui-icon name="download" [size]="12" />
-          Exportar
-        </ui-button>
+        <ui-export-button
+          actions
+          ngProjectAs="[actions]"
+          label="Exportar"
+          (trigger)="onExport()"
+        />
       </ui-page-header>
 
       <div class="insights-layout flex flex-col lg:flex-row gap-3 min-h-0 flex-1">
