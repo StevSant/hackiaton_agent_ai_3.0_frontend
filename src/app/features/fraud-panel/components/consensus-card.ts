@@ -1,16 +1,29 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { RiskBadge } from '@shared/ui/risk-badge';
+import { AgentEye } from '@shared/ui/agent-eye';
+import { AGENT_PERSONAS } from '@shared/utils';
 import { PanelConsensus } from '../models';
 
 @Component({
   selector: 'app-consensus-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RiskBadge],
+  imports: [RiskBadge, AgentEye],
   template: `
-    <section class="rounded-lg border border-line bg-surface p-4 flex flex-col gap-3">
-      <h3 class="text-sm font-semibold">Consenso del panel</h3>
+    <section
+      class="rounded-lg border bg-surface p-4 flex flex-col gap-3"
+      [style.border-color]="'color-mix(in oklch, ' + moderator.accent + ' 30%, var(--border))'"
+    >
+      <header class="flex items-center gap-2.5">
+        <ui-agent-eye [persona]="moderator" [size]="40" />
+        <div class="min-w-0">
+          <h3 class="text-sm font-semibold leading-tight">Consenso del panel</h3>
+          <p class="text-xs text-ink-2 leading-tight">
+            {{ moderator.name }} · {{ moderator.role }}
+          </p>
+        </div>
+      </header>
       @if (consensus(); as c) {
         <div class="flex items-center gap-3">
           <ui-risk-badge [nivel]="c.nivel_final" />
@@ -53,6 +66,8 @@ import { PanelConsensus } from '../models';
 export class ConsensusCardComponent {
   readonly consensus = input<PanelConsensus | null>(null);
   readonly moderatorText = input<string>('');
+
+  protected readonly moderator = AGENT_PERSONAS['consenso'];
 
   protected readonly acuerdoPct = computed(() =>
     Math.round((this.consensus()?.nivel_de_acuerdo ?? 0) * 100),

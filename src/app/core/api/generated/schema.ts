@@ -121,6 +121,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/insights/explain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agent Explain Chart
+         * @description Explain one insights chart via a one-shot structured LLM call.
+         *
+         *     The frontend sends a plain-text `resumen` built from the chart's real numbers,
+         *     so the LLM grounds its reading on actual figures (no fabricated data). Bypasses
+         *     the ReAct claims agent — same pattern as /document/improve.
+         */
+        post: operations["agent_explain_chart_api_v1_agent_insights_explain_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/document/docx": {
         parameters: {
             query?: never;
@@ -620,6 +644,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rules/rescore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Rescore
+         * @description Kick off a background rescore of every claim and return immediately.
+         *
+         *     Antifraude-only. This is the explicit counterpart of PATCH /rules/{code}:
+         *     edits accumulate cheaply, then one rescore applies them all at once. The job
+         *     runs as a detached task with its OWN session (no request stays open — a
+         *     long-lived request is what froze the app under uvicorn's reload drain).
+         *     Idempotent: if a job is already running, returns its current snapshot.
+         */
+        post: operations["start_rescore_api_v1_rules_rescore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rules/rescore/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rescore Status
+         * @description Snapshot of the background rescore job — polled by the dashboard.
+         */
+        get: operations["rescore_status_api_v1_rules_rescore_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rules/{code}": {
         parameters: {
             query?: never;
@@ -636,10 +706,11 @@ export interface paths {
         head?: never;
         /**
          * Patch Rule
-         * @description Pause/reactivate a rule or retune its thresholds, then rescore all claims.
+         * @description Pause/reactivate a rule or retune its thresholds — WITHOUT rescoring.
          *
-         *     Antifraude-only. Persists the edit, re-hydrates the engine, logs the change to
-         *     the history, and runs a full rescore so existing claims reflect the change.
+         *     Antifraude-only. Persists the edit, re-hydrates the engine and logs the
+         *     change; edits accumulate cheaply and the analyst triggers ONE explicit
+         *     ``POST /rules/rescore`` when done batching changes.
          */
         patch: operations["patch_rule_api_v1_rules__code__patch"];
         trace?: never;
@@ -1084,9 +1155,9 @@ export interface components {
              * Chart Type
              * @enum {string}
              */
-            chart_type: "bar" | "horizontal_bar" | "line" | "pie" | "doughnut" | "scatter";
+            chart_type: "bar" | "horizontal_bar" | "line" | "pie" | "doughnut" | "scatter" | "stacked_tier" | "dotplot";
             /** Available Types */
-            available_types: ("bar" | "horizontal_bar" | "line" | "pie" | "doughnut" | "scatter")[];
+            available_types: ("bar" | "horizontal_bar" | "line" | "pie" | "doughnut" | "scatter" | "stacked_tier" | "dotplot")[];
             /** Labels */
             labels: string[];
             /** Series */
@@ -1099,6 +1170,14 @@ export interface components {
             meta?: {
                 [key: string]: string;
             }[] | null;
+        };
+        /** ChartExplanation */
+        ChartExplanation: {
+            /**
+             * Explicacion Markdown
+             * @description Explicación del gráfico en Markdown
+             */
+            explicacion_markdown: string;
         };
         /** ChartSeries */
         ChartSeries: {
@@ -1367,6 +1446,8 @@ export interface components {
             label: string;
             /** Pct */
             pct: number;
+            /** Count */
+            count: number;
         };
         /** ClaimVehicle */
         ClaimVehicle: {
@@ -1515,6 +1596,19 @@ export interface components {
              * @description Nota opcional para el equipo antifraude
              */
             note?: string | null;
+        };
+        /** ExplainChartRequest */
+        ExplainChartRequest: {
+            /** Ciudad */
+            ciudad: string;
+            /** Chart Id */
+            chart_id: string;
+            /** Chart Kind */
+            chart_kind: string;
+            /** Chart Title */
+            chart_title: string;
+            /** Resumen */
+            resumen: string;
         };
         /**
          * ExtractedEntities
@@ -1735,6 +1829,10 @@ export interface components {
              */
             created_at: string;
             chart_payload?: components["schemas"]["ChartData"] | null;
+            /** Visual Payload */
+            visual_payload?: {
+                [key: string]: unknown;
+            }[] | null;
             /** Transparency Metadata */
             transparency_metadata?: {
                 [key: string]: unknown;
@@ -2054,6 +2152,22 @@ export interface components {
             region: string;
             /** Value */
             value: number;
+        };
+        /** RescoreStatusOut */
+        RescoreStatusOut: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "idle" | "running" | "done" | "error";
+            /** Processed */
+            processed: number;
+            /** Total */
+            total: number;
+            /** Changed */
+            changed: number;
+            /** Error */
+            error?: string | null;
         };
         /**
          * ResumenPatch
@@ -2489,6 +2603,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImprovedDocument"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    agent_explain_chart_api_v1_agent_insights_explain_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainChartRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChartExplanation"];
                 };
             };
             /** @description Validation Error */
@@ -3404,6 +3551,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_rescore_api_v1_rules_rescore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RescoreStatusOut"];
+                };
+            };
+        };
+    };
+    rescore_status_api_v1_rules_rescore_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RescoreStatusOut"];
                 };
             };
         };

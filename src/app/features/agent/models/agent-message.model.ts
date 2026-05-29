@@ -1,5 +1,5 @@
+import type { AgentVisual } from '@shared/ui/viz';
 import type { AgentStep } from './agent-step.model';
-import type { ChartPayload } from './chart.model';
 
 export type AgentRole = 'user' | 'assistant';
 
@@ -36,16 +36,6 @@ export interface AgentMessage {
   content: string;
   /** Transparency trail — agent nodes traversed and tools fired during this turn. */
   steps?: AgentStep[];
-  /** Chartable data the agent offered for this answer, if any. */
-  chart?: ChartPayload;
-  /** Whether the user accepted to view the offered chart. */
-  chartAccepted?: boolean;
-  /**
-   * True between the `chart_pending` SSE step and the matching `chart` event —
-   * the UI renders a chart skeleton so the user knows a viz is coming while
-   * the compose stream is still finishing.
-   */
-  chartPending?: boolean;
   /**
    * Tabular data from a list-shaped tool result (e.g. query_claims returns ClaimSummary[]).
    * Set by the store on `tool_result` events where the result is an array of objects.
@@ -58,4 +48,11 @@ export interface AgentMessage {
    * transparency_metadata). When present, renders a `chat-document-canvas` artifact.
    */
   documentPayload?: DocumentPayload | null;
+  /** Structured visuals streamed via `visual` SSE events or restored from `visual_payload`. */
+  visuals?: AgentVisual[];
+  /**
+   * True between the `visual_pending` agent_step and the first `visual` event —
+   * the UI renders a skeleton so the user knows a visualization is being computed.
+   */
+  visualsPending?: boolean;
 }

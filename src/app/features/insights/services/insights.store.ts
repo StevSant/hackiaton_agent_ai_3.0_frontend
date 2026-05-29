@@ -53,6 +53,7 @@ function dtoToSlice(dto: ClaimTypeSliceDto): ClaimTypeSlice {
     key: dto.key,
     label: dto.label,
     pct: dto.pct,
+    count: dto.count,
     color: SLICE_COLORS[dto.key] ?? SLICE_COLORS['other'],
   };
 }

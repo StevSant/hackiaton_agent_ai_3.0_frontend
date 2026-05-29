@@ -11,6 +11,7 @@ import { ThemeStore } from '@core/theme/theme.store';
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <div class="max-w-2xl mx-auto">
     <div class="py-2 pb-6">
       <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">Configuración</h1>
       <p class="text-ink-3 text-[13.5px] m-0">
@@ -18,7 +19,7 @@ import { ThemeStore } from '@core/theme/theme.store';
       </p>
     </div>
 
-    <div class="bg-surface border border-line rounded-lg shadow-1 max-w-2xl">
+    <div class="bg-surface border border-line rounded-lg shadow-1">
       <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
         <h3 class="text-[13px] font-semibold m-0">Apariencia</h3>
       </div>
@@ -40,7 +41,7 @@ import { ThemeStore } from '@core/theme/theme.store';
       </div>
     </div>
 
-    <div class="bg-surface border border-line rounded-lg shadow-1 max-w-2xl mt-5">
+    <div class="bg-surface border border-line rounded-lg shadow-1 mt-5">
       <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
         <h3 class="text-[13px] font-semibold m-0">Cuenta</h3>
         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] bg-tier-green-soft text-tier-green-ink">
@@ -80,7 +81,7 @@ import { ThemeStore } from '@core/theme/theme.store';
       </div>
     </div>
 
-    <div class="bg-surface border border-line rounded-lg shadow-1 max-w-2xl mt-5">
+    <div class="bg-surface border border-line rounded-lg shadow-1 mt-5">
       <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
         <h3 class="text-[13px] font-semibold m-0">Sesión</h3>
       </div>
@@ -100,6 +101,7 @@ import { ThemeStore } from '@core/theme/theme.store';
           Cerrar sesión
         </button>
       </div>
+    </div>
     </div>
   `,
 })

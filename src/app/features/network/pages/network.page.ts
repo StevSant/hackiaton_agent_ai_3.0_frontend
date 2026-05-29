@@ -125,17 +125,19 @@ function casoEdge(source: string, target: string, c: NetworkClaimDto): GraphEdge
       }
     </div>
 
-    <ul class="bg-surface border border-line rounded-lg shadow-1 divide-y divide-line mb-5">
+    <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
       @for (kpi of kpiRows(); track kpi.label) {
-        <li class="flex items-center gap-3 px-4 py-3">
-          <span class="w-8 h-8 rounded-md grid place-items-center shrink-0" [class]="kpi.iconCls">
-            <ui-icon [name]="kpi.icon" [size]="16" />
+        <div class="bg-surface border border-line rounded-lg shadow-1 px-4 py-3 flex items-center gap-3">
+          <span class="w-9 h-9 rounded-md grid place-items-center shrink-0" [class]="kpi.iconCls">
+            <ui-icon [name]="kpi.icon" [size]="17" />
           </span>
-          <span class="text-[13px] text-ink-2 flex-1">{{ kpi.label }}</span>
-          <span class="text-[15px] font-semibold tabular-nums" [class]="kpi.valueCls">{{ kpi.value }}</span>
-        </li>
+          <div class="min-w-0">
+            <div class="text-[20px] leading-tight font-semibold tabular-nums" [class]="kpi.valueCls">{{ kpi.value }}</div>
+            <div class="text-[11.5px] text-ink-3 truncate">{{ kpi.label }}</div>
+          </div>
+        </div>
       }
-    </ul>
+    </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 mb-5 items-stretch">
       <div class="bg-surface border border-line rounded-lg shadow-1 overflow-hidden flex flex-col min-h-[420px]">

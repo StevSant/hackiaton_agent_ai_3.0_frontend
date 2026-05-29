@@ -6,14 +6,18 @@ import { ConversationsApi } from '@core/api/clients/conversations.api';
 import { environment } from '@core/config/env';
 import { AppError } from '@core/errors/app-error';
 import { SseClient } from '@core/realtime/sse.client';
+import type { components } from '@core/api/generated/schema';
+import type { AgentVisual } from '@shared/ui/viz';
 import type {
   AgentMessage,
   AgentStep,
-  ChartPayload,
   ConversationDocument,
   DocumentPayload,
   TableRow,
 } from '../models';
+
+/** Legacy persisted chart shape (replaced by visual_payload; only read on replay). */
+type StoredChartData = components['schemas']['ChartData'];
 import type { ChatContext } from '../models/chat-context';
 import { ConversationsStore } from './conversations.store';
 import { buildCaseWelcomeMessage } from '../utils/case-context-message';
@@ -57,9 +61,9 @@ interface ToolResultEvent {
   data: { call_id: string; result: unknown };
 }
 
-interface ChartEvent {
-  type: 'chart';
-  data: ChartPayload;
+interface VisualEvent {
+  type: 'visual';
+  data: AgentVisual;
 }
 
 interface DocumentEvent {
@@ -74,7 +78,7 @@ type AgentStreamEvent =
   | AgentStepEvent
   | ToolCallEvent
   | ToolResultEvent
-  | ChartEvent
+  | VisualEvent
   | DocumentEvent;
 
 // Shape of the transparency_metadata JSONB column persisted by the backend.
@@ -150,6 +154,7 @@ function buildStepsFromMetadata(meta: TransparencyMetadata | null | undefined): 
 const NODE_LABEL: Record<string, string> = {
   react_step: 'Razonamiento',
   compose: 'Componiendo respuesta',
+  visual_pending: 'Preparando visualización',
 };
 
 function nodeLabel(node: string): string {
@@ -278,8 +283,8 @@ export class AgentStore {
    */
   private readonly _pendingDocumentContext = signal<DocumentContext | null>(null);
   /**
-   * CHANGE 2 — PNG data URL of the most recent chart rendered in this conversation.
-   * Set by `agent-chart.ts` on render; read by the canvas panel to embed in the .docx.
+   * PNG data URL of the most recent chart rendered in this conversation.
+   * Set by viz-dispatcher (chartRendered event); read by the canvas panel to embed in the .docx.
    */
   private readonly _latestChartImage = signal<string | null>(null);
 
@@ -368,7 +373,7 @@ export class AgentStore {
     this._pendingDocumentContext.set(null);
   }
 
-  /** CHANGE 2 — register the latest chart's PNG data URL (called by agent-chart). */
+  /** Register the latest chart's PNG data URL (emitted by viz-dispatcher chartRendered). */
   setLatestChartImage(dataUrl: string): void {
     this._latestChartImage.set(dataUrl);
   }
@@ -463,14 +468,22 @@ export class AgentStore {
       this._activeDocumentId.set(null);
       this._messages.set(
         detail.messages.map((m) => {
-          // chart_payload and transparency_metadata only exist on persisted
-          // assistant messages and are typed only after `pnpm gen:api` picks up
-          // the new backend schema. Read both defensively.
+          // chart_payload, visual_payload, and transparency_metadata only exist on
+          // persisted assistant messages. Read all defensively.
           const raw = m as unknown as {
-            chart_payload?: ChartPayload | null;
+            chart_payload?: StoredChartData | null;
+            visual_payload?: AgentVisual[] | null;
             transparency_metadata?: TransparencyMetadata | null;
           };
-          const chart = raw.chart_payload ?? undefined;
+          // Prefer the new visual_payload; fall back to legacy chart_payload wrapped as
+          // a ChartVisual so old messages still render through viz-dispatcher.
+          const legacyChart = raw.chart_payload ?? undefined;
+          const visuals: AgentVisual[] | undefined =
+            raw.visual_payload?.length
+              ? raw.visual_payload
+              : legacyChart !== undefined
+                ? [{ kind: 'chart', data: { ...legacyChart, meta: legacyChart.meta ?? undefined } }]
+                : undefined;
           const steps = buildStepsFromMetadata(raw.transparency_metadata);
           // Restore table payload from the first list-shaped tool_call result.
           const tablePayload = (raw.transparency_metadata?.tool_calls ?? []).reduce<TableRow[] | undefined>(
@@ -484,11 +497,9 @@ export class AgentStore {
             role: m.role,
             content: m.content,
             steps,
-            chart,
-            // Already-rendered charts skip the "Ver como gráfico" affordance.
-            chartAccepted: chart !== undefined ? true : undefined,
             tablePayload: tablePayload ?? null,
             documentPayload,
+            visuals,
           };
         }),
       );
@@ -531,15 +542,6 @@ export class AgentStore {
         },
       ]);
     }
-  }
-
-  /** Toggle visibility of the chart attached to a message. */
-  toggleChart(messageId: string): void {
-    this._messages.update((messages) =>
-      messages.map((msg) =>
-        msg.id === messageId ? { ...msg, chartAccepted: !(msg.chartAccepted === true) } : msg,
-      ),
-    );
   }
 
   /** Toggle visibility of the table attached to a message (shown by default). */
@@ -620,13 +622,13 @@ export class AgentStore {
       );
     };
 
-    const attachChart = (chart: ChartPayload): void => {
+    const attachVisual = (visual: AgentVisual): void => {
       ensureAssistantBubble();
-      // Charts now arrive only when the analyst explicitly asked — no intermediate
-      // "Ver como gráfico" gate; render immediately.
       this._messages.update((messages) =>
         messages.map((msg) =>
-          msg.id === assistantId ? { ...msg, chart, chartAccepted: true } : msg,
+          msg.id === assistantId
+            ? { ...msg, visuals: [...(msg.visuals ?? []), visual], visualsPending: false }
+            : msg,
         ),
       );
     };
@@ -673,6 +675,15 @@ export class AgentStore {
                 label: nodeLabel(event.data.node),
                 detail: thought || undefined,
               });
+              // Mark that a visual is being computed so the bubble can show a skeleton.
+              if (event.data.node === 'visual_pending') {
+                ensureAssistantBubble();
+                this._messages.update((messages) =>
+                  messages.map((msg) =>
+                    msg.id === assistantId ? { ...msg, visualsPending: true } : msg,
+                  ),
+                );
+              }
               break;
             }
             case 'tool_call':
@@ -689,8 +700,8 @@ export class AgentStore {
               if (rows) attachTable(rows);
               break;
             }
-            case 'chart':
-              attachChart(event.data);
+            case 'visual':
+              attachVisual(event.data);
               break;
             case 'document':
               attachDocument(event.data);

@@ -3,8 +3,9 @@ import { RouterLink } from '@angular/router';
 
 import { Icon } from '@shared/ui/icon';
 import { RiskBadge } from '@shared/ui/risk-badge';
+import { AgentEye } from '@shared/ui/agent-eye';
 import type { Claim, PanelLiveAgent } from '@shared/models';
-import type { RiskTier } from '@shared/utils';
+import { resolveAgentPersona, type RiskTier } from '@shared/utils';
 
 /**
  * Inline summary of the multi-agent panel debate on the claim detail. This is
@@ -16,7 +17,7 @@ import type { RiskTier } from '@shared/utils';
 @Component({
   selector: 'claim-panel-summary-card',
   standalone: true,
-  imports: [RouterLink, Icon, RiskBadge],
+  imports: [RouterLink, Icon, RiskBadge, AgentEye],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
@@ -96,12 +97,19 @@ import type { RiskTier } from '@shared/utils';
         </div>
       } @else if (running()) {
         <div class="px-5 pt-2.5 pb-5 flex flex-col gap-3">
-          @if (liveAgents().length) {
+          @if (liveChips().length) {
             <div class="flex flex-wrap gap-2">
-              @for (a of liveAgents(); track a.agentId) {
+              @for (a of liveChips(); track a.agentId) {
                 <span
-                  class="inline-flex items-center gap-1.5 text-[12px] px-2 py-1 rounded-full border border-line bg-soft"
+                  class="inline-flex items-center gap-1.5 text-[12px] pl-1 pr-2.5 py-0.5 rounded-full border bg-soft"
+                  [style.border-color]="
+                    'color-mix(in oklch, ' + a.persona.accent + ' 35%, var(--border))'
+                  "
                 >
+                  <ui-agent-eye [persona]="a.persona" [size]="22" />
+                  <span class="font-medium" [style.color]="a.persona.accent">{{
+                    a.persona.name
+                  }}</span>
                   @switch (a.status) {
                     @case ('voto') {
                       <span class="w-2 h-2 rounded-full" [class]="dotClass(a.nivel)"></span>
@@ -121,7 +129,6 @@ import type { RiskTier } from '@shared/utils';
                       <ui-icon name="schedule" [size]="13" class="text-ink-3" />
                     }
                   }
-                  <span class="text-ink-2">{{ a.displayName }}</span>
                 </span>
               }
             </div>
@@ -166,6 +173,15 @@ export class PanelSummaryCard {
         return 'bg-tier-green';
     }
   }
+
+  // Live agents enriched with their persona (name + accent + eye) so the chips
+  // match the landing roster instead of the generic backend display name.
+  protected readonly liveChips = computed(() =>
+    this.liveAgents().map((a) => ({
+      ...a,
+      persona: resolveAgentPersona(a.agentId, { name: a.displayName, role: a.displayName }),
+    })),
+  );
 
   protected readonly consensus = computed(() => this.claim().panel_analysis?.consensus ?? null);
   protected readonly acuerdoPct = computed(() =>

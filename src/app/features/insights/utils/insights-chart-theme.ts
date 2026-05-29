@@ -65,9 +65,13 @@ export function brandBarColor(index: number, total: number): string {
   return BRAND_BAR_STEPS[step];
 }
 
+/** Keys mirror the backend's CANONICAL_RAMOS (app/domain/ramos.py). */
 export const SLICE_COLORS: Readonly<Record<string, string>> = {
-  auto: INSIGHTS_CHART.brand,
-  health: '#5a8f84',
-  life: '#7a6b96',
+  vehiculos: INSIGHTS_CHART.brand,
+  hogar: '#b08a5a',
+  salud: '#5a8f84',
+  vida: '#7a6b96',
+  generales: '#8a9b5f',
+  otros: '#94a3b8',
   other: '#94a3b8',
 };

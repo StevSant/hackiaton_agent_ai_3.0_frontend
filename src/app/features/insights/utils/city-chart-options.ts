@@ -173,13 +173,14 @@ export function buildRegionalFraudBarOption(
         return `${String(row.name)}<br/><b>${String(row.value)}</b> alertas activas`;
       },
     },
-    grid: { left: 2, right: 2, top: 20, bottom: 18, containLabel: false },
+    grid: { left: 2, right: 2, top: 20, bottom: 0, containLabel: true },
     xAxis: {
       type: 'category',
       data: points.map((point) => point.label),
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: INK, fontSize: 9, interval: 0, margin: 6 },
+      // Rotated so 8 city names never collide in the narrow sidebar card.
+      axisLabel: { color: INK, fontSize: 9, interval: 0, margin: 4, rotate: 38 },
     },
     yAxis: {
       type: 'value',

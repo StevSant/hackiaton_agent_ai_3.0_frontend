@@ -26,8 +26,10 @@ export interface ShortcutHandler {
   keys: string;
   label: string;
   group?: string;
-  /** Allow even when focus is in an input (only use for help toggle). */
-  allowInInput?: boolean;
+  /** Run even while a modal dialog is open (used by the help toggle so "?"
+   *  can close the already-open help modal). Typing targets STILL block:
+   *  typing "?" in an input/textarea must insert the character, never fire. */
+  allowWhenDialogOpen?: boolean;
   test: (event: KeyboardEvent) => boolean;
   run: () => void;
 }
@@ -48,8 +50,10 @@ export function bindShortcutHandlers(
     for (const handler of handlers) {
       if (!handler.test(event)) continue;
 
-      if (handler.allowInInput) {
-        if (isModifiedShortcut(event)) continue;
+      if (handler.allowWhenDialogOpen) {
+        // Bypasses only the open-dialog block — typing in an input/textarea/
+        // contenteditable still wins (the keypress is a character, not a shortcut).
+        if (isModifiedShortcut(event) || isTypingTarget(event.target)) continue;
       } else if (shouldBlockShortcut(event)) {
         continue;
       }

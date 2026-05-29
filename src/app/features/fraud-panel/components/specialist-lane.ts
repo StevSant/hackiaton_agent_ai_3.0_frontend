@@ -1,45 +1,58 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { Chip } from '@shared/ui/chip';
 import { Icon } from '@shared/ui/icon';
 import { RiskBadge } from '@shared/ui/risk-badge';
+import { AgentEye } from '@shared/ui/agent-eye';
+import { MarkdownPipe } from '@shared/pipes/markdown.pipe';
+import { resolveAgentPersona } from '@shared/utils';
 
 import type { SpecialistLane } from '../models/specialist-lane.model';
+import { formatCita } from '../utils';
 
 @Component({
   selector: 'app-specialist-lane',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RiskBadge, Chip, Icon],
+  imports: [RiskBadge, Chip, Icon, AgentEye, MarkdownPipe],
   template: `
-    <section class="flex flex-col gap-2 rounded-lg border border-line bg-surface p-3 h-full">
-      <header class="flex items-center gap-2">
-        <ui-icon name="psychology" [size]="16" />
-        <div>
-          <p class="text-sm font-semibold">{{ lane().displayName }}</p>
-          <p class="text-xs text-ink-2">{{ lane().lens }}</p>
+    <section
+      class="flex flex-col gap-2 rounded-lg border bg-surface p-3 h-full transition-colors"
+      [style.border-color]="'color-mix(in oklch, ' + persona().accent + ' 28%, var(--border))'"
+    >
+      <header class="flex items-center gap-2.5">
+        <ui-agent-eye [persona]="persona()" [size]="44" />
+        <div class="min-w-0">
+          <p class="text-sm font-semibold leading-tight">{{ persona().name }}</p>
+          <p class="text-xs text-ink-2 leading-tight">{{ persona().role }}</p>
+          <p
+            class="text-[10px] uppercase tracking-[0.1em] font-semibold mt-0.5"
+            [style.color]="persona().accent"
+          >
+            {{ persona().tag }}
+          </p>
         </div>
       </header>
 
       @if (lane().failed) {
         <p class="text-xs text-ink-2 italic">Sin opinión — el análisis de este especialista falló.</p>
       } @else {
-        <p class="text-sm whitespace-pre-wrap min-h-12">{{ lane().narracion }}</p>
+        <div class="markdown-body text-sm min-h-12" [innerHTML]="lane().narracion | markdown"></div>
 
         @if (lane().verdict; as v) {
           <div class="flex items-center gap-2">
             <ui-risk-badge [nivel]="v.nivel" />
             <span class="text-xs text-ink-2">confianza: {{ v.confianza }}</span>
           </div>
-          <p class="text-sm">{{ v.dictamen }}</p>
+          <div class="markdown-body text-sm" [innerHTML]="v.dictamen | markdown"></div>
           <ul class="text-xs list-disc pl-4">
             @for (punto of v.puntos_clave; track punto) {
-              <li>{{ punto }}</li>
+              <li class="markdown-body" [innerHTML]="punto | markdown"></li>
             }
           </ul>
-          @if (v.citas.length) {
+          @if (citas().length) {
             <div class="flex flex-wrap gap-1">
-              @for (cita of v.citas; track cita) {
+              @for (cita of citas(); track $index) {
                 <ui-chip>{{ cita }}</ui-chip>
               }
             </div>
@@ -49,7 +62,7 @@ import type { SpecialistLane } from '../models/specialist-lane.model';
         @if (lane().rebuttal; as r) {
           <div class="mt-2 border-t border-line pt-2">
             <p class="text-xs font-medium text-ink-2">Réplica</p>
-            <p class="text-sm whitespace-pre-wrap">{{ lane().rebuttalNarracion }}</p>
+            <div class="markdown-body text-sm" [innerHTML]="lane().rebuttalNarracion | markdown"></div>
             <div class="flex items-center gap-2 flex-wrap">
               @if (r.cambia_postura && lane().verdict && lane().verdict!.nivel !== r.nivel_actualizado) {
                 <ui-risk-badge [nivel]="lane().verdict!.nivel" />
@@ -78,4 +91,16 @@ import type { SpecialistLane } from '../models/specialist-lane.model';
 })
 export class SpecialistLaneComponent {
   readonly lane = input.required<SpecialistLane>();
+
+  protected readonly persona = computed(() =>
+    resolveAgentPersona(this.lane().agentId, {
+      name: this.lane().displayName,
+      role: this.lane().displayName,
+    }),
+  );
+
+  // Safety net: persisted analyses may still carry raw `clave=valor` citas.
+  protected readonly citas = computed(
+    () => this.lane().verdict?.citas.map(formatCita) ?? [],
+  );
 }

@@ -9,7 +9,7 @@ import type { FraudRule } from '../models';
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="grid grid-cols-[96px_1fr_120px_72px_120px_72px] gap-4 items-center px-5 py-3.5 border-t border-line first:border-t-0">
+    <div class="grid grid-cols-[96px_1fr_120px_72px_120px_150px] gap-4 items-center px-5 py-3.5 border-t border-line first:border-t-0">
       <span class="font-mono text-[12px] px-2 py-0.5 rounded" [class]="codeChipClass()">{{ rule().code }}</span>
 
       <div class="min-w-0">

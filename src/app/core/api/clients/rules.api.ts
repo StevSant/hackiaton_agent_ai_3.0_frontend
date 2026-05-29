@@ -49,6 +49,15 @@ export interface RuleMetaDto {
   max_points: number;
 }
 
+/** Snapshot of the background rescore job (POST /rules/rescore + status poll). */
+export interface RescoreStatusDto {
+  status: 'idle' | 'running' | 'done' | 'error';
+  processed: number;
+  total: number;
+  changed: number;
+  error?: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class RulesApi {
   private readonly http = inject(HttpClient);
@@ -68,8 +77,19 @@ export class RulesApi {
     return this.http.get<RuleMetaDto[]>(`${this.base}/rules/catalog`);
   }
 
-  /** Pause/reactivate a rule or retune its thresholds (antifraude only). */
+  /** Pause/reactivate a rule or retune its thresholds (antifraude only).
+   * Does NOT rescore — start the background job with `startRescore()`. */
   patchRule(code: string, body: RuleConfigPatchDto): Observable<RuleConfigDto> {
     return this.http.patch<RuleConfigDto>(`${this.base}/rules/${code}`, body);
+  }
+
+  /** Kick off the background rescore job (202; idempotent while running). */
+  startRescore(): Observable<RescoreStatusDto> {
+    return this.http.post<RescoreStatusDto>(`${this.base}/rules/rescore`, {});
+  }
+
+  /** Poll the background rescore job's progress. */
+  rescoreStatus(): Observable<RescoreStatusDto> {
+    return this.http.get<RescoreStatusDto>(`${this.base}/rules/rescore/status`);
   }
 }

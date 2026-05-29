@@ -36,7 +36,7 @@ const CHART_CITY_LIMIT = 8;
         <insights-echart
           class="insights-fraud-tendency-card__chart"
           [option]="chartOption()"
-          height="112px"
+          height="132px"
           (barClick)="openRegionCases($event)"
         />
       }

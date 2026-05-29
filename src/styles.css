@@ -759,7 +759,10 @@ page-chat {
 }
 
 .centinela-field--grow {
-  flex: 1 1 220px;
+  /* 280px basis + floor so long placeholders ("Buscar por ID o asegurado…")
+     don't get clipped; the flex-wrap shell lets it take its own row if tight. */
+  flex: 1 1 280px;
+  min-width: 250px;
 }
 
 .centinela-filter-bar__shell {

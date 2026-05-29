@@ -17,7 +17,9 @@ import { computeRamoStats } from '../utils/ramo-stats';
         <div class="text-[12px] text-ink-3 mt-0.5">% de siniestros con score ≥ 40</div>
       </div>
 
-      <div class="flex-1 py-2">
+<!-- justify-evenly: the sibling map card can grow much taller; distributing the
+     rows fills the matched height instead of leaving dead space below. -->
+      <div class="flex-1 py-2 flex flex-col justify-evenly">
         @for (ramoStat of stats(); track ramoStat.key; let index = $index) {
           <div
             class="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_44px] gap-3 items-center px-5 py-3"
