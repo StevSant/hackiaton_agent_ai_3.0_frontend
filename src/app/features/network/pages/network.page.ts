@@ -105,14 +105,17 @@ type GraphTierFilter = 'todos' | 'rojo' | 'amarillo_rojo' | 'estandar';
           <div>
             <h3 class="text-[13px] font-semibold m-0">Mapa de relaciones</h3>
             <div class="text-[12px] text-ink-3 mt-0.5">
-              Proveedor ↔ asegurado por siniestros compartidos · {{ graphSubtitle() }}
+              Cada línea une un proveedor con un asegurado que comparten siniestros.
+              Pasa el cursor sobre un nodo para aislar sus vínculos.
             </div>
+            <div class="text-[11.5px] text-ink-2 mt-1 font-medium">{{ graphSubtitle() }}</div>
           </div>
           <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-[11px] uppercase tracking-wide text-ink-3 mr-0.5">Riesgo</span>
             @for (opt of graphTierOptions; track opt.value) {
               <button
                 type="button"
-                class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] border transition-colors"
+                class="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] border transition-colors"
                 [class]="tierChipClasses(opt.value)"
                 (click)="setGraphTier(opt.value)"
               >
@@ -227,13 +230,16 @@ export class NetworkPage {
     ];
   });
 
-  /** Provider nodes that pass the graph tier filter (by alert ratio). */
+  /** Provider nodes that pass both the ramo (top filter) and tier (graph) filters. */
   private readonly visibleProviderIds = computed<Set<string>>(() => {
     const tier = this.graphTier();
+    const ramo = this.filter();
     const ids = new Set<string>();
     for (const n of this.relations().nodes) {
       if (n.kind !== 'proveedor') continue;
-      if (tier === 'todos' || matchesNodeTier(n, tier)) ids.add(n.id);
+      if (tier !== 'todos' && !matchesNodeTier(n, tier)) continue;
+      if (ramo !== 'todos' && !(n.ramos ?? []).map(normalizeRamoKey).includes(ramo)) continue;
+      ids.add(n.id);
     }
     return ids;
   });

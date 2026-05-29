@@ -27,6 +27,7 @@ export interface NetworkNodeDto {
   alertas: number;
   monto: number;
   lista_restrictiva: boolean;
+  ramos?: string[];
 }
 
 export interface NetworkEdgeDto {

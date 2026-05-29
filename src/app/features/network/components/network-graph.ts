@@ -15,26 +15,26 @@ interface PlacedNode {
   monto: number;
   listaRestrictiva: boolean;
   risk: Risk;
-  /** 0-100 viewBox coords. */
-  x: number;
+  x: number; // 0-100 viewBox coords
   y: number;
   size: number;
 }
 
 interface PlacedEdge {
   id: string;
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
+  path: string;
   risk: Risk;
   width: number;
   provId: string;
   asegId: string;
 }
 
-/** Top-N nodes per column so the bipartite layout stays readable. */
-const MAX_PER_COLUMN = 14;
+/** Top providers shown — fewer nodes keeps the bipartite layout legible. */
+const MAX_PROVIDERS = 8;
+/** Cap on insured shown (only those linked to a visible provider). */
+const MAX_INSURED = 12;
+const PROV_X = 17;
+const ASEG_X = 83;
 
 function riskFromRatio(alertas: number, casos: number): Risk {
   const ratio = casos > 0 ? alertas / casos : 0;
@@ -42,9 +42,10 @@ function riskFromRatio(alertas: number, casos: number): Risk {
 }
 
 /**
- * Bipartite relationship graph: providers (left) linked to insured parties
- * (right) by the claims they share. A thick edge between a provider and an
- * insured that recurs across many claims is the core collusion signal.
+ * Bipartite relationship graph: a few high-risk providers (left) linked to the
+ * insured parties they share claims with (right). Curved edges + barycenter
+ * ordering of the insured column keep crossings down; hovering a node isolates
+ * its links so the analyst can read one relationship at a time.
  */
 @Component({
   selector: 'network-graph',
@@ -57,10 +58,9 @@ function riskFromRatio(alertas: number, casos: number): Risk {
           No hay relaciones proveedor–asegurado para los filtros actuales.
         </div>
       } @else {
-        <div class="flex-1 relative px-4 py-4 overflow-auto" (mouseleave)="hoveredId.set(null)">
+        <div class="flex-1 relative px-4 py-4 overflow-x-hidden overflow-y-auto" (mouseleave)="hoveredId.set(null)">
           <div class="relative w-full" [style.height.px]="canvasHeight()">
-            <!-- Column headers -->
-            <div class="absolute top-0 left-0 text-[11px] font-semibold uppercase tracking-wide text-ink-3">
+            <div class="absolute top-0 left-0 text-[11px] font-semibold uppercase tracking-wide text-brand-ink">
               Proveedores
             </div>
             <div class="absolute top-0 right-0 text-[11px] font-semibold uppercase tracking-wide text-ink-3">
@@ -69,11 +69,9 @@ function riskFromRatio(alertas: number, casos: number): Risk {
 
             <svg class="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
               @for (e of placedEdges(); track e.id) {
-                <line
-                  [attr.x1]="e.x1"
-                  [attr.y1]="e.y1"
-                  [attr.x2]="e.x2"
-                  [attr.y2]="e.y2"
+                <path
+                  [attr.d]="e.path"
+                  fill="none"
                   [attr.stroke]="edgeStroke(e.risk)"
                   [attr.stroke-width]="e.width"
                   [attr.stroke-opacity]="edgeOpacity(e)"
@@ -86,9 +84,10 @@ function riskFromRatio(alertas: number, casos: number): Risk {
             @for (n of placedNodes(); track n.id) {
               <button
                 type="button"
-                class="network-node absolute -translate-x-1/2 -translate-y-1/2 grid place-items-center rounded-full border-2 font-medium shadow-sm transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+                class="network-node absolute -translate-x-1/2 -translate-y-1/2 grid place-items-center rounded-full border-2 shadow-sm transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
                 [class]="nodeClass(n)"
-                [class.opacity-30]="isDimmed(n.id)"
+                [class.opacity-25]="isDimmed(n.id)"
+                [class.scale-110]="isFocused(n.id)"
                 [style.left.%]="n.x"
                 [style.top.%]="n.y"
                 [style.width.px]="n.size"
@@ -99,7 +98,7 @@ function riskFromRatio(alertas: number, casos: number): Risk {
                 (blur)="hoveredId.set(null)"
                 (click)="openNode.emit({ id: n.id, kind: n.kind })"
               >
-                <span class="px-1 text-center leading-tight text-[8.5px]">{{ n.label }}</span>
+                <span class="px-1 text-center leading-[1.05] text-[9.5px] font-medium line-clamp-2">{{ n.label }}</span>
               </button>
             }
 
@@ -134,6 +133,7 @@ function riskFromRatio(alertas: number, casos: number): Risk {
                     Lista restrictiva
                   </div>
                 }
+                <div class="mt-2 text-[10.5px] text-ink-3 italic">Clic para abrir el detalle</div>
               </div>
             }
           </div>
@@ -147,7 +147,7 @@ function riskFromRatio(alertas: number, casos: number): Risk {
           <span class="inline-flex items-center gap-1.5"><span class="tier-dot" style="background:var(--brand);box-shadow:none"></span>Estándar</span>
         </div>
         <span class="text-[11px] text-ink-2">
-          {{ providerCount() }} proveedores · {{ aseguradoCount() }} asegurados · {{ placedEdges().length }} vínculos
+          {{ providerCount() }} proveedores · {{ insuredCount() }} asegurados · {{ placedEdges().length }} vínculos
         </span>
       </div>
     </div>
@@ -161,29 +161,60 @@ export class NetworkGraph {
 
   protected readonly hoveredId = signal<string | null>(null);
 
-  /** Top-N providers + top-N insured by alertas, so the layout stays readable. */
+  /** Top providers by alerts, then the insured each connects to (capped). */
   private readonly visible = computed(() => {
     const providers = this.nodes()
       .filter((n) => n.kind === 'proveedor')
       .sort((a, b) => b.alertas - a.alertas || b.casos - a.casos)
-      .slice(0, MAX_PER_COLUMN);
-    const asegurados = this.nodes()
-      .filter((n) => n.kind === 'asegurado')
-      .sort((a, b) => b.alertas - a.alertas || b.casos - a.casos)
-      .slice(0, MAX_PER_COLUMN);
-    return { providers, asegurados };
+      .slice(0, MAX_PROVIDERS);
+    const provIds = new Set(providers.map((p) => p.id));
+
+    // Insured linked to a visible provider, ranked by total alerts on those links.
+    const insuredAlertas = new Map<string, number>();
+    for (const e of this.edges()) {
+      if (!provIds.has(e.proveedor_id)) continue;
+      insuredAlertas.set(e.asegurado_id, (insuredAlertas.get(e.asegurado_id) ?? 0) + e.alertas);
+    }
+    const insuredById = new Map(
+      this.nodes().filter((n) => n.kind === 'asegurado').map((n) => [n.id, n]),
+    );
+    const insured = [...insuredAlertas.keys()]
+      .map((id) => insuredById.get(id))
+      .filter((n): n is NetworkNodeDto => n != null)
+      .sort((a, b) => (insuredAlertas.get(b.id) ?? 0) - (insuredAlertas.get(a.id) ?? 0))
+      .slice(0, MAX_INSURED);
+
+    return { providers, insured };
   });
 
   protected readonly providerCount = computed(() => this.visible().providers.length);
-  protected readonly aseguradoCount = computed(() => this.visible().asegurados.length);
+  protected readonly insuredCount = computed(() => this.visible().insured.length);
 
   protected readonly canvasHeight = computed(() => {
-    const rows = Math.max(this.visible().providers.length, this.visible().asegurados.length, 1);
-    return Math.max(380, rows * 46 + 40);
+    const rows = Math.max(this.visible().providers.length, this.visible().insured.length, 1);
+    return Math.max(400, rows * 58 + 30);
   });
 
   protected readonly placedNodes = computed<PlacedNode[]>(() => {
-    const { providers, asegurados } = this.visible();
+    const { providers, insured } = this.visible();
+    const provIndex = new Map(providers.map((p, i) => [p.id, i]));
+
+    // Order insured by the average position of the providers they link to
+    // (barycenter heuristic) — cuts edge crossings dramatically.
+    const bary = new Map<string, number>();
+    for (const a of insured) {
+      const ys: number[] = [];
+      for (const e of this.edges()) {
+        if (e.asegurado_id === a.id && provIndex.has(e.proveedor_id)) {
+          ys.push(provIndex.get(e.proveedor_id)!);
+        }
+      }
+      bary.set(a.id, ys.length ? ys.reduce((s, v) => s + v, 0) / ys.length : 0);
+    }
+    const insuredSorted = [...insured].sort(
+      (a, b) => (bary.get(a.id) ?? 0) - (bary.get(b.id) ?? 0),
+    );
+
     const place = (list: NetworkNodeDto[], x: number): PlacedNode[] => {
       const n = list.length;
       return list.map((node, i) => ({
@@ -197,12 +228,11 @@ export class NetworkGraph {
         listaRestrictiva: node.lista_restrictiva,
         risk: riskFromRatio(node.alertas, node.casos),
         x,
-        // Spread between 8% and 94% of the canvas height.
-        y: n === 1 ? 50 : 8 + (i / (n - 1)) * 86,
-        size: 30 + Math.min(18, Math.round(node.casos * 1.1)),
+        y: n === 1 ? 50 : 7 + (i / (n - 1)) * 88,
+        size: 44 + Math.min(16, Math.round(node.casos * 0.9)),
       }));
     };
-    return [...place(providers, 16), ...place(asegurados, 84)];
+    return [...place(providers, PROV_X), ...place(insuredSorted, ASEG_X)];
   });
 
   protected readonly placedEdges = computed<PlacedEdge[]>(() => {
@@ -211,15 +241,14 @@ export class NetworkGraph {
     for (const e of this.edges()) {
       const p = byId.get(e.proveedor_id);
       const a = byId.get(e.asegurado_id);
-      if (!p || !a) continue; // both endpoints must be visible
+      if (!p || !a) continue;
+      const cx1 = p.x + (a.x - p.x) * 0.42;
+      const cx2 = p.x + (a.x - p.x) * 0.58;
       out.push({
         id: `${e.proveedor_id}__${e.asegurado_id}`,
-        x1: p.x,
-        y1: p.y,
-        x2: a.x,
-        y2: a.y,
+        path: `M ${p.x} ${p.y} C ${cx1} ${p.y} ${cx2} ${a.y} ${a.x} ${a.y}`,
         risk: e.alertas > 0 ? (e.casos_compartidos >= 2 ? 'alert' : 'warn') : 'ok',
-        width: Math.min(3, 0.6 + e.casos_compartidos * 0.5),
+        width: Math.min(3.5, 0.8 + e.casos_compartidos * 0.6),
         provId: e.proveedor_id,
         asegId: e.asegurado_id,
       });
@@ -227,7 +256,6 @@ export class NetworkGraph {
     return out;
   });
 
-  /** Node ids connected to the hovered node (via an edge). */
   private readonly connectedIds = computed<Set<string>>(() => {
     const id = this.hoveredId();
     if (!id) return new Set();
@@ -248,6 +276,10 @@ export class NetworkGraph {
   protected isDimmed(id: string): boolean {
     const connected = this.connectedIds();
     return connected.size > 0 && !connected.has(id);
+  }
+
+  protected isFocused(id: string): boolean {
+    return this.hoveredId() === id;
   }
 
   protected linkCount(id: string): number {
@@ -273,8 +305,8 @@ export class NetworkGraph {
 
   protected edgeOpacity(e: PlacedEdge): number {
     const id = this.hoveredId();
-    if (!id) return e.risk === 'alert' ? 0.5 : e.risk === 'warn' ? 0.4 : 0.22;
-    return e.provId === id || e.asegId === id ? 0.85 : 0.06;
+    if (!id) return e.risk === 'alert' ? 0.4 : e.risk === 'warn' ? 0.32 : 0.16;
+    return e.provId === id || e.asegId === id ? 0.9 : 0.04;
   }
 
   protected kindBadge(kind: 'proveedor' | 'asegurado'): string {
@@ -286,7 +318,7 @@ export class NetworkGraph {
   protected tooltipStyle(n: PlacedNode): Record<string, string> {
     const placeRight = n.x < 50;
     const key = placeRight ? 'left' : 'right';
-    const value = placeRight ? `${n.x + 4}%` : `${100 - n.x + 4}%`;
+    const value = placeRight ? `${n.x + 5}%` : `${100 - n.x + 5}%`;
     const vertical = n.y > 70 ? 'translateY(-100%)' : n.y < 25 ? 'translateY(0%)' : 'translateY(-50%)';
     return { [key]: value, top: `${n.y}%`, transform: vertical };
   }
@@ -298,6 +330,6 @@ export class NetworkGraph {
 
 function shorten(name: string): string {
   const words = name.split(/\s+/).filter(Boolean);
-  if (words.length <= 2) return name.length <= 16 ? name : `${name.slice(0, 14)}…`;
+  if (words.length <= 2) return name.length <= 18 ? name : `${name.slice(0, 16)}…`;
   return `${words[0]} ${words[1]}`;
 }
