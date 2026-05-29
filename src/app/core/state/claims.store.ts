@@ -394,6 +394,7 @@ function dtoToClaim(dto: ClaimDto): Claim {
     confianza: dto.confianza,
     resumen_editado: dto.resumen_editado ?? null,
     narrative_analysis: dto.narrative_analysis ?? null,
+    panel_analysis: dto.panel_analysis ?? null,
   };
 }
 

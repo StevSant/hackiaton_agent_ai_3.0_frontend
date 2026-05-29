@@ -62,7 +62,8 @@ export class FraudPanelPage {
   constructor() {
     effect(() => {
       const id = this.claimId();
-      if (id) this.store.run(id);
+      // Replay the cached debate if one exists; otherwise run a fresh one.
+      if (id) this.store.open(id);
     });
   }
 

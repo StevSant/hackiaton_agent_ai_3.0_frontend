@@ -1,8 +1,10 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
 
+import { ClaimsApi } from '@core/api/clients/claims.api';
 import { environment } from '@core/config/env';
 import { SseClient } from '@core/realtime/sse.client';
+import type { PanelAnalysis } from '@shared/models';
 import type { PanelConsensus, PanelRosterEntry, PanelStreamEvent } from '../models';
 import type { SpecialistLane } from '../models/specialist-lane.model';
 
@@ -11,9 +13,11 @@ type PanelPhase = 'idle' | 'round1' | 'round2' | 'moderating' | 'done' | 'error'
 @Injectable({ providedIn: 'root' })
 export class FraudPanelStore {
   private readonly sse = inject(SseClient);
+  private readonly claimsApi = inject(ClaimsApi);
 
   // Cancel any in-flight SSE run before starting a new one.
   private _runSub: Subscription | null = null;
+  private _openSub: Subscription | null = null;
 
   private readonly _phase = signal<PanelPhase>('idle');
   private readonly _lanes = signal<SpecialistLane[]>([]);
@@ -36,8 +40,76 @@ export class FraudPanelStore {
     this._error.set(null);
   }
 
+  /** Open the panel for a claim: replay the cached debate if one exists, else run live. */
+  open(claimId: string): void {
+    this._openSub?.unsubscribe();
+    this._openSub = this.claimsApi.detail(claimId).subscribe({
+      next: (claim) => {
+        const cached = claim.panel_analysis;
+        if (cached && (cached.lanes?.length || cached.consensus)) {
+          this.loadCached(cached);
+        } else {
+          this.run(claimId);
+        }
+      },
+      // If the claim fetch fails, fall back to a live run rather than blocking.
+      error: () => this.run(claimId),
+    });
+  }
+
+  /** Hydrate the store from a previously-persisted panel result (static replay). */
+  loadCached(panel: PanelAnalysis): void {
+    this._runSub?.unsubscribe();
+    this._runSub = null;
+    this.reset();
+    this._lanes.set(
+      (panel.lanes ?? []).map((l) => ({
+        agentId: l.agent_id,
+        displayName: l.display_name,
+        lens: l.lens,
+        narracion: l.narracion ?? '',
+        verdict: l.verdict
+          ? {
+              nivel: l.verdict.nivel ?? 'verde',
+              dictamen: l.verdict.dictamen ?? '',
+              puntos_clave: l.verdict.puntos_clave ?? [],
+              confianza: l.verdict.confianza ?? 'media',
+              citas: l.verdict.citas ?? [],
+            }
+          : null,
+        rebuttalNarracion: l.rebuttal_narracion ?? '',
+        rebuttal: l.rebuttal
+          ? {
+              ajuste: l.rebuttal.ajuste ?? '',
+              nivel_actualizado: l.rebuttal.nivel_actualizado ?? 'verde',
+              cambia_postura: l.rebuttal.cambia_postura ?? false,
+            }
+          : null,
+        failed: l.failed ?? false,
+        r2Failed: !l.rebuttal && !(l.rebuttal_narracion ?? ''),
+      })),
+    );
+    this._moderator.set(panel.moderator_text ?? '');
+    const c = panel.consensus;
+    this._consensus.set(
+      c
+        ? {
+            nivel_final: c.nivel_final ?? 'verde',
+            nivel_de_acuerdo: c.nivel_de_acuerdo ?? 0,
+            puntos_de_conflicto: c.puntos_de_conflicto ?? [],
+            resumen: c.resumen ?? '',
+            accion_recomendada: c.accion_recomendada ?? '',
+            posible_falso_positivo: c.posible_falso_positivo ?? false,
+          }
+        : null,
+    );
+    this._phase.set('done');
+  }
+
   run(claimId: string): void {
     // Unsubscribe cancels the AbortController inside SseClient, aborting any in-flight fetch.
+    this._openSub?.unsubscribe();
+    this._openSub = null;
     this._runSub?.unsubscribe();
     this._runSub = null;
 
@@ -79,6 +151,7 @@ export class FraudPanelStore {
             rebuttalNarracion: '',
             rebuttal: null,
             failed: false,
+            r2Failed: false,
           })),
         );
         break;
@@ -117,7 +190,13 @@ export class FraudPanelStore {
 
       case 'error':
         if (event.data.agent_id) {
-          this.upsertLane(event.data.agent_id, { failed: true });
+          // R2 failure keeps the good R1 verdict — only the réplica is missing.
+          // R1 (or any other agent error) means the lane has no real opinion.
+          if (event.data.code === 'specialist_r2_error') {
+            this.upsertLane(event.data.agent_id, { r2Failed: true });
+          } else {
+            this.upsertLane(event.data.agent_id, { failed: true });
+          }
         } else {
           this._error.set(event.data.message);
         }

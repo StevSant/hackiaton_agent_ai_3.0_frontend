@@ -13,6 +13,13 @@ export type {
   NarrativeAnalysis,
   ExtractedEntities,
 } from './narrative-analysis.model';
+export type {
+  PanelAnalysis,
+  PanelLaneSnapshot,
+  PanelConsensus,
+  PanelSpecialistVerdict,
+  PanelSpecialistRebuttal,
+} from './panel-analysis.model';
 export type { SimilarClaim } from './similar-claim.model';
 export type { TrendPoint } from './trend-point.model';
 export type { Provider } from './provider.model';

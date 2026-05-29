@@ -10,6 +10,7 @@ import type { ClaimTimelineEvent } from './claim-timeline-event.model';
 import type { ClaimVehicle } from './claim-vehicle.model';
 import type { FactorContribution } from './factor-contribution.model';
 import type { NarrativeAnalysis } from './narrative-analysis.model';
+import type { PanelAnalysis } from './panel-analysis.model';
 import type { SimilarClaim } from './similar-claim.model';
 
 export interface Claim {
@@ -50,4 +51,7 @@ export interface Claim {
   // NLP read of the narrative (entities + coherence + summary). Null until the
   // analyzer has run for this claim; the detail page triggers it on first open.
   narrative_analysis?: NarrativeAnalysis | null;
+  // Cached multi-agent panel debate. Null until a panel run completes. Advisory
+  // only — surfaced as a summary here; replayed in full on /fraud-panel.
+  panel_analysis?: PanelAnalysis | null;
 }

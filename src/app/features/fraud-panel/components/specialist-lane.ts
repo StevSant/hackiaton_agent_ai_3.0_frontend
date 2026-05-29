@@ -57,6 +57,11 @@ import type { SpecialistLane } from '../models/specialist-lane.model';
               }
             </div>
           </div>
+        } @else if (lane().r2Failed) {
+          <div class="mt-2 border-t border-line pt-2">
+            <p class="text-xs font-medium text-ink-2">Réplica</p>
+            <p class="text-xs text-ink-3 italic">Sin réplica — no se obtuvo la reacción de este especialista.</p>
+          </div>
         }
       }
     </section>

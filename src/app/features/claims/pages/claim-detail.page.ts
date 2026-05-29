@@ -30,6 +30,7 @@ import { DocumentsCard } from '../components/documents-card';
 import { EscalationStickyBanner } from '../components/escalation-sticky-banner';
 import { MlFactorsCard } from '../components/ml-factors-card';
 import { NarrativeAnalysisCard } from '../components/narrative-analysis-card';
+import { PanelSummaryCard } from '../components/panel-summary-card';
 import { ProviderSummaryCard } from '../components/provider-summary-card';
 import { RecommendationCard } from '../components/recommendation-card';
 import { RevisadoCard } from '../components/revisado-card';
@@ -63,6 +64,7 @@ import { ProvidersStore } from '@core/state/providers.store';
     EscalationStickyBanner,
     MlFactorsCard,
     NarrativeAnalysisCard,
+    PanelSummaryCard,
     ProviderSummaryCard,
     RecommendationCard,
     RevisadoCard,
@@ -205,6 +207,7 @@ import { ProvidersStore } from '@core/state/providers.store';
           }
           @if (detailLoaded()) {
             <claim-summary-canvas [claim]="c" (saved)="onSummarysaved()" />
+            <claim-panel-summary-card [claim]="c" />
             <claim-alerts-list [alerts]="c.alertas" />
             <claim-ml-factors-card [claim]="c" />
             <claim-anomaly-indicator-card [claim]="c" />

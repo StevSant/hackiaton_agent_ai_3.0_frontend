@@ -8,5 +8,6 @@ export interface SpecialistLane {
   verdict: SpecialistVerdict | null;
   rebuttalNarracion: string;       // accumulated round-2 tokens
   rebuttal: SpecialistRebuttal | null;
-  failed: boolean;
+  failed: boolean;                 // R1 failed — no real opinion for this lane
+  r2Failed: boolean;               // R2 failed — keep R1, only the réplica is missing
 }

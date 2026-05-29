@@ -1173,6 +1173,7 @@ export interface components {
             /** Nearest Normal Claim Id */
             nearest_normal_claim_id?: string | null;
             narrative_analysis?: components["schemas"]["NarrativeAnalysis"] | null;
+            panel_analysis?: components["schemas"]["PanelAnalysis"] | null;
             /**
              * Posible Falso Positivo
              * @default false
@@ -1802,6 +1803,77 @@ export interface components {
             page_size: number;
         };
         /**
+         * PanelAnalysis
+         * @description Cached result of a multi-agent panel debate, surfaced on the claim.
+         *
+         *     Advisory only — never overwrites the engine-derived score. Stores the full
+         *     lane snapshots (incl. narration) so the cached view replays the debate.
+         */
+        PanelAnalysis: {
+            /** Lanes */
+            lanes?: components["schemas"]["PanelLaneSnapshot"][];
+            /**
+             * Moderator Text
+             * @default
+             */
+            moderator_text: string;
+            consensus?: components["schemas"]["PanelConsensus"] | null;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
+        /**
+         * PanelConsensus
+         * @description Moderator synthesis. Action is ALWAYS a human-review framing (spec §2.10).
+         */
+        PanelConsensus: {
+            nivel_final: components["schemas"]["Tier"];
+            /** Nivel De Acuerdo */
+            nivel_de_acuerdo: number;
+            /** Puntos De Conflicto */
+            puntos_de_conflicto?: string[];
+            /** Resumen */
+            resumen: string;
+            /** Accion Recomendada */
+            accion_recomendada: string;
+            /**
+             * Posible Falso Positivo
+             * @default false
+             */
+            posible_falso_positivo: boolean;
+        };
+        /**
+         * PanelLaneSnapshot
+         * @description One specialist's full lane after a panel run — enough to replay it statically.
+         */
+        PanelLaneSnapshot: {
+            /** Agent Id */
+            agent_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Lens */
+            lens: string;
+            /**
+             * Narracion
+             * @default
+             */
+            narracion: string;
+            verdict?: components["schemas"]["SpecialistVerdict"] | null;
+            /**
+             * Rebuttal Narracion
+             * @default
+             */
+            rebuttal_narracion: string;
+            rebuttal?: components["schemas"]["SpecialistRebuttal"] | null;
+            /**
+             * Failed
+             * @default false
+             */
+            failed: boolean;
+        };
+        /**
          * ProviderCreate
          * @description Payload for adding a single provider / beneficiary by hand.
          */
@@ -1990,6 +2062,36 @@ export interface components {
             similarity: number;
             /** Snippet */
             snippet: string;
+        };
+        /**
+         * SpecialistRebuttal
+         * @description A specialist's R2 reaction after reading peers' verdicts.
+         */
+        SpecialistRebuttal: {
+            /** Ajuste */
+            ajuste: string;
+            nivel_actualizado: components["schemas"]["Tier"];
+            /** Cambia Postura */
+            cambia_postura: boolean;
+        };
+        /**
+         * SpecialistVerdict
+         * @description One specialist's R1 verdict (LLM structured output). Never accuses.
+         */
+        SpecialistVerdict: {
+            nivel: components["schemas"]["Tier"];
+            /** Dictamen */
+            dictamen: string;
+            /** Puntos Clave */
+            puntos_clave?: string[];
+            /**
+             * Confianza
+             * @default media
+             * @enum {string}
+             */
+            confianza: "alta" | "media" | "baja";
+            /** Citas */
+            citas?: string[];
         };
         /**
          * Tier
