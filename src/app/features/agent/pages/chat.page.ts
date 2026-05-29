@@ -41,6 +41,7 @@ import { formatMoneyShort, ramoLabel, riskTierLabel } from '@shared/utils';
 
 const SUGGESTIONS = [
   '¿Cuáles son los 5 siniestros con mayor riesgo?',
+  'Generá un informe en Word del top 10 siniestros con un gráfico incluido',
   '¿Qué proveedores concentran más alertas?',
   '¿Qué ramos tienen mayor porcentaje sospechoso?',
   'Resumen ejecutivo de casos críticos',
