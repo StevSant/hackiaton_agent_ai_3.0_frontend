@@ -34,3 +34,35 @@ export function buildHotspotPopupHtml(hotspot: MapHotspot): string {
     </div>
   `;
 }
+
+const INCIDENT_TIER_HEX: Record<'rojo' | 'amarillo' | 'verde', string> = {
+  rojo: '#ef4444',
+  amarillo: '#f59e0b',
+  verde: '#22c55e',
+};
+
+export function incidentTierHex(tier: 'rojo' | 'amarillo' | 'verde'): string {
+  return INCIDENT_TIER_HEX[tier];
+}
+
+/** Static map pin for a selected incident — no animation, high contrast on the basemap. */
+export function buildSelectedIncidentPinHtml(
+  tier: 'rojo' | 'amarillo' | 'verde',
+  incidentId: string,
+): string {
+  const fill = incidentTierHex(tier);
+
+  return `
+    <div class="insights-incident-pin" role="img" aria-label="Caso seleccionado ${incidentId}">
+      <svg viewBox="0 0 28 40" width="28" height="40" aria-hidden="true">
+        <path
+          d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 26 14 26s14-15.5 14-26C28 6.3 21.7 0 14 0z"
+          fill="${fill}"
+          stroke="#ffffff"
+          stroke-width="2"
+        />
+        <circle cx="14" cy="14" r="5" fill="#ffffff" />
+      </svg>
+    </div>
+  `;
+}

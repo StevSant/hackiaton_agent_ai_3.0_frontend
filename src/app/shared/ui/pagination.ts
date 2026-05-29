@@ -12,7 +12,7 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
   template: `
     @if (total() > 0) {
       <div
-        class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 border-t border-line text-[12px] text-ink-3"
+        class="centinela-pagination"
       >
         <div class="flex items-center gap-1.5">
           @if (variant() === 'numbered') {

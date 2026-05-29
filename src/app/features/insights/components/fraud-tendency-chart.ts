@@ -16,7 +16,7 @@ interface FraudBar {
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="bg-surface border border-line rounded-lg shadow-1 p-4">
+    <section class="centinela-insight-card">
       <header class="flex justify-between items-start gap-2 mb-3.5">
         <div class="min-w-0">
           <h3 class="text-[13px] font-semibold text-ink m-0">Tendencia de fraude</h3>

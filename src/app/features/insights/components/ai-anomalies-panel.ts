@@ -12,9 +12,9 @@ import type { AiAnomaly } from '../models';
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="bg-surface border border-line border-t-2 border-t-[#8b5cf6] rounded-lg p-3 shadow-1 flex flex-col">
+    <div class="centinela-insight-card flex flex-col">
       <div class="flex items-center gap-1 mb-2 shrink-0">
-        <span class="text-[#8b5cf6]"><ui-icon name="auto_awesome" [size]="15" /></span>
+        <span class="text-brand"><ui-icon name="auto_awesome" [size]="15" /></span>
         <h3 class="text-[12px] font-bold text-ink m-0">Anomalías IA</h3>
       </div>
 
@@ -40,7 +40,7 @@ import type { AiAnomaly } from '../models';
                 </span>
               </div>
               <div class="flex justify-between items-center mt-0.5">
-                <span class="text-[9px] font-mono text-[#8b5cf6] tabular-nums">{{ item.confidence }}%</span>
+                <span class="text-[9px] font-mono text-brand tabular-nums">{{ item.confidence }}%</span>
                 <span class="text-ink-3 opacity-0 group-hover:opacity-100 transition-opacity">
                   <ui-icon name="arrow_forward" [size]="12" />
                 </span>

@@ -5,6 +5,7 @@ export const routes: Routes = [
   {
     path: 'bandeja',
     loadComponent: () => import('./pages/bandeja.page').then((m) => m.BandejaPage),
+    data: { viewportFit: true },
   },
   {
     path: 'investigacion',

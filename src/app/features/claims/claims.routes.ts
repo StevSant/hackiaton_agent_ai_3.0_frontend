@@ -4,6 +4,7 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () => import('./pages/claims-list.page').then((m) => m.ClaimsListPage),
+    data: { viewportFit: true },
   },
   {
     path: ':id',

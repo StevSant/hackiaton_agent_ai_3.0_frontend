@@ -22,7 +22,9 @@ export {
 } from './export-providers';
 export {
   CLAIM_RETURN_TO_QUERY,
+  MAP_CLAIM_QUERY,
   INSIGHTS_CLAIM_RETURN,
   insightsClaimReturnQuery,
+  insightsMapFocusQuery,
   resolveClaimBackNavigation,
 } from './claim-back-navigation';

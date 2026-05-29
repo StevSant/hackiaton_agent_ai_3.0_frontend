@@ -6,6 +6,7 @@ import { AuthStore } from '@core/auth/auth.store';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
+import { PageHeader } from '@shared/ui/page-header';
 import { Pagination } from '@shared/ui/pagination';
 import { SegmentedTabs, type SegmentedTab } from '@shared/ui/segmented-tabs';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
@@ -18,13 +19,12 @@ type TabKey = 'activos' | 'historico';
 @Component({
   selector: 'page-antifraude-bandeja',
   standalone: true,
-  imports: [Button, Icon, KpiSmall, Pagination, SegmentedTabs, SkeletonTable, InboxTable],
+  imports: [Button, Icon, KpiSmall, PageHeader, Pagination, SegmentedTabs, SkeletonTable, InboxTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-end justify-between gap-6 py-2 pb-6">
-      <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">{{ greeting() }}</h1>
-        <p class="text-ink-3 text-[13.5px] m-0">
+    <div class="centinela-viewport-page">
+      <ui-page-header eyebrow="Antifraude" [title]="greeting()" [compact]="true">
+        <p class="centinela-page-header__desc" ngProjectAs="[description]">
           @if (store.loading()) {
             Cargando bandeja…
           } @else if (kpis().porTomar > 0) {
@@ -35,107 +35,125 @@ type TabKey = 'activos' | 'historico';
             Bandeja vacía. Te puedes enfocar en patrones o auditoría.
           }
         </p>
-      </div>
-      <div class="flex items-center gap-2 text-[12px] text-ink-3">
-        <ui-icon name="info" [size]="14" />
-        Ordenados por tier (rojo primero) y luego por FIFO de escalación.
-      </div>
-    </div>
-
-    @if (store.error(); as err) {
-      <div class="bg-tier-red-soft border border-line rounded-lg shadow-1 p-4 mb-4 flex items-center justify-between gap-4">
-        <div class="flex items-start gap-2 text-tier-red-ink">
-          <ui-icon name="error_outline" [size]="18" class="mt-0.5 shrink-0" />
-          <div class="text-[13px]">
-            <div class="font-medium">No pudimos cargar la bandeja antifraude.</div>
-            <div class="text-[12px] opacity-80">{{ err.message }}</div>
-          </div>
+        <div actions class="hidden lg:flex items-center gap-2 text-[12px] text-ink-3 max-w-[220px] text-right leading-snug" ngProjectAs="[actions]">
+          <ui-icon name="info" [size]="14" class="shrink-0" />
+          Ordenados por tier (rojo primero) y luego por FIFO de escalación.
         </div>
-        <ui-button variant="secondary" (click)="reload()">
-          <ui-icon name="refresh" [size]="14" />
-          Reintentar
-        </ui-button>
-      </div>
-    }
+      </ui-page-header>
 
-    <div class="grid grid-cols-4 gap-3 mb-5">
-      <ui-kpi-small label="Por tomar" [value]="kpis().porTomar" icon="hourglass_top" [tone]="kpis().porTomar > 0 ? 'red' : 'default'" />
-      <ui-kpi-small label="En revisión (mías)" [value]="kpis().mineEnRevision" icon="visibility" tone="brand" />
-      <ui-kpi-small label="Re-trabajos abiertos" [value]="kpis().reworks" icon="restart_alt" [tone]="kpis().reworks > 0 ? 'yellow' : 'default'" />
-      <ui-kpi-small label="SLA promedio" value="4h 12m" icon="schedule" />
-    </div>
-
-    <div class="bg-surface border border-line rounded-lg shadow-1">
-      <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
-        <div class="flex items-center gap-3.5">
-          <h3 class="text-[13px] font-semibold m-0">Bandeja Antifraude</h3>
-          <ui-segmented-tabs [tabs]="tabs()" [active]="tab()" (select)="onTab($any($event))" />
+      @if (store.error(); as err) {
+        <div class="bg-tier-red-soft border border-line rounded-lg shadow-1 p-3 flex items-center justify-between gap-4 shrink-0">
+          <div class="flex items-start gap-2 text-tier-red-ink">
+            <ui-icon name="error_outline" [size]="18" class="mt-0.5 shrink-0" />
+            <div class="text-[13px]">
+              <div class="font-medium">No pudimos cargar la bandeja antifraude.</div>
+              <div class="text-[12px] opacity-80">{{ err.message }}</div>
+            </div>
+          </div>
+          <ui-button variant="secondary" (click)="reload()">
+            <ui-icon name="refresh" [size]="14" />
+            Reintentar
+          </ui-button>
         </div>
-      </div>
-
-      @if (tab() === 'activos') {
-        @if (store.loading()) {
-          <ui-skeleton-table [rows]="6" [cols]="6" />
-        } @else if (activeRows().length === 0) {
-          <div class="px-5 py-12 text-center text-ink-3 text-[13px]">
-            La bandeja activa está vacía. Cuando un analista escale un caso, aparecerá aquí.
-          </div>
-        } @else {
-          <antifraude-inbox-table [rows]="activePage()" (open)="openCase($event)" />
-          <ui-pagination
-            [page]="page()"
-            [pageSize]="pageSize()"
-            [total]="activeRows().length"
-            (pageChange)="page.set($event)"
-            (pageSizeChange)="onPageSize($event)"
-          />
-        }
-      } @else {
-        @if (store.historicoLoading()) {
-          <ui-skeleton-table [rows]="6" [cols]="6" />
-        } @else if (historicoRows().length === 0) {
-          <div class="px-5 py-12 text-center text-ink-3 text-[13px]">
-            Todavía no has emitido dictámenes.
-          </div>
-        } @else {
-          <div class="overflow-x-auto">
-            <table class="w-full text-[13px] border-collapse">
-              <thead>
-                <tr class="bg-soft">
-                  <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Siniestro</th>
-                  <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Asegurado</th>
-                  <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Ciudad</th>
-                  <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line text-right">Score</th>
-                  <th class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-3 border-b border-line">Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (h of historicoPage(); track h.id) {
-                  <tr class="cursor-pointer hover:bg-soft transition-colors" (click)="openCase(h.id)">
-                    <td class="px-3 py-3 border-b border-line align-middle">
-                      <div class="flex items-center gap-2">
-                        <ui-icon [name]="ramoIcon(h.ramo)" [size]="16" />
-                        <div class="font-mono text-[12px] text-ink-2">{{ h.id }}</div>
-                      </div>
-                    </td>
-                    <td class="px-3 py-3 border-b border-line align-middle">{{ h.asegurado }}</td>
-                    <td class="px-3 py-3 border-b border-line align-middle text-[12.5px]">{{ h.ciudad }}</td>
-                    <td class="px-3 py-3 border-b border-line align-middle text-right tabular-nums">{{ h.score }}</td>
-                    <td class="px-3 py-3 border-b border-line align-middle text-[12px] text-ink-3 tabular-nums">{{ formatDateTime(h.fecha_ocurrencia) ?? '—' }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          <ui-pagination
-            [page]="page()"
-            [pageSize]="pageSize()"
-            [total]="historicoRows().length"
-            (pageChange)="page.set($event)"
-            (pageSizeChange)="onPageSize($event)"
-          />
-        }
       }
+
+      <div class="centinela-kpi-row">
+        <ui-kpi-small label="Por tomar" [value]="kpis().porTomar" icon="hourglass_top" [tone]="kpis().porTomar > 0 ? 'red' : 'default'" />
+        <ui-kpi-small label="En revisión (mías)" [value]="kpis().mineEnRevision" icon="visibility" tone="brand" />
+        <ui-kpi-small label="Re-trabajos abiertos" [value]="kpis().reworks" icon="restart_alt" [tone]="kpis().reworks > 0 ? 'yellow' : 'default'" />
+        <ui-kpi-small label="SLA promedio" value="4h 12m" icon="schedule" />
+      </div>
+
+      <div class="centinela-panel centinela-panel--fill">
+        <div class="centinela-panel__head">
+          <div class="flex items-center gap-3.5 flex-wrap">
+            <h2 class="centinela-panel__title">Bandeja Antifraude</h2>
+            <ui-segmented-tabs [tabs]="tabs()" [active]="tab()" (select)="onTab($any($event))" />
+          </div>
+        </div>
+
+        @if (tab() === 'activos') {
+          @if (store.loading()) {
+            <div class="centinela-panel__scroll">
+              <ui-skeleton-table [rows]="6" [cols]="6" />
+            </div>
+          } @else if (activeRows().length === 0) {
+            <div class="centinela-panel__scroll">
+              <div class="centinela-empty centinela-empty--compact">
+                <div class="centinela-empty__icon">
+                  <ui-icon name="shield_person" [size]="22" />
+                </div>
+                La bandeja activa está vacía. Cuando un analista escale un caso, aparecerá aquí.
+              </div>
+            </div>
+          } @else {
+            <div class="centinela-panel__scroll">
+              <antifraude-inbox-table [rows]="activePage()" (open)="openCase($event)" />
+            </div>
+            <ui-pagination
+              [page]="page()"
+              [pageSize]="pageSize()"
+              [total]="activeRows().length"
+              (pageChange)="page.set($event)"
+              (pageSizeChange)="onPageSize($event)"
+            />
+          }
+        } @else {
+          @if (store.historicoLoading()) {
+            <div class="centinela-panel__scroll">
+              <ui-skeleton-table [rows]="6" [cols]="6" />
+            </div>
+          } @else if (historicoRows().length === 0) {
+            <div class="centinela-panel__scroll">
+              <div class="centinela-empty centinela-empty--compact">
+                <div class="centinela-empty__icon">
+                  <ui-icon name="history" [size]="22" />
+                </div>
+                Todavía no has emitido dictámenes.
+              </div>
+            </div>
+          } @else {
+            <div class="centinela-panel__scroll">
+              <div class="centinela-table-wrap">
+                <table class="centinela-table">
+                  <thead>
+                    <tr>
+                      <th>Siniestro</th>
+                      <th>Asegurado</th>
+                      <th>Ciudad</th>
+                      <th class="text-right">Score</th>
+                      <th>Fecha</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (h of historicoPage(); track h.id) {
+                      <tr (click)="openCase(h.id)">
+                        <td>
+                          <div class="flex items-center gap-2">
+                            <ui-icon [name]="ramoIcon(h.ramo)" [size]="16" />
+                            <div class="font-mono text-[12px] text-ink-2">{{ h.id }}</div>
+                          </div>
+                        </td>
+                        <td>{{ h.asegurado }}</td>
+                        <td class="text-[12.5px]">{{ h.ciudad }}</td>
+                        <td class="text-right tabular-nums">{{ h.score }}</td>
+                        <td class="text-[12px] text-ink-3 tabular-nums">{{ formatDateTime(h.fecha_ocurrencia) ?? '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <ui-pagination
+              [page]="page()"
+              [pageSize]="pageSize()"
+              [total]="historicoRows().length"
+              (pageChange)="page.set($event)"
+              (pageSizeChange)="onPageSize($event)"
+            />
+          }
+        }
+      </div>
     </div>
   `,
 })

@@ -10,7 +10,7 @@ import { InsightsStore } from '../services/insights.store';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (outlook(); as o) {
-      <section class="bg-surface border border-line rounded-lg shadow-1 p-4 relative overflow-hidden">
+      <section class="centinela-insight-card relative overflow-hidden">
         <span
           class="absolute top-0 left-0 right-0 h-[3px]"
           style="background: linear-gradient(90deg, var(--brand) 0%, var(--tier-yellow) 100%);"

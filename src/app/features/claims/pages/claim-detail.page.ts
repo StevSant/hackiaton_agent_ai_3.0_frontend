@@ -8,7 +8,7 @@ import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { RiskBadge } from '@shared/ui/risk-badge';
 import { SkeletonCard } from '@shared/ui/skeleton-card';
-import { ramoIcon, ramoLabel, resolveClaimBackNavigation } from '@shared/utils';
+import { ramoIcon, ramoLabel, resolveClaimBackNavigation, insightsMapFocusQuery } from '@shared/utils';
 import { AiExplanationCard } from '../components/ai-explanation-card';
 import { AlertsList } from '../components/alerts-list';
 import { AnomalyIndicatorCard } from '../components/anomaly-indicator-card';
@@ -104,6 +104,10 @@ import { ProvidersStore } from '@core/state/providers.store';
             <ui-button (click)="askAI()">
               <ui-icon name="auto_awesome" [size]="14" />
               Preguntar a la IA
+            </ui-button>
+            <ui-button (click)="showOnMap()">
+              <ui-icon name="map" [size]="14" />
+              Mostrar en el mapa
             </ui-button>
             <ui-button (click)="exportPdf()">
               <ui-icon name="download" [size]="14" />
@@ -263,6 +267,12 @@ export class ClaimDetailPage {
         : `c_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     void this.router.navigate(['/agent'], {
       queryParams: { case: this.id(), conversation: conversationId },
+    });
+  }
+
+  protected showOnMap(): void {
+    void this.router.navigate(['/insights'], {
+      queryParams: insightsMapFocusQuery(this.id()),
     });
   }
 

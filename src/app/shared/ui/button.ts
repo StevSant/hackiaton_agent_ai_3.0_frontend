@@ -19,12 +19,14 @@ export class Button {
 
   protected readonly classes = computed(() => {
     const base =
-      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[13px] font-medium ' +
-      'border shadow-1 transition-colors select-none ' +
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ' +
+      'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[var(--radius-control)] text-[13px] font-medium ' +
+      'border shadow-1 transition-colors duration-150 select-none box-border ' +
+      'active:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ' +
       'disabled:opacity-50 disabled:cursor-not-allowed';
     const variants: Record<ButtonVariant, string> = {
-      primary: 'bg-brand text-white border-transparent hover:bg-brand-2 focus-visible:ring-brand',
+      primary:
+        'bg-brand text-[var(--brand-on)] border-transparent ' +
+        'hover:bg-brand-2 focus-visible:ring-brand',
       secondary: 'bg-surface text-ink border-line hover:bg-hover focus-visible:ring-line-2',
       ghost: 'bg-transparent text-ink-2 border-transparent shadow-none hover:bg-hover hover:text-ink',
     };

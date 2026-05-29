@@ -24,6 +24,9 @@ const config: Config = {
           soft: 'var(--brand-soft)',
           ink: 'var(--brand-ink)',
         },
+        centinela: {
+          deep: 'var(--brand-ink)',
+        },
         tier: {
           green: 'var(--tier-green)',
           'green-soft': 'var(--tier-green-soft)',
@@ -38,6 +41,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['"Hanken Grotesk"', 'Inter', 'ui-sans-serif', 'sans-serif'],
         serif: ['"Instrument Serif"', 'Times', 'serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },

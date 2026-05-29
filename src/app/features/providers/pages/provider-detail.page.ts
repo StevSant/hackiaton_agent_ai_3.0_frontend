@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 
 import { ClaimsStore } from '@core/state/claims.store';
 import { ProvidersStore } from '@core/state/providers.store';
+import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
@@ -14,7 +15,7 @@ import { ProviderClaimsList } from '../components/provider-claims-list';
 @Component({
   selector: 'page-provider-detail',
   standalone: true,
-  imports: [Icon, KpiSmall, Pagination, SkeletonCard, SkeletonTable, ProviderClaimsList],
+  imports: [Button, Icon, KpiSmall, Pagination, SkeletonCard, SkeletonTable, ProviderClaimsList],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex items-center gap-2 mb-3.5">
@@ -46,6 +47,12 @@ import { ProviderClaimsList } from '../components/provider-claims-list';
             </div>
             <div class="text-[13px] text-ink-3">{{ p.tipo }} · {{ p.ciudad }}</div>
             <div class="text-[11.5px] text-ink-3 font-mono mt-1">{{ p.id }}</div>
+          </div>
+          <div class="shrink-0 self-start">
+            <ui-button (click)="askAI()">
+              <ui-icon name="auto_awesome" [size]="14" />
+              Preguntar a la IA
+            </ui-button>
           </div>
         </div>
       </div>
@@ -141,6 +148,16 @@ export class ProviderDetailPage {
 
   protected back(): void {
     void this.router.navigate(['/providers']);
+  }
+
+  protected askAI(): void {
+    const conversationId =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `c_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    void this.router.navigate(['/agent'], {
+      queryParams: { provider: this.id(), conversation: conversationId },
+    });
   }
 
   protected openClaim(id: string): void {

@@ -32,6 +32,6 @@ export class RoleBadge {
   protected readonly palette = computed(() =>
     this.role() === 'antifraude'
       ? 'bg-tier-red-soft text-tier-red-ink border-transparent'
-      : 'bg-soft text-ink-2 border-line',
+      : 'bg-brand-soft text-brand-ink border-transparent',
   );
 }

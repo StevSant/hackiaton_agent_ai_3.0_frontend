@@ -17,8 +17,8 @@ import { Icon } from '@shared/ui/icon';
 import type { ChartPayload, ChartType } from '../models';
 
 const PALETTE = [
-  '#6366f1',
-  '#8b5cf6',
+  '#6286B8',
+  '#7A9CC9',
   '#ec4899',
   '#f59e0b',
   '#10b981',

@@ -1,14 +1,17 @@
-import { Injectable, inject, signal } from '@angular/core';
-import { Subscription, firstValueFrom } from 'rxjs';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
 import { ConversationsApi } from '@core/api/clients/conversations.api';
 import { environment } from '@core/config/env';
 import { AppError } from '@core/errors/app-error';
 import { SseClient } from '@core/realtime/sse.client';
 import type { AgentMessage, AgentStep, ChartPayload } from '../models';
+import type { ChatContext } from '../models/chat-context';
 import { ConversationsStore } from './conversations.store';
 import { buildCaseWelcomeMessage } from '../utils/case-context-message';
-import type { Claim } from '@shared/models';
+import { buildProviderWelcomeMessage } from '../utils/provider-context-message';
+import { buildAseguradoWelcomeMessage } from '../utils/asegurado-context-message';
+import type { Asegurado, Claim, Provider } from '@shared/models';
 
 let nextId = 0;
 const newId = (): string => `m_${Date.now()}_${++nextId}`;
@@ -60,10 +63,77 @@ type AgentStreamEvent =
   | ToolResultEvent
   | ChartEvent;
 
+// Shape of the transparency_metadata JSONB column persisted by the backend.
+interface StoredScratchpadEntry {
+  thought?: string;
+  step?: number;
+}
+
+interface StoredToolCall {
+  call_id: string;
+  tool: string;
+  args: unknown;
+  result: unknown;
+}
+
+interface TransparencyMetadata {
+  steps?: StoredScratchpadEntry[];
+  tool_calls?: StoredToolCall[];
+  citations?: { claim_id: string }[];
+}
+
+/**
+ * Reconstruct an AgentStep[] from the persisted transparency_metadata so that
+ * loading a past conversation renders the same transparency cards that appeared
+ * during the live SSE stream.
+ *
+ * The metadata stores scratchpad entries (agent reasoning steps) and tool calls
+ * separately. We reconstruct in the natural interleaved order:
+ *  1. One agent_step card per scratchpad entry (reasoning thought).
+ *  2. One tool_call card per tool call, with its result folded into `detail`.
+ *  3. A final compose agent_step card (mirrors the live stream's compose event).
+ *
+ * Returns [] when metadata is missing or empty (user messages, legacy messages).
+ */
+function buildStepsFromMetadata(meta: TransparencyMetadata | null | undefined): AgentStep[] {
+  if (!meta) return [];
+  const steps: AgentStep[] = [];
+
+  for (const entry of meta.steps ?? []) {
+    const thought = typeof entry.thought === 'string' ? entry.thought.trim() : undefined;
+    steps.push({
+      kind: 'agent_step',
+      label: nodeLabel('react_step'),
+      detail: thought || undefined,
+    });
+  }
+
+  for (const tc of meta.tool_calls ?? []) {
+    const argDetail = summarizeArgs(tc.args);
+    const resultDetail = summarizeResult(tc.result);
+    const detail =
+      argDetail && resultDetail
+        ? `${argDetail}\n→ ${resultDetail}`
+        : (argDetail ?? resultDetail);
+    steps.push({
+      kind: 'tool_call',
+      label: tc.tool,
+      detail,
+      callId: tc.call_id,
+    });
+  }
+
+  // The compose step is always the final node — mirror the live stream.
+  if (steps.length > 0) {
+    steps.push({ kind: 'agent_step', label: nodeLabel('compose') });
+  }
+
+  return steps;
+}
+
 const NODE_LABEL: Record<string, string> = {
   react_step: 'Razonamiento',
   compose: 'Componiendo respuesta',
-  chart_pending: 'Preparando visualización',
 };
 
 function nodeLabel(node: string): string {
@@ -110,62 +180,95 @@ export class AgentStore {
   private readonly _thinking = signal<boolean>(false);
   private readonly _responding = signal<boolean>(false);
   private readonly _conversationId = signal<string | null>(null);
-  private readonly _contextClaimId = signal<string | null>(null);
-  // Tracks the in-flight SSE stream so a new ask() can abort the previous one
-  // — prevents orphaned streams competing for the same assistant bubble.
-  private activeStreamSub: Subscription | null = null;
+  private readonly _chatContext = signal<ChatContext>(null);
 
   readonly messages = this._messages.asReadonly();
   readonly thinking = this._thinking.asReadonly();
   readonly isResponding = this._responding.asReadonly();
   readonly conversationId = this._conversationId.asReadonly();
-  readonly contextClaimId = this._contextClaimId.asReadonly();
+  readonly chatContext = this._chatContext.asReadonly();
 
-  setContextClaimId(claimId: string | null): void {
-    this._contextClaimId.set(claimId);
+  /** Backward-compat wrapper — maps claim id to ChatContext union. */
+  readonly contextClaimId = computed(() => {
+    const ctx = this._chatContext();
+    return ctx?.kind === 'claim' ? ctx.id : null;
+  });
+
+  setChatContext(ctx: ChatContext): void {
+    this._chatContext.set(ctx);
   }
 
-  startNewConversation(id: string, claim?: Claim | null): void {
+  /** Backward-compat wrapper for existing call sites that pass a claim id. */
+  setContextClaimId(claimId: string | null): void {
+    this._chatContext.set(claimId ? { kind: 'claim', id: claimId } : null);
+  }
+
+  startNewConversation(
+    id: string,
+    entity?: Claim | Provider | { kind: 'provider'; data: Provider } | { kind: 'asegurado'; data: Asegurado } | null,
+    asegurado?: Asegurado | null,
+  ): void {
     this._conversationId.set(id);
-    if (claim) {
-      this._contextClaimId.set(claim.id);
-      this._messages.set([
-        {
-          id: newId(),
-          role: 'assistant',
-          content: buildCaseWelcomeMessage(claim),
-        },
-      ]);
+
+    // Overloaded: when called with (id, claim) from legacy sites, entity is a Claim.
+    // New callers pass tagged objects.
+    if (entity && 'kind' in entity && entity.kind === 'provider') {
+      this._chatContext.set({ kind: 'provider', id: entity.data.id });
+      this._messages.set([{ id: newId(), role: 'assistant', content: buildProviderWelcomeMessage(entity.data) }]);
       return;
     }
 
-    this._contextClaimId.set(null);
-    this._messages.set([
-      {
-        id: newId(),
-        role: 'assistant',
-        content: DEFAULT_WELCOME,
-      },
-    ]);
+    if (entity && 'kind' in entity && entity.kind === 'asegurado') {
+      this._chatContext.set({ kind: 'asegurado', id: entity.data.id });
+      this._messages.set([{ id: newId(), role: 'assistant', content: buildAseguradoWelcomeMessage(entity.data) }]);
+      return;
+    }
+
+    // Legacy call: entity is a Claim (no 'kind' property on Claim shape)
+    const claim = entity as Claim | null | undefined;
+    if (claim && !('kind' in (claim as object))) {
+      this._chatContext.set({ kind: 'claim', id: claim.id });
+      this._messages.set([{ id: newId(), role: 'assistant', content: buildCaseWelcomeMessage(claim) }]);
+      return;
+    }
+
+    // Asegurado passed as third arg (legacy compat path not used currently)
+    if (asegurado) {
+      this._chatContext.set({ kind: 'asegurado', id: asegurado.id });
+      this._messages.set([{ id: newId(), role: 'assistant', content: buildAseguradoWelcomeMessage(asegurado) }]);
+      return;
+    }
+
+    this._chatContext.set(null);
+    this._messages.set([{ id: newId(), role: 'assistant', content: DEFAULT_WELCOME }]);
   }
 
   async loadConversation(id: string): Promise<void> {
     try {
       const detail = await firstValueFrom(this.conversationsApi.get(id));
       this._conversationId.set(id);
-      this._contextClaimId.set(detail.context_claim_id ?? null);
+      // Restore the tagged ChatContext from whichever context field is set.
+      const restoredCtx: ChatContext =
+        detail.context_claim_id    ? { kind: 'claim',     id: detail.context_claim_id }    :
+        detail.context_provider_id ? { kind: 'provider',  id: detail.context_provider_id } :
+        detail.context_asegurado_id? { kind: 'asegurado', id: detail.context_asegurado_id }: null;
+      this._chatContext.set(restoredCtx);
       this._messages.set(
         detail.messages.map((m) => {
-          // chart_payload only exists on persisted assistant messages and is
-          // typed only after `pnpm gen:api` picks up the new backend schema.
-          // Read it defensively so this works pre-regen too.
-          const stored = (m as unknown as { chart_payload?: ChartPayload | null }).chart_payload;
-          const chart = stored ?? undefined;
+          // chart_payload and transparency_metadata only exist on persisted
+          // assistant messages and are typed only after `pnpm gen:api` picks up
+          // the new backend schema. Read both defensively.
+          const raw = m as unknown as {
+            chart_payload?: ChartPayload | null;
+            transparency_metadata?: TransparencyMetadata | null;
+          };
+          const chart = raw.chart_payload ?? undefined;
+          const steps = buildStepsFromMetadata(raw.transparency_metadata);
           return {
             id: m.id,
             role: m.role,
             content: m.content,
-            steps: [],
+            steps,
             chart,
             // Already-rendered charts skip the "Ver como gráfico" affordance.
             chartAccepted: chart !== undefined ? true : undefined,
@@ -209,12 +312,6 @@ export class AgentStore {
   async ask(text: string, conversationId?: string): Promise<void> {
     const trimmed = text.trim();
     if (!trimmed || this._thinking()) return;
-    // Abort any in-flight stream first so two rapid asks don't both write to
-    // the same assistant bubble.
-    if (this.activeStreamSub !== null) {
-      this.activeStreamSub.unsubscribe();
-      this.activeStreamSub = null;
-    }
 
     if (conversationId) {
       this._conversationId.set(conversationId);
@@ -275,35 +372,27 @@ export class AgentStore {
     const attachChart = (chart: ChartPayload): void => {
       ensureAssistantBubble();
       // Charts now arrive only when the analyst explicitly asked — no intermediate
-      // "Ver como gráfico" gate; render immediately. Clear chartPending too.
+      // "Ver como gráfico" gate; render immediately.
       this._messages.update((messages) =>
         messages.map((msg) =>
-          msg.id === assistantId
-            ? { ...msg, chart, chartAccepted: true, chartPending: false }
-            : msg,
-        ),
-      );
-    };
-
-    const markChartPending = (): void => {
-      ensureAssistantBubble();
-      this._messages.update((messages) =>
-        messages.map((msg) =>
-          msg.id === assistantId ? { ...msg, chartPending: true } : msg,
+          msg.id === assistantId ? { ...msg, chart, chartAccepted: true } : msg,
         ),
       );
     };
 
     const url = `${environment.backendUrl}${environment.apiPrefix}/agent/ask`;
+    const ctx = this._chatContext();
 
-    this.activeStreamSub = this.sse
+    this.sse
       .stream<AgentStreamEvent>({
         url,
         method: 'POST',
         body: {
           message: trimmed,
           conversation_id: this._conversationId(),
-          context_claim_id: this._contextClaimId(),
+          context_claim_id:     ctx?.kind === 'claim'     ? ctx.id : null,
+          context_provider_id:  ctx?.kind === 'provider'  ? ctx.id : null,
+          context_asegurado_id: ctx?.kind === 'asegurado' ? ctx.id : null,
         },
       })
       .subscribe({
@@ -311,9 +400,6 @@ export class AgentStore {
           switch (event.type) {
             case 'agent_step': {
               const thought = event.data.meta?.thought?.trim();
-              if (event.data.node === 'chart_pending') {
-                markChartPending();
-              }
               appendStep({
                 kind: 'agent_step',
                 label: nodeLabel(event.data.node),
@@ -367,7 +453,6 @@ export class AgentStore {
         complete: () => {
           this._thinking.set(false);
           this._responding.set(false);
-          this.activeStreamSub = null;
           if (!assistantAdded) {
             this._messages.update((messages) => [
               ...messages,
@@ -382,7 +467,6 @@ export class AgentStore {
         error: () => {
           this._thinking.set(false);
           this._responding.set(false);
-          this.activeStreamSub = null;
           this._messages.update((messages) => [
             ...messages,
             {

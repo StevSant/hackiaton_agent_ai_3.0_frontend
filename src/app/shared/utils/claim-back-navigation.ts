@@ -1,4 +1,5 @@
 export const CLAIM_RETURN_TO_QUERY = 'returnTo';
+export const MAP_CLAIM_QUERY = 'mapClaim';
 
 export const INSIGHTS_CLAIM_RETURN = {
   path: '/insights',
@@ -7,6 +8,10 @@ export const INSIGHTS_CLAIM_RETURN = {
 
 export function insightsClaimReturnQuery(): Record<string, string> {
   return { [CLAIM_RETURN_TO_QUERY]: INSIGHTS_CLAIM_RETURN.path };
+}
+
+export function insightsMapFocusQuery(claimId: string): Record<string, string> {
+  return { [MAP_CLAIM_QUERY]: claimId };
 }
 
 export function resolveClaimBackNavigation(

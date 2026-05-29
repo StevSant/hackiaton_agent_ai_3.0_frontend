@@ -11,17 +11,19 @@ export interface SegmentedTab {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="inline-flex items-center gap-0.5 bg-soft border border-line rounded-md p-0.5">
+    <div class="centinela-segmented" role="tablist">
       @for (t of tabs(); track t.key) {
         <button
           type="button"
-          class="px-3 py-1 rounded-sm text-[12.5px] font-medium transition-colors"
-          [class]="t.key === active() ? 'bg-surface text-ink shadow-1' : 'text-ink-3 hover:text-ink'"
+          role="tab"
+          class="centinela-segmented__btn"
+          [class.centinela-segmented__btn--active]="t.key === active()"
+          [attr.aria-selected]="t.key === active()"
           (click)="select.emit(t.key)"
         >
           {{ t.label }}
           @if (t.count !== undefined && t.count > 0) {
-            <span class="ml-1.5 text-[10.5px] tabular-nums" [class]="t.key === active() ? 'text-ink-3' : 'text-ink-4'">{{ t.count }}</span>
+            <span class="ml-1.5 text-[10.5px] tabular-nums opacity-80">{{ t.count }}</span>
           }
         </button>
       }

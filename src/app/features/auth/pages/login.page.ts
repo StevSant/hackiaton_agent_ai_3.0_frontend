@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { environment } from '@core/config/env';
 import { Button } from '@shared/ui/button';
@@ -12,18 +12,29 @@ import { RulesStore } from '@features/alerts/services/rules.store';
 @Component({
   selector: 'page-login',
   standalone: true,
-  imports: [Button, Icon],
+  imports: [Button, Icon, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div>
-      <div class="mb-6 lg:hidden flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-md grid place-items-center text-white" style="background: linear-gradient(135deg, var(--brand), var(--brand-2));">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3z" stroke="white" stroke-width="1.8" stroke-linejoin="round" />
-            <path d="M9 12.5 11 14.5 15 10.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
+      <div class="mb-5 flex items-center justify-between gap-3">
+        <a
+          routerLink="/"
+          class="inline-flex items-center gap-1.5 text-[12.5px] text-ink-3 hover:text-ink px-2 py-1 -ml-2 rounded-sm hover:bg-hover transition-colors"
+          aria-label="Volver al inicio"
+        >
+          <ui-icon name="arrow_back" [size]="14" />
+          Volver al inicio
+        </a>
+
+        <div class="lg:hidden flex items-center gap-2">
+          <div class="w-7 h-7 rounded-md grid place-items-center text-white" style="background: linear-gradient(135deg, var(--brand), var(--brand-2));">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3z" stroke="white" stroke-width="1.8" stroke-linejoin="round" />
+              <path d="M9 12.5 11 14.5 15 10.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+          <div class="font-semibold text-[14px]">Centinela</div>
         </div>
-        <div class="font-semibold text-[15px]">Centinela</div>
       </div>
 
       <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1.5">Bienvenido de vuelta</h1>
@@ -101,10 +112,10 @@ import { RulesStore } from '@features/alerts/services/rules.store';
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <button
             type="button"
-            class="flex items-start gap-2.5 text-left px-3 py-2.5 rounded-sm border border-line bg-surface hover:bg-hover hover:border-line-2 transition-colors"
+            class="flex items-center gap-2.5 text-left px-3 py-2.5 rounded-sm border border-line bg-surface hover:bg-hover hover:border-line-2 transition-colors"
             (click)="onDemo('analista')"
           >
-            <span class="mt-0.5 w-7 h-7 rounded-full grid place-items-center bg-soft text-ink-2 border border-line">
+            <span class="w-7 h-7 rounded-full shrink-0 grid place-items-center bg-soft text-ink-2 border border-line">
               <ui-icon name="badge" [size]="14" />
             </span>
             <span class="flex-1 leading-tight">
@@ -115,10 +126,10 @@ import { RulesStore } from '@features/alerts/services/rules.store';
 
           <button
             type="button"
-            class="flex items-start gap-2.5 text-left px-3 py-2.5 rounded-sm border border-tier-red-ink/20 bg-tier-red-soft/30 hover:bg-tier-red-soft/50 transition-colors"
+            class="flex items-center gap-2.5 text-left px-3 py-2.5 rounded-sm border border-tier-red-ink/20 bg-tier-red-soft/30 hover:bg-tier-red-soft/50 transition-colors"
             (click)="onDemo('antifraude')"
           >
-            <span class="mt-0.5 w-7 h-7 rounded-full grid place-items-center bg-tier-red-soft text-tier-red-ink border border-transparent">
+            <span class="w-7 h-7 rounded-full shrink-0 grid place-items-center bg-tier-red-soft text-tier-red-ink border border-transparent">
               <ui-icon name="shield_person" [size]="14" />
             </span>
             <span class="flex-1 leading-tight">

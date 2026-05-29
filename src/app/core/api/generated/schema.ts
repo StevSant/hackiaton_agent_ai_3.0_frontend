@@ -57,6 +57,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/transcribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Agent Transcribe */
+        post: operations["agent_transcribe_api_v1_agent_transcribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent/tts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agent Tts
+         * @description Synthesize text to MP3 speech via TTS.
+         *
+         *     Returns raw audio/mpeg bytes. Text is capped at settings.TTS_MAX_CHARS (5 000)
+         *     characters; longer payloads are rejected with HTTP 422.
+         */
+        post: operations["agent_tts_api_v1_agent_tts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/ask": {
         parameters: {
             query?: never;
@@ -209,6 +249,64 @@ export interface paths {
         put?: never;
         /** Dictamen Route */
         post: operations["dictamen_route_api_v1_claims__claim_id__dictamen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/import/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download the CSV template for bulk claim import */
+        get: operations["download_import_template_route_api_v1_claims_import_template_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk-import claims from a CSV or JSON file */
+        post: operations["import_claims_route_api_v1_claims_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/import/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk-import claims with real-time SSE progress stream
+         * @description SSE endpoint: parses + scores + (optionally) persists claims one at a time.
+         *
+         *     Unlike the sync ``POST /import``, this endpoint works in dry-run mode when no
+         *     DB session is available: claims are scored and events are streamed, but nothing
+         *     is persisted. ``case.completed.data.persisted`` will be ``false`` in that case.
+         */
+        post: operations["import_claims_stream_route_api_v1_claims_import_stream_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -398,6 +496,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/asegurados": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Asegurados Route */
+        get: operations["list_asegurados_route_api_v1_asegurados_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit/events": {
         parameters: {
             query?: never;
@@ -450,6 +565,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/claims/{claim_id}/documentos/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Documents Bulk Route */
+        post: operations["upload_documents_bulk_route_api_v1_claims__claim_id__documentos_bulk_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -494,6 +626,10 @@ export interface components {
             conversation_id?: string | null;
             /** Context Claim Id */
             context_claim_id?: string | null;
+            /** Context Provider Id */
+            context_provider_id?: string | null;
+            /** Context Asegurado Id */
+            context_asegurado_id?: string | null;
             /**
              * History
              * @default []
@@ -518,11 +654,61 @@ export interface components {
             /** Confidence */
             confidence: number;
         };
+        /** AseguradoOut */
+        AseguradoOut: {
+            /** Id Asegurado */
+            id_asegurado: string;
+            /** Nombre */
+            nombre: string;
+            /** Segmento */
+            segmento?: string | null;
+            /** Ciudad */
+            ciudad: string;
+            /** Antiguedad */
+            antiguedad?: number | null;
+            /**
+             * Num Polizas
+             * @default 0
+             */
+            num_polizas: number;
+            /**
+             * Reclamos Ultimos 12 Meses
+             * @default 0
+             */
+            reclamos_ultimos_12_meses: number;
+            /**
+             * Mora Actual
+             * @default false
+             */
+            mora_actual: boolean;
+            /** Score Cliente Simulado */
+            score_cliente_simulado?: number | null;
+            /**
+             * Casos
+             * @default 0
+             */
+            casos: number;
+            /**
+             * Alertas
+             * @default 0
+             */
+            alertas: number;
+            /**
+             * Monto
+             * @default 0
+             */
+            monto: number;
+            /**
+             * Ramos
+             * @default []
+             */
+            ramos: string[];
+        };
         /**
          * AuditAction
          * @enum {string}
          */
-        AuditAction: "apertura" | "escalamiento" | "consulta_ia" | "cambio_regla" | "cierre" | "export";
+        AuditAction: "apertura" | "escalamiento" | "consulta_ia" | "cambio_regla" | "cierre" | "dictamen" | "export";
         /**
          * AuditActor
          * @enum {string}
@@ -548,6 +734,19 @@ export interface components {
             /** Target */
             target?: string | null;
         };
+        /** Body_agent_transcribe_api_v1_agent_transcribe_post */
+        Body_agent_transcribe_api_v1_agent_transcribe_post: {
+            /** File */
+            file: string;
+        };
+        /** Body_import_claims_route_api_v1_claims_import_post */
+        Body_import_claims_route_api_v1_claims_import_post: {
+            /**
+             * File
+             * @description CSV / JSON / XLSX / PDF / DOCX claim file (≤ 50 MB)
+             */
+            file: string;
+        };
         /** Body_upload_document_route_api_v1_claims__claim_id__documentos_post */
         Body_upload_document_route_api_v1_claims__claim_id__documentos_post: {
             /** File */
@@ -557,6 +756,57 @@ export interface components {
              * @default otro
              */
             tipo: string;
+        };
+        /** Body_upload_documents_bulk_route_api_v1_claims__claim_id__documentos_bulk_post */
+        Body_upload_documents_bulk_route_api_v1_claims__claim_id__documentos_bulk_post: {
+            /**
+             * Files
+             * @description PDFs or images for the claim
+             */
+            files: string[];
+        };
+        /**
+         * BulkUploadResult
+         * @description Returned by POST /claims/{id}/documentos/bulk.
+         */
+        BulkUploadResult: {
+            /** Uploaded */
+            uploaded?: components["schemas"]["UploadedDocument"][];
+            /** Errors */
+            errors?: string[];
+        };
+        /** ChartData */
+        ChartData: {
+            /** Message Id */
+            message_id: string;
+            /** Title */
+            title: string;
+            /**
+             * Chart Type
+             * @enum {string}
+             */
+            chart_type: "bar" | "horizontal_bar" | "line" | "pie" | "doughnut" | "scatter";
+            /** Available Types */
+            available_types: ("bar" | "horizontal_bar" | "line" | "pie" | "doughnut" | "scatter")[];
+            /** Labels */
+            labels: string[];
+            /** Series */
+            series: components["schemas"]["ChartSeries"][];
+            /** Unit */
+            unit?: string | null;
+            /** Citations */
+            citations?: string[];
+            /** Meta */
+            meta?: {
+                [key: string]: string;
+            }[] | null;
+        };
+        /** ChartSeries */
+        ChartSeries: {
+            /** Name */
+            name: string;
+            /** Data */
+            data: number[];
         };
         /**
          * ClaimAlert
@@ -641,6 +891,10 @@ export interface components {
             anomaly_score?: number | null;
             /** Nearest Normal Claim Id */
             nearest_normal_claim_id?: string | null;
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude?: number | null;
         };
         /** ClaimDocument */
         ClaimDocument: {
@@ -756,6 +1010,8 @@ export interface components {
             cobertura: string;
             /** Asegurado */
             asegurado: string;
+            /** Asegurado Id */
+            asegurado_id?: string | null;
             /** Ciudad */
             ciudad: string;
             /**
@@ -772,6 +1028,10 @@ export interface components {
             nivel: components["schemas"]["Tier"];
             /** @default pendiente */
             review_status: components["schemas"]["ReviewStatus"];
+            /** Proveedor */
+            proveedor?: string | null;
+            /** Proveedor Id */
+            proveedor_id?: string | null;
         };
         /** ClaimTimelineEvent */
         ClaimTimelineEvent: {
@@ -833,6 +1093,10 @@ export interface components {
             title: string | null;
             /** Context Claim Id */
             context_claim_id: string | null;
+            /** Context Provider Id */
+            context_provider_id?: string | null;
+            /** Context Asegurado Id */
+            context_asegurado_id?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -862,6 +1126,10 @@ export interface components {
             title: string | null;
             /** Context Claim Id */
             context_claim_id: string | null;
+            /** Context Provider Id */
+            context_provider_id?: string | null;
+            /** Context Asegurado Id */
+            context_asegurado_id?: string | null;
             /** Snippet */
             snippet: string | null;
             /**
@@ -877,6 +1145,8 @@ export interface components {
         };
         /** CurrentUser */
         CurrentUser: {
+            /** Id */
+            id: string;
             /** Email */
             email: string;
             /** Role */
@@ -942,6 +1212,36 @@ export interface components {
              */
             env: "dev" | "test" | "prod";
         };
+        /** HotspotOut */
+        HotspotOut: {
+            /** Sucursal */
+            sucursal: string;
+            /** Count */
+            count: number;
+            /** Alertas */
+            alertas: number;
+            /** Avg Score */
+            avg_score: number;
+        };
+        /**
+         * ImportResult
+         * @description Summary returned after a bulk-import operation.
+         *
+         *     * imported — rows successfully upserted (score computed + all tables written).
+         *     * skipped  — rows skipped due to non-fatal parse/validation errors.
+         *     * errors   — per-row human-readable error messages (one per skipped row).
+         *     * claim_ids — IDs of successfully imported claims (for document upload step).
+         */
+        ImportResult: {
+            /** Imported */
+            imported: number;
+            /** Skipped */
+            skipped: number;
+            /** Errors */
+            errors: string[];
+            /** Claim Ids */
+            claim_ids?: string[];
+        };
         /**
          * InboxRow
          * @description Single row in the antifraude inbox (GET /antifraude/inbox).
@@ -968,6 +1268,29 @@ export interface components {
              */
             bounce_count: number;
         };
+        /**
+         * IncidentOut
+         * @description One claim plotted as a point on the map.
+         *
+         *     Coordinates come from ``siniestros.latitude/longitude`` when present, else
+         *     a deterministic city-center offset derived from ``id_siniestro``.
+         */
+        IncidentOut: {
+            /** Id Siniestro */
+            id_siniestro: string;
+            /** Sucursal */
+            sucursal: string;
+            /** Score */
+            score: number;
+            /** Tier */
+            tier: string;
+            /** Fecha Ocurrencia */
+            fecha_ocurrencia?: string | null;
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude?: number | null;
+        };
         /** InsightsBundleOut */
         InsightsBundleOut: {
             /** Anomalies */
@@ -978,7 +1301,11 @@ export interface components {
             claim_type_slices: components["schemas"]["ClaimTypeSliceOut"][];
             /** Total Claims Label */
             total_claims_label: string;
-            quarterly_outlook: components["schemas"]["QuarterlyOutlookOut"];
+            quarterly_outlook?: components["schemas"]["QuarterlyOutlookOut"] | null;
+            /** Hotspots */
+            hotspots: components["schemas"]["HotspotOut"][];
+            /** Incidents */
+            incidents: components["schemas"]["IncidentOut"][];
         };
         /** LoginRequest */
         LoginRequest: {
@@ -1027,6 +1354,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            chart_payload?: components["schemas"]["ChartData"] | null;
+            /** Transparency Metadata */
+            transparency_metadata?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** Page[ClaimSummary] */
         Page_ClaimSummary_: {
@@ -1068,6 +1400,11 @@ export interface components {
             monto: number;
             /** Lista Restrictiva */
             lista_restrictiva: boolean;
+            /**
+             * Ramos
+             * @default []
+             */
+            ramos: string[];
         };
         /** QuarterlyOutlookOut */
         QuarterlyOutlookOut: {
@@ -1196,6 +1533,27 @@ export interface components {
          * @enum {string}
          */
         Tier: "verde" | "amarillo" | "rojo";
+        /** TranscribeResponse */
+        TranscribeResponse: {
+            /**
+             * Text
+             * @description Transcribed speech in plain text.
+             */
+            text: string;
+        };
+        /** TtsRequest */
+        TtsRequest: {
+            /**
+             * Text
+             * @description Text to synthesize — max 5 000 chars.
+             */
+            text: string;
+            /**
+             * Voice
+             * @description OpenAI voice name. Defaults to settings.TTS_VOICE when omitted.
+             */
+            voice?: ("alloy" | "echo" | "fable" | "nova" | "onyx" | "shimmer") | null;
+        };
         /**
          * UploadedDocument
          * @description Returned by POST /claims/{id}/documentos on success.
@@ -1308,6 +1666,72 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    agent_transcribe_api_v1_agent_transcribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_agent_transcribe_api_v1_agent_transcribe_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranscribeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    agent_tts_api_v1_agent_tts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TtsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1661,6 +2085,79 @@ export interface operations {
             };
         };
     };
+    download_import_template_route_api_v1_claims_import_template_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    import_claims_route_api_v1_claims_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_claims_route_api_v1_claims_import_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_claims_stream_route_api_v1_claims_import_stream_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     list_claims_route_api_v1_claims_get: {
         parameters: {
             query?: {
@@ -1983,6 +2480,26 @@ export interface operations {
             };
         };
     };
+    list_asegurados_route_api_v1_asegurados_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AseguradoOut"][];
+                };
+            };
+        };
+    };
     list_audit_events_route_api_v1_audit_events_get: {
         parameters: {
             query?: {
@@ -2089,6 +2606,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_documents_bulk_route_api_v1_claims__claim_id__documentos_bulk_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_documents_bulk_route_api_v1_claims__claim_id__documentos_bulk_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkUploadResult"];
+                };
             };
             /** @description Validation Error */
             422: {
