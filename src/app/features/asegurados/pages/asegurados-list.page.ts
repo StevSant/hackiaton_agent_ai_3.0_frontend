@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import {
@@ -8,8 +8,9 @@ import {
 import { AseguradosStore } from '@core/state/asegurados.store';
 import type { Asegurado } from '@shared/models';
 import { Button } from '@shared/ui/button';
-import { Chip } from '@shared/ui/chip';
+import { ExportButton } from '@shared/ui/export-button';
 import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
+import { FilterBar, type FilterControl, type FilterValue } from '@shared/ui/filter-bar';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
@@ -26,15 +27,14 @@ import {
   projectAsegurado,
 } from '../utils/export-asegurados';
 
-type MoraFilter = 'todos' | 'mora' | 'al-dia';
-
 @Component({
   selector: 'page-asegurados-list',
   standalone: true,
   imports: [
     Button,
-    Chip,
+    ExportButton,
     ExportModal,
+    FilterBar,
     Icon,
     KpiSmall,
     Pagination,
@@ -56,10 +56,11 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
           <ui-icon name="add" [size]="16" />
           Agregar asegurado
         </ui-button>
-        <ui-button [disabled]="filtered().length === 0" (click)="exportOpen.set(true)">
-          <ui-icon name="download" [size]="14" />
-          Exportar reporte
-        </ui-button>
+        <ui-export-button
+          label="Exportar reporte"
+          [disabled]="filtered().length === 0"
+          (trigger)="exportOpen.set(true)"
+        />
       </div>
     </div>
 
@@ -70,23 +71,11 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
       <ui-kpi-small label="Monto total" [value]="formatMoney(stats().monto)" icon="payments" />
     </div>
 
-    <div class="bg-surface border border-line rounded-lg shadow-1 px-4 py-3 mb-4 flex items-center justify-between gap-4 flex-wrap">
-      <div class="flex items-center gap-2 flex-1 min-w-[260px]">
-        <ui-icon name="search" [size]="16" class="text-ink-3" />
-        <input
-          type="search"
-          class="bg-transparent border-0 outline-0 text-[13.5px] flex-1 text-ink placeholder:text-ink-3"
-          placeholder="Buscar por nombre, ciudad o segmento…"
-          [value]="search()"
-          (input)="search.set($any($event.target).value)"
-        />
-      </div>
-      <div class="flex items-center gap-1.5">
-        <ui-chip [active]="mora() === 'todos'" (click)="mora.set('todos')">Todos</ui-chip>
-        <ui-chip [active]="mora() === 'mora'" (click)="mora.set('mora')">En mora</ui-chip>
-        <ui-chip [active]="mora() === 'al-dia'" (click)="mora.set('al-dia')">Al día</ui-chip>
-      </div>
-    </div>
+    <ui-filter-bar
+      [controls]="filterControls()"
+      [value]="filters()"
+      (valueChange)="filters.set($event)"
+    />
 
     @if (store.loading() && store.asegurados().length === 0) {
       <ui-skeleton-table [rows]="8" [cols]="6" />
@@ -136,8 +125,54 @@ export class AseguradosListPage {
   protected readonly store = inject(AseguradosStore);
   private readonly router = inject(Router);
 
-  protected readonly search = signal<string>('');
-  protected readonly mora = signal<MoraFilter>('todos');
+  protected readonly filters = signal<FilterValue>({
+    search: '',
+    city: '',
+    segmento: '',
+    mora: 'todos',
+  });
+
+  protected readonly filterControls = computed<FilterControl[]>(() => [
+    { type: 'search', key: 'search', placeholder: 'Buscar por nombre, ciudad o segmento…' },
+    {
+      type: 'select',
+      key: 'city',
+      label: 'Ciudad',
+      icon: 'location_on',
+      options: [
+        { value: '', label: 'Todas las ciudades' },
+        ...this.cityOptions().map((c) => ({ value: c, label: c })),
+      ],
+    },
+    {
+      type: 'select',
+      key: 'segmento',
+      label: 'Segmento',
+      options: [
+        { value: '', label: 'Todos los segmentos' },
+        ...this.segmentoOptions().map((s) => ({ value: s, label: s })),
+      ],
+    },
+    {
+      type: 'chips',
+      key: 'mora',
+      emptyValue: 'todos',
+      options: [
+        { value: 'todos', label: 'Todos' },
+        { value: 'mora', label: 'En mora' },
+        { value: 'al-dia', label: 'Al día' },
+      ],
+    },
+  ]);
+
+  protected readonly cityOptions = computed(() =>
+    uniqueSorted(this.store.asegurados().map((a) => a.ciudad)),
+  );
+
+  protected readonly segmentoOptions = computed(() =>
+    uniqueSorted(this.store.asegurados().map((a) => a.segmento ?? '')),
+  );
+
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(25);
   protected readonly exportOpen = signal<boolean>(false);
@@ -149,13 +184,25 @@ export class AseguradosListPage {
 
   protected readonly stats = this.store.stats;
 
+  constructor() {
+    effect(() => {
+      this.filters(); // track
+      this.page.set(0);
+    });
+  }
+
   protected readonly filtered = computed(() => {
     const list = this.store.asegurados();
-    const term = this.search().trim().toLowerCase();
-    const moraFilter = this.mora();
+    const f = this.filters();
+    const term = (f['search'] ?? '').trim().toLowerCase();
+    const city = f['city'] ?? '';
+    const segmento = f['segmento'] ?? '';
+    const mora = f['mora'] ?? 'todos';
     return list.filter((a) => {
-      if (moraFilter === 'mora' && !a.mora_actual) return false;
-      if (moraFilter === 'al-dia' && a.mora_actual) return false;
+      if (mora === 'mora' && !a.mora_actual) return false;
+      if (mora === 'al-dia' && a.mora_actual) return false;
+      if (city && a.ciudad !== city) return false;
+      if (segmento && (a.segmento ?? '') !== segmento) return false;
       if (!term) return true;
       return (
         a.nombre.toLowerCase().includes(term) ||
@@ -245,4 +292,13 @@ export class AseguradosListPage {
 function todayStamp(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function uniqueSorted(values: readonly string[]): string[] {
+  const set = new Set<string>();
+  for (const v of values) {
+    const trimmed = (v ?? '').trim();
+    if (trimmed) set.add(trimmed);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, 'es'));
 }
