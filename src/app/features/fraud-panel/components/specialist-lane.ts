@@ -50,10 +50,19 @@ import type { SpecialistLane } from '../models/specialist-lane.model';
           <div class="mt-2 border-t border-line pt-2">
             <p class="text-xs font-medium text-ink-2">Réplica</p>
             <p class="text-sm whitespace-pre-wrap">{{ lane().rebuttalNarracion }}</p>
-            <div class="flex items-center gap-2">
-              <ui-risk-badge [nivel]="r.nivel_actualizado" />
-              @if (r.cambia_postura) {
+            <div class="flex items-center gap-2 flex-wrap">
+              @if (r.cambia_postura && lane().verdict && lane().verdict!.nivel !== r.nivel_actualizado) {
+                <ui-risk-badge [nivel]="lane().verdict!.nivel" />
+                <ui-icon name="arrow_forward" [size]="13" />
+                <ui-risk-badge [nivel]="r.nivel_actualizado" />
                 <span class="text-xs text-tier-yellow-ink font-medium">cambió de postura</span>
+              } @else {
+                <ui-risk-badge [nivel]="r.nivel_actualizado" />
+                @if (r.cambia_postura) {
+                  <span class="text-xs text-tier-yellow-ink font-medium">cambió de postura</span>
+                } @else {
+                  <span class="text-xs text-ink-3">mantiene postura</span>
+                }
               }
             </div>
           </div>

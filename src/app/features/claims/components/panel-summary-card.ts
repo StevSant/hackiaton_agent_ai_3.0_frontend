@@ -38,8 +38,22 @@ import type { Claim } from '@shared/models';
 
       @if (consensus(); as c) {
         <div class="px-5 pt-2.5 pb-5 flex flex-col gap-3">
-          <div class="flex items-center gap-3">
+          <!-- Motor vs Panel contrast -->
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px]">
+            <span class="text-ink-3">Motor</span>
+            <ui-risk-badge [nivel]="claim().nivel" />
+            <span class="font-medium tabular-nums">{{ claim().score }}/100</span>
+            <ui-icon name="compare_arrows" [size]="15" />
+            <span class="text-ink-3">Panel</span>
             <ui-risk-badge [nivel]="c.nivel_final ?? 'verde'" />
+            @if (divergence()) {
+              <span class="text-[11px] px-2 py-0.5 rounded-full border border-line bg-soft text-ink-2 font-medium">
+                discrepan
+              </span>
+            }
+          </div>
+
+          <div class="flex items-center gap-3">
             <div class="flex-1">
               <p class="text-[11px] text-ink-3">Nivel de acuerdo del panel</p>
               <div class="h-2 w-full rounded-full bg-soft overflow-hidden">
@@ -82,4 +96,8 @@ export class PanelSummaryCard {
   protected readonly acuerdoPct = computed(() =>
     Math.round((this.consensus()?.nivel_de_acuerdo ?? 0) * 100),
   );
+  protected readonly divergence = computed(() => {
+    const c = this.consensus();
+    return c != null && c.nivel_final != null && c.nivel_final !== this.claim().nivel;
+  });
 }
