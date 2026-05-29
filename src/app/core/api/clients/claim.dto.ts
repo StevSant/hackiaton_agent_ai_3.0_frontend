@@ -109,6 +109,11 @@ export interface ClaimDto {
   anomaly_score?: number | null;
   nearest_normal_claim_id?: string | null;
   similar?: SimilarClaimDto[];
+  /** G2 — awaiting Dev B OpenAPI freeze. */
+  posible_falso_positivo?: boolean;
+  confianza?: 'alta' | 'media' | 'baja';
+  /** G4 — analyst-edited AI summary. */
+  resumen_editado?: string | null;
 }
 
 export interface ClaimSummaryDto {

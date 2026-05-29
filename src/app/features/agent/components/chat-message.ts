@@ -4,6 +4,7 @@ import type { TtsState } from '@core/tts/text-to-speech.service';
 import { MarkdownPipe } from '@shared/pipes';
 import { Icon } from '@shared/ui/icon';
 import { AgentChart } from './agent-chart';
+import { AgentTable } from './agent-table';
 import { AgentEyeIcon } from './agent-eye-icon';
 import { AgentSteps } from './agent-steps';
 import type { AgentMessage } from '../models';
@@ -12,7 +13,7 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
 @Component({
   selector: 'agent-chat-message',
   standalone: true,
-  imports: [AgentSteps, MarkdownPipe, Icon, AgentChart, AgentEyeIcon],
+  imports: [AgentSteps, MarkdownPipe, Icon, AgentChart, AgentTable, AgentEyeIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="w-full flex gap-3 items-start" [class.justify-end]="isUser()">
@@ -68,6 +69,10 @@ import { ChatUiPrefsStore } from '../services/chat-ui-prefs.store';
               />
               {{ listenLabel() }}
             </button>
+          }
+
+          @if (table(); as tableData) {
+            <agent-table [payload]="tableData" (openCase)="openCase.emit($event)" />
           }
 
           @if (chart(); as chartData) {
@@ -138,6 +143,7 @@ export class ChatMessage {
   protected readonly isEmpty = computed(() => !this.isUser() && !this.hasContent());
   protected readonly steps = computed(() => (this.isUser() ? [] : (this.message().steps ?? [])));
   protected readonly chart = computed(() => this.message().chart ?? null);
+  protected readonly table = computed(() => this.message().table ?? null);
   protected readonly chartAccepted = computed(() => this.message().chartAccepted === true);
   protected readonly chartPending = computed(() => this.message().chartPending === true);
 

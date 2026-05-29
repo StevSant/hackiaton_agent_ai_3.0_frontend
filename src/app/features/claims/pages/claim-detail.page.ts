@@ -9,7 +9,7 @@ import { Icon } from '@shared/ui/icon';
 import { RiskBadge } from '@shared/ui/risk-badge';
 import { SkeletonCard } from '@shared/ui/skeleton-card';
 import { ramoIcon, ramoLabel, resolveClaimBackNavigation, insightsMapFocusQuery } from '@shared/utils';
-import { AiExplanationCard } from '../components/ai-explanation-card';
+import { SummaryCanvas } from '../components/summary-canvas';
 import { AlertsList } from '../components/alerts-list';
 import { AnomalyIndicatorCard } from '../components/anomaly-indicator-card';
 import { CaseMetaCard } from '../components/case-meta-card';
@@ -40,7 +40,7 @@ import { ProvidersStore } from '@core/state/providers.store';
     Icon,
     RiskBadge,
     SkeletonCard,
-    AiExplanationCard,
+    SummaryCanvas,
     AlertsList,
     AnomalyIndicatorCard,
     CaseMetaCard,
@@ -142,7 +142,7 @@ import { ProvidersStore } from '@core/state/providers.store';
             <claim-revisado-card [review]="c.review" />
           }
           @if (detailLoaded()) {
-            <claim-ai-explanation-card [claim]="c" />
+            <claim-summary-canvas [claim]="c" />
             <claim-alerts-list [alerts]="c.alertas" />
             <claim-ml-factors-card [claim]="c" />
             <claim-anomaly-indicator-card [claim]="c" />

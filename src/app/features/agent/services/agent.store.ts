@@ -8,6 +8,10 @@ import { SseClient } from '@core/realtime/sse.client';
 import type { AgentMessage, AgentStep, ChartPayload } from '../models';
 import type { ChatContext } from '../models/chat-context';
 import { ConversationsStore } from './conversations.store';
+import {
+  extractClaimTableFromToolCalls,
+  parseClaimTableFromToolResult,
+} from '../utils/parse-claim-table';
 import { buildCaseWelcomeMessage } from '../utils/case-context-message';
 import { buildProviderWelcomeMessage } from '../utils/provider-context-message';
 import { buildAseguradoWelcomeMessage } from '../utils/asegurado-context-message';
@@ -264,12 +268,14 @@ export class AgentStore {
           };
           const chart = raw.chart_payload ?? undefined;
           const steps = buildStepsFromMetadata(raw.transparency_metadata);
+          const table = extractClaimTableFromToolCalls(raw.transparency_metadata?.tool_calls) ?? undefined;
           return {
             id: m.id,
             role: m.role,
             content: m.content,
             steps,
             chart,
+            table,
             // Already-rendered charts skip the "Ver como gráfico" affordance.
             chartAccepted: chart !== undefined ? true : undefined,
           };
@@ -332,6 +338,7 @@ export class AgentStore {
 
     const assistantId = newId();
     let assistantAdded = false;
+    const toolNamesByCallId = new Map<string, string>();
     const ensureAssistantBubble = (): void => {
       if (assistantAdded) return;
       assistantAdded = true;
@@ -380,6 +387,16 @@ export class AgentStore {
       );
     };
 
+    const attachTable = (result: unknown, toolName: string): void => {
+      if (toolName !== 'query_claims') return;
+      const table = parseClaimTableFromToolResult(result);
+      if (!table) return;
+      ensureAssistantBubble();
+      this._messages.update((messages) =>
+        messages.map((msg) => (msg.id === assistantId ? { ...msg, table } : msg)),
+      );
+    };
+
     const url = `${environment.backendUrl}${environment.apiPrefix}/agent/ask`;
     const ctx = this._chatContext();
 
@@ -408,6 +425,7 @@ export class AgentStore {
               break;
             }
             case 'tool_call':
+              toolNamesByCallId.set(event.data.call_id, event.data.tool);
               appendStep({
                 kind: 'tool_call',
                 label: event.data.tool,
@@ -417,6 +435,10 @@ export class AgentStore {
               break;
             case 'tool_result':
               attachResult(event.data.call_id, summarizeResult(event.data.result));
+              attachTable(
+                event.data.result,
+                toolNamesByCallId.get(event.data.call_id) ?? '',
+              );
               break;
             case 'chart':
               attachChart(event.data);

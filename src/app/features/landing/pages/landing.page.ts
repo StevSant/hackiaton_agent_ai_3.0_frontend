@@ -283,6 +283,29 @@ interface MockClaimRow {
             que importa, con explicabilidad de cada decisión.
           </p>
 
+          <div class="mt-6 inline-flex items-center gap-2 text-[12.5px] font-medium text-cyan-100 bg-cyan-400/10 border border-cyan-400/35 rounded-full px-3.5 py-1.5">
+            <ui-icon name="bolt" [size]="15" />
+            Analiza un caso en ~3 s
+          </div>
+
+          <div class="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-[560px]">
+            @for (metric of heroBusinessMetrics; track metric.label) {
+              <div class="rounded-xl border border-slate-700/50 bg-slate-900/45 px-3.5 py-3">
+                <div class="text-[22px] font-semibold text-white tabular-nums leading-tight">{{ metric.value }}</div>
+                <div class="text-[11.5px] text-slate-400 mt-1 leading-snug">{{ metric.label }}</div>
+              </div>
+            }
+          </div>
+
+          <div class="mt-5 flex flex-wrap gap-2 max-w-[620px]">
+            @for (seal of trustSeals; track seal) {
+              <span class="inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.12em] text-slate-300 border border-slate-600/60 bg-slate-900/50 rounded-full px-2.5 py-1">
+                <span class="w-1 h-1 rounded-full bg-emerald-400"></span>
+                {{ seal }}
+              </span>
+            }
+          </div>
+
           <div class="mt-9 flex flex-wrap gap-3">
             <button type="button" (click)="goToDemo()"
                     class="glow-button inline-flex items-center gap-2 text-[14px] font-medium text-[#05070d] bg-cyan-300 px-5 py-3 rounded-xl">
@@ -299,17 +322,6 @@ interface MockClaimRow {
               </svg>
               Documentación
             </a>
-          </div>
-
-          <div class="mt-12 flex items-center gap-6 text-[12px] text-slate-400 font-mono">
-            <div class="flex items-center gap-2">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              5 reglas hard rules
-            </div>
-            <span class="text-slate-700">·</span>
-            <div>2 perspectivas de revisión</div>
-            <span class="text-slate-700">·</span>
-            <div>SSE en tiempo real</div>
           </div>
         </div>
 
@@ -793,15 +805,15 @@ export class LandingPage implements AfterViewInit, OnDestroy {
   protected readonly currentKpis = computed(() => {
     if (this.perspective() === 'antifraude') {
       return [
-        { label: 'Escalados', value: '74', delta: '+12 hoy' },
-        { label: 'Dictaminados', value: '38', delta: 'Esta semana' },
-        { label: 'Patrones IA', value: '6', delta: 'Activos' },
+        { label: 'Siniestros triados', value: '2.4k', delta: 'Bandeja activa' },
+        { label: 'USD expuestos detectados', value: '$1.2M', delta: 'Casos escalados' },
+        { label: '% revisión evitada', value: '38%', delta: 'Flujo verde' },
       ];
     }
     return [
-      { label: 'Triaje hoy', value: '128', delta: '+9% vs. ayer' },
-      { label: 'Rojo', value: '14', delta: 'Requiere escalar' },
-      { label: 'Amarillo', value: '32', delta: 'Revisión doc.' },
+      { label: 'Siniestros triados', value: '128', delta: 'Hoy en bandeja' },
+      { label: '% revisión evitada', value: '62%', delta: 'Casos verde' },
+      { label: 'USD expuestos detectados', value: '$840k', delta: 'Alertas rojo/amarillo' },
     ];
   });
 
@@ -892,13 +904,26 @@ export class LandingPage implements AfterViewInit, OnDestroy {
       tools: ['LightGBM', 'Isolation Forest', 'pgvector', 'LangGraph ReAct'],
     },
     {
-      title: 'Veredicto de fraude',
+      title: 'Veredicto de alerta',
       tag: 'Step 03',
       description:
         'El analista ve la bandeja priorizada; el especialista recibe la cola escalada. Centinela acompaña cada paso con explicaciones y casos similares.',
       icon: 'verified',
       tools: ['Score 0-100', 'Tier rojo/amarillo/verde', 'Auditoría de revisiones'],
     },
+  ] as const;
+
+  protected readonly heroBusinessMetrics = [
+    { value: '2.4k+', label: 'Siniestros triados' },
+    { value: '38%', label: 'Revisión evitada en flujo verde' },
+    { value: '$1.2M', label: 'USD expuestos detectados' },
+  ] as const;
+
+  protected readonly trustSeals = [
+    'Datos sintéticos',
+    'Humano en el loop',
+    'Explicabilidad por regla',
+    'Reto Aseguradora del Sur',
   ] as const;
 
   protected readonly networkNodes = Array.from({ length: 26 }, (_, i) => ({

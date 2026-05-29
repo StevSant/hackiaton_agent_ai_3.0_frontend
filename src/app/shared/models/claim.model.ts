@@ -1,4 +1,7 @@
 import type { RiskTier } from '@shared/utils';
+
+/** Wire contract (Dev B gen:api) — confidence in the risk assessment. */
+export type ConfianzaNivel = 'alta' | 'media' | 'baja';
 import type { ClaimAlert } from './claim-alert.model';
 import type { ClaimDocument } from './claim-document.model';
 import type { ClaimReview } from './claim-review.model';
@@ -39,4 +42,9 @@ export interface Claim {
   anomaly_score?: number | null;
   nearest_normal_claim_id?: string | null;
   similar?: SimilarClaim[];
+  /** G2 — populated after backend schema freeze + gen:api. */
+  posible_falso_positivo?: boolean;
+  confianza?: ConfianzaNivel;
+  /** G4 — analyst-edited summary; falls back to generated text when absent. */
+  resumen_editado?: string | null;
 }

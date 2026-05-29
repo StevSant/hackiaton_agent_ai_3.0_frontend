@@ -52,6 +52,13 @@ export class ClaimsApi {
     return this.http.post<ClaimDto>(`${this.base}/claims/${encodeURIComponent(id)}/rescore`, {});
   }
 
+  /** G4 — PATCH /claims/{id}/resumen (Dev B). Safe to call once the endpoint ships. */
+  patchResumen(id: string, resumen_editado: string): Observable<ClaimDto> {
+    return this.http.patch<ClaimDto>(`${this.base}/claims/${encodeURIComponent(id)}/resumen`, {
+      resumen_editado,
+    });
+  }
+
   escalate(id: string, note?: string): Observable<ClaimDto> {
     return this.http.post<ClaimDto>(`${this.base}/claims/${encodeURIComponent(id)}/escalate`, {
       note: note ?? null,

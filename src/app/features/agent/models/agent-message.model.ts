@@ -1,5 +1,6 @@
 import type { AgentStep } from './agent-step.model';
 import type { ChartPayload } from './chart.model';
+import type { ClaimTablePayload } from './claim-table.model';
 
 export type AgentRole = 'user' | 'assistant';
 
@@ -19,4 +20,6 @@ export interface AgentMessage {
    * the compose stream is still finishing.
    */
   chartPending?: boolean;
+  /** Tabular data from `query_claims` tool results, when present. */
+  table?: ClaimTablePayload;
 }
