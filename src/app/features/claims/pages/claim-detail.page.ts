@@ -214,7 +214,11 @@ import { ProvidersStore } from '@core/state/providers.store';
             <claim-alerts-list [alerts]="c.alertas" />
             <claim-ml-factors-card [claim]="c" />
             <claim-anomaly-indicator-card [claim]="c" />
-            <claim-narrative-analysis-card [claim]="c" />
+            <claim-narrative-analysis-card
+              [claim]="c"
+              [error]="narrativeError()"
+              (retry)="retryNarrative()"
+            />
             <claim-similar-narratives-card [claim]="c" />
             <claim-timeline-card [events]="c.timeline" />
             <claim-documents-card
@@ -308,6 +312,9 @@ export class ClaimDetailPage {
   // Reading panelLive(id) inside a computed tracks the underlying signal, so the
   // strip re-renders as each agent transitions pendiente → pensando → voto.
   protected readonly panelLiveAgents = computed(() => this.claims.panelLive(this.id()));
+  protected readonly narrativeError = computed(() =>
+    this.claims.narrativeErrorIds().has(this.id()),
+  );
 
   constructor() {
     bindRecordSwapPulse(() => this.id(), this.swapTick);
@@ -435,6 +442,10 @@ export class ClaimDetailPage {
     } finally {
       this.reanalyzing.set(false);
     }
+  }
+
+  protected retryNarrative(): void {
+    void this.claims.analyzeNarrative(this.id());
   }
 
   protected async onEscalate(): Promise<void> {

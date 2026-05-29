@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
+import { Button } from '@shared/ui/button';
 import { EmptyState } from '@shared/ui/empty-state';
 import { Icon } from '@shared/ui/icon';
 import type { Claim } from '../models';
@@ -12,7 +13,7 @@ interface EntityGroup {
 @Component({
   selector: 'claim-narrative-analysis-card',
   standalone: true,
-  imports: [EmptyState, Icon],
+  imports: [Button, EmptyState, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bg-surface border border-line rounded-lg shadow-1">
@@ -41,10 +42,23 @@ interface EntityGroup {
       </div>
 
       @if (!analysis()) {
-        <ui-empty-state
-          title="Análisis de la narrativa en curso"
-          sub="Se procesa la descripción del siniestro la primera vez que abres el caso. Vuelve en un momento o re-analiza el caso."
-        />
+        @if (error()) {
+          <div class="flex flex-col items-center gap-3 py-10 px-4">
+            <ui-empty-state
+              title="No se pudo analizar la narrativa"
+              sub="El análisis automático falló o tardó demasiado. Reintentá: si el caso tiene descripción, se procesa de nuevo."
+            />
+            <ui-button variant="secondary" (click)="retry.emit()">
+              <ui-icon name="refresh" [size]="15" />
+              Reintentar análisis
+            </ui-button>
+          </div>
+        } @else {
+          <ui-empty-state
+            title="Análisis de la narrativa en curso"
+            sub="Se procesa la descripción del siniestro la primera vez que abres el caso. Vuelve en un momento o re-analiza el caso."
+          />
+        }
       } @else {
         <div class="px-5 py-4 flex flex-col gap-4">
           @if (resumen()) {
@@ -109,6 +123,10 @@ interface EntityGroup {
 })
 export class NarrativeAnalysisCard {
   readonly claim = input.required<Claim>();
+  // True when the on-open analysis request failed — show "reintentar" instead of
+  // an eternal "en curso" spinner. Only meaningful while `analysis` is still null.
+  readonly error = input(false);
+  readonly retry = output<void>();
 
   protected readonly analysis = computed(() => this.claim().narrative_analysis ?? null);
   protected readonly coherente = computed(() => !(this.analysis()?.narrativa_ilogica ?? false));
