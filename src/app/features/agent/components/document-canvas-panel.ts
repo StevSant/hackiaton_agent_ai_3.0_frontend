@@ -21,7 +21,8 @@ import { slugify } from '../utils/message-to-markdown';
  * Rendered by the chat page — NOT inside a message.
  *
  * Presents the document as a white "page" with edit + download + "Mejorar con IA".
- * Emits (close) when the user dismisses and (improve) when they request AI refinement.
+ * "Mejorar con IA" calls the dedicated /agent/document/improve endpoint and updates
+ * the panel in place — it does NOT create a new chat turn.
  */
 @Component({
   selector: 'document-canvas-panel',
@@ -43,12 +44,17 @@ import { slugify } from '../utils/message-to-markdown';
           <!-- Mejorar con IA -->
           <button
             type="button"
-            class="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-ink bg-brand-soft border border-brand/20 rounded-lg px-2.5 py-1.5 hover:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            class="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-ink bg-brand-soft border border-brand/20 rounded-lg px-2.5 py-1.5 hover:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
             (click)="onImprove()"
+            [disabled]="improving() || downloading()"
             aria-label="Mejorar con IA"
           >
-            <ui-icon name="auto_fix_high" [size]="14" />
-            Mejorar con IA
+            <ui-icon
+              [name]="improving() ? 'progress_activity' : 'auto_fix_high'"
+              [size]="14"
+              [class.animate-spin]="improving()"
+            />
+            {{ improving() ? 'Mejorando…' : 'Mejorar con IA' }}
           </button>
 
           <!-- Edit toggle -->
@@ -69,7 +75,7 @@ import { slugify } from '../utils/message-to-markdown';
           <button
             type="button"
             class="inline-flex items-center gap-1 text-[12px] px-2.5 py-1.5 rounded-lg border border-line hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
-            [disabled]="downloading()"
+            [disabled]="downloading() || improving()"
             (click)="onDownload()"
             aria-label="Descargar Word"
           >
@@ -92,6 +98,39 @@ import { slugify } from '../utils/message-to-markdown';
           </button>
         </div>
       </div>
+
+      <!-- ── Instructions input (shown when user clicks "Mejorar con IA") ── -->
+      @if (showInstructions()) {
+        <div class="px-4 py-3 border-b border-line bg-soft shrink-0 flex flex-col gap-2">
+          <label class="text-[12px] font-medium text-ink-2" for="improve-instructions">
+            Instrucciones para la IA (opcional)
+          </label>
+          <textarea
+            id="improve-instructions"
+            rows="2"
+            class="w-full text-[12.5px] border border-line rounded-lg px-3 py-2 resize-none bg-white focus:outline-none focus:ring-2 focus:ring-brand"
+            placeholder="Ej: Hacelo más conciso, agrega una sección de recomendaciones…"
+            [value]="instructionsInput()"
+            (input)="instructionsInput.set($any($event.target).value)"
+          ></textarea>
+          <div class="flex justify-end gap-2">
+            <button
+              type="button"
+              class="text-[12px] px-3 py-1.5 rounded-lg border border-line text-ink-2 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              (click)="cancelImprove()"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="text-[12px] px-3 py-1.5 rounded-lg bg-brand text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              (click)="confirmImprove()"
+            >
+              Mejorar
+            </button>
+          </div>
+        </div>
+      }
 
       <!-- ── Body: scrollable page area ── -->
       <div class="flex-1 min-h-0 overflow-y-auto px-6 py-6 scroll-pretty">
@@ -134,6 +173,11 @@ import { slugify } from '../utils/message-to-markdown';
           No se pudo generar el archivo Word. Intentá de nuevo.
         </div>
       }
+      @if (improveError()) {
+        <div class="px-4 pb-3 text-[11.5px] text-red-500 shrink-0">
+          No se pudo mejorar el documento. Intentá de nuevo.
+        </div>
+      }
     </div>
   `,
 })
@@ -142,14 +186,16 @@ export class DocumentCanvasPanel implements OnChanges {
   readonly doc = input.required<DocumentPayload>();
 
   readonly close = output<void>();
-  /** Emitted with current draft text when user clicks "Mejorar con IA". */
-  readonly improve = output<string>();
 
   private readonly agentApi = inject(AgentApi);
 
   protected readonly editMode = signal(false);
   protected readonly downloading = signal(false);
   protected readonly downloadError = signal(false);
+  protected readonly improving = signal(false);
+  protected readonly improveError = signal(false);
+  protected readonly showInstructions = signal(false);
+  protected readonly instructionsInput = signal('');
   protected readonly draft = signal('');
 
   private draftInitialized = false;
@@ -198,9 +244,42 @@ export class DocumentCanvasPanel implements OnChanges {
     }
   }
 
+  /** First click: show the optional instructions bar. */
   protected onImprove(): void {
+    if (this.improving()) return;
+    this.improveError.set(false);
+    this.instructionsInput.set('');
+    this.showInstructions.set(true);
+  }
+
+  protected cancelImprove(): void {
+    this.showInstructions.set(false);
+    this.instructionsInput.set('');
+  }
+
+  /** Confirm: call the dedicated endpoint and update the panel in place. */
+  protected async confirmImprove(): Promise<void> {
     this.ensureDraft();
-    this.improve.emit(this.draft());
+    this.showInstructions.set(false);
+    this.improving.set(true);
+    this.improveError.set(false);
+    const instrucciones = this.instructionsInput().trim() || null;
+    this.instructionsInput.set('');
+    try {
+      const result = await firstValueFrom(
+        this.agentApi.improveDocument({
+          titulo: this.doc().titulo,
+          contenido_markdown: this.draft(),
+          instrucciones,
+        }),
+      );
+      this.draft.set(result.contenido_markdown);
+      this.editMode.set(false);
+    } catch {
+      this.improveError.set(true);
+    } finally {
+      this.improving.set(false);
+    }
   }
 
   private ensureDraft(): void {

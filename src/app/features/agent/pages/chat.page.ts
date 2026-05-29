@@ -427,7 +427,6 @@ function generateUuid(): string {
           class="flex-1 min-h-0 flex flex-col"
           [doc]="{ titulo: activeDoc.titulo, contenido_markdown: activeDoc.contenidoMarkdown }"
           (close)="store.closeDocument()"
-          (improve)="onImproveRequest($event)"
         />
       </aside>
     }
@@ -591,6 +590,16 @@ export class ChatPage implements AfterViewChecked {
           this.suggestionsOpen.set(null);
         }
         this.activeConversationId.set(convId);
+
+        // Entity deep-links (provider/asegurado/case) generate a fresh UUID on the
+        // detail page and navigate here with ?conversation=<new-uuid>&provider=<id>.
+        // That UUID never existed on the backend, so GETting it would 404.
+        // Treat it as fresh — same as a newChat() UUID — so we skip the GET.
+        const hasEntityCtx = !!(caseId || providerId || aseguradoId);
+        if (hasEntityCtx && !this._freshIds.has(convId)) {
+          this._freshIds.add(convId);
+        }
+
         void this.bootstrapConversation(convId, urlCtx);
         return;
       }
@@ -704,13 +713,6 @@ export class ChatPage implements AfterViewChecked {
     const convId = this.activeConversationId() ?? undefined;
     if (convId) this._freshIds.delete(convId);
     void this.store.ask(text, convId);
-  }
-
-  /** Handle "Mejorar con IA" from the document panel — re-sends the document text as a new turn. */
-  protected onImproveRequest(currentText: string): void {
-    const convId = this.activeConversationId() ?? undefined;
-    if (convId) this._freshIds.delete(convId);
-    void this.store.ask(`Mejorá este documento:\n\n${currentText}`, convId);
   }
 
   /** Handle (openCanvas) from a chat message — open (or update) the artifact side panel. */

@@ -97,6 +97,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/document/improve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agent Document Improve
+         * @description Improve an existing agent-generated document via LLM.
+         *
+         *     Accepts the current titulo + contenido_markdown and optional analyst instrucciones.
+         *     Returns the improved {titulo, contenido_markdown} without going through the chat
+         *     agent loop — avoids hitting the /ask query length cap.
+         */
+        post: operations["agent_document_improve_api_v1_agent_document_improve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/document/docx": {
         parameters: {
             query?: never;
@@ -1424,6 +1448,28 @@ export interface components {
             /** Claim Ids */
             claim_ids?: string[];
         };
+        /** ImproveDocumentRequest */
+        ImproveDocumentRequest: {
+            /** Titulo */
+            titulo: string;
+            /** Contenido Markdown */
+            contenido_markdown: string;
+            /** Instrucciones */
+            instrucciones?: string | null;
+        };
+        /** ImprovedDocument */
+        ImprovedDocument: {
+            /**
+             * Titulo
+             * @description Título del documento mejorado
+             */
+            titulo: string;
+            /**
+             * Contenido Markdown
+             * @description Contenido mejorado en Markdown
+             */
+            contenido_markdown: string;
+        };
         /**
          * InboxRow
          * @description Single row in the antifraude inbox (GET /antifraude/inbox).
@@ -1960,6 +2006,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    agent_document_improve_api_v1_agent_document_improve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImproveDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImprovedDocument"];
                 };
             };
             /** @description Validation Error */

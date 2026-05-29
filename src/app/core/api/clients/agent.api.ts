@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../config/env';
+import type { components } from '../generated/schema';
 
 export interface TranscribeResponseBody {
   text: string;
@@ -12,6 +13,9 @@ export interface DocxRequestBody {
   titulo: string;
   contenido_markdown: string;
 }
+
+export type ImproveDocumentRequest = components['schemas']['ImproveDocumentRequest'];
+export type ImprovedDocument = components['schemas']['ImprovedDocument'];
 
 @Injectable({ providedIn: 'root' })
 export class AgentApi {
@@ -35,5 +39,13 @@ export class AgentApi {
    */
   downloadDocumentDocx(body: DocxRequestBody): Observable<Blob> {
     return this.http.post(`${this.baseUrl}/document/docx`, body, { responseType: 'blob' });
+  }
+
+  /**
+   * Call the dedicated AI endpoint to improve a document in place.
+   * Returns the revised {titulo, contenido_markdown} — does NOT create a chat turn.
+   */
+  improveDocument(body: ImproveDocumentRequest): Observable<ImprovedDocument> {
+    return this.http.post<ImprovedDocument>(`${this.baseUrl}/document/improve`, body);
   }
 }
