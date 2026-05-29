@@ -10,7 +10,7 @@ import { SavingsBreakdown } from './savings-breakdown';
   imports: [SavingsBreakdown],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (ahorro(); as est) {
+    @if (estimate(); as est) {
       <div class="bg-surface border border-line rounded-lg px-5 py-4 shadow-1 flex flex-col gap-3">
         <div class="text-[11px] text-ink-3 uppercase tracking-wider font-medium">
           Estimación de ahorro potencial
@@ -94,15 +94,27 @@ export class SavingsCard {
   protected readonly showBreakdown = signal(false);
   protected readonly formatMoney = formatMoney;
 
-  /** When there's no estimate, say WHY — exposure can't be computed without amounts. */
+  /** A MEANINGFUL estimate — only when there's real exposure (valor en riesgo > 0).
+   * A $0 estimate (no amounts / nothing left to pay) shows the reason instead. */
+  protected readonly estimate = computed(() => {
+    const a = this.ahorro();
+    return a && a.valor_en_riesgo > 0 ? a : null;
+  });
+
+  /** When there's no meaningful estimate, say WHY — exposure can't be computed. */
   protected readonly unavailableReason = computed(() => {
-    const monto = this.montoReclamado();
-    const suma = this.sumaAsegurada();
+    const a = this.ahorro();
+    const monto = a ? a.monto_reclamado : this.montoReclamado();
+    const suma = a ? a.suma_asegurada : this.sumaAsegurada();
     if (monto != null && monto <= 0) {
       return 'No se puede estimar el ahorro: el siniestro no registra monto reclamado ($0). Sin monto reclamado no hay exposición que la aseguradora pueda evitar pagar.';
     }
     if (suma != null && suma <= 0) {
       return 'No se puede estimar el ahorro: la póliza no registra suma asegurada ($0), necesaria para acotar la exposición del caso.';
+    }
+    if (a) {
+      // amounts present but exposure is 0 → already paid or covered by the deductible
+      return 'No queda exposición pendiente: el monto a riesgo es $0 (el caso ya fue liquidado o está cubierto por el deducible), por eso no hay ahorro que estimar.';
     }
     return 'La estimación de ahorro aún no se ha calculado para este caso. Pulsá «Re-analizar caso» para generarla.';
   });
