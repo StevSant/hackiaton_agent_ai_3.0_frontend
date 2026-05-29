@@ -28,6 +28,7 @@ import { DictamenCard } from '../components/dictamen-card';
 import { DictamenFormModal } from '../components/dictamen-form-modal';
 import { DocumentsCard } from '../components/documents-card';
 import { EscalationStickyBanner } from '../components/escalation-sticky-banner';
+import { MarkRevisadoModal } from '../components/mark-revisado-modal';
 import { MlFactorsCard } from '../components/ml-factors-card';
 import { NarrativeAnalysisCard } from '../components/narrative-analysis-card';
 import { PanelSummaryCard } from '../components/panel-summary-card';
@@ -62,6 +63,7 @@ import { ProvidersStore } from '@core/state/providers.store';
     DictamenFormModal,
     DocumentsCard,
     EscalationStickyBanner,
+    MarkRevisadoModal,
     MlFactorsCard,
     NarrativeAnalysisCard,
     PanelSummaryCard,
@@ -264,6 +266,11 @@ import { ProvidersStore } from '@core/state/providers.store';
         (close)="dictamenOpen.set(false)"
         (submit)="onDictamen($event)"
       />
+      <claim-mark-revisado-modal
+        [open]="markRevisadoOpen()"
+        (close)="markRevisadoOpen.set(false)"
+        (confirm)="onConfirmRevisado($event)"
+      />
     } @else {
       <div class="py-20 text-center text-ink-3">
         Caso no encontrado.
@@ -298,6 +305,7 @@ export class ClaimDetailPage {
   protected readonly ruleOpen = signal(false);
   protected readonly activeAlert = signal<ClaimAlert | null>(null);
   protected readonly dictamenOpen = signal(false);
+  protected readonly markRevisadoOpen = signal(false);
   protected readonly reanalyzing = signal(false);
   protected readonly downloadingDocx = signal(false);
   protected readonly swapTick = signal(0);
@@ -421,16 +429,13 @@ export class ClaimDetailPage {
     this.ruleOpen.set(true);
   }
 
-  protected async onMarkRevisado(): Promise<void> {
-    const note =
-      typeof window !== 'undefined'
-        ? window.prompt(
-            'Marcar este caso como revisado sin escalación. Opcionalmente, deja una nota:',
-            '',
-          )
-        : null;
-    if (note === null) return;
-    await this.claims.close(this.id(), note.trim() || undefined);
+  protected onMarkRevisado(): void {
+    this.markRevisadoOpen.set(true);
+  }
+
+  protected async onConfirmRevisado(note?: string): Promise<void> {
+    this.markRevisadoOpen.set(false);
+    await this.claims.close(this.id(), note);
     await this.claims.reloadDetail(this.id());
   }
 
