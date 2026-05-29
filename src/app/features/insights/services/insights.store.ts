@@ -15,14 +15,9 @@ import { AuthStore } from '@core/auth/auth.store';
 import { AppError } from '@core/errors/app-error';
 import type { AiAnomaly, ClaimTypeSlice, MapHotspot, RegionalFraudPoint } from '../models';
 import { ECUADOR_CITY_COORDS, normalizeToCity } from '../utils/ecuador-city-coords';
+import { SLICE_COLORS } from '../utils/insights-chart-theme';
 
-const REGION_PALETTE = ['#1e293b', '#334155', '#475569', '#64748b', '#94a3b8'];
-const SLICE_COLORS: Record<string, string> = {
-  auto: '#6366f1',
-  health: '#06b6d4',
-  life: '#a855f7',
-  other: '#94a3b8',
-};
+const REGION_PALETTE = ['#4a6280', '#5f7d9e', '#7a94b0', '#94aec9', '#aebdd0'];
 
 const HIGH_RISK_THRESHOLD = 70;
 

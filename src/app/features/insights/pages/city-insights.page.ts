@@ -104,6 +104,9 @@ import {
               <span class="insights-city-stat">
                 <strong>{{ money(view.kpis.exposedAmount) }}</strong> expuesto
               </span>
+              <span class="insights-city-stat insights-city-stat--savings">
+                <strong>{{ money(view.savings.totalAhorro) }}</strong> ahorro pot.
+              </span>
             </div>
             <p class="insights-city-narrative">{{ view.narrative }}</p>
           </div>

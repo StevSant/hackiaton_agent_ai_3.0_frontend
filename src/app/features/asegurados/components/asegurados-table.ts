@@ -12,18 +12,18 @@ import { SortableHeader } from '@shared/ui/sortable-header';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-[13px] border-collapse">
+      <div class="centinela-table-wrap">
+        <table class="centinela-table">
           <thead>
-            <tr class="bg-soft">
-              <th sortKey="nombre" [sort]="sort()" class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Asegurado</th>
-              <th sortKey="segmento" [sort]="sort()" class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Segmento</th>
-              <th sortKey="ciudad" [sort]="sort()" class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Ciudad</th>
-              <th sortKey="casos" [sort]="sort()" class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Casos</th>
-              <th sortKey="alertas" [sort]="sort()" class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Alertas</th>
-              <th sortKey="monto" [sort]="sort()" class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Monto</th>
-              <th sortKey="mora" [sort]="sort()" class="text-left font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Estado</th>
-              <th class="text-right font-medium text-ink-3 text-[11.5px] tracking-wide py-2.5 px-4 border-b border-line">Acciones</th>
+            <tr>
+              <th sortKey="nombre" [sort]="sort()">Asegurado</th>
+              <th sortKey="segmento" [sort]="sort()" class="hidden md:table-cell">Segmento</th>
+              <th sortKey="ciudad" [sort]="sort()" class="hidden md:table-cell">Ciudad</th>
+              <th sortKey="casos" [sort]="sort()" class="hidden md:table-cell text-right">Casos</th>
+              <th sortKey="alertas" [sort]="sort()" class="text-right">Alertas</th>
+              <th sortKey="monto" [sort]="sort()" class="hidden lg:table-cell text-right">Monto</th>
+              <th sortKey="mora" [sort]="sort()">Estado</th>
+              <th class="text-right w-20">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -31,11 +31,10 @@ import { SortableHeader } from '@shared/ui/sortable-header';
               <tr
                 [attr.data-keyboard-row]="a.id"
                 [class.centinela-table-row--focused]="focusedId() === a.id"
-                class="border-b border-line last:border-b-0 hover:bg-hover cursor-pointer"
                 (click)="open.emit(a.id)"
               >
-                <td class="py-2.5 px-4">
-                  <div class="flex items-center gap-2.5">
+                <td>
+                  <div class="flex items-center gap-2.5 min-w-0">
                     <div
                       class="w-8 h-8 rounded-full grid place-items-center font-semibold text-[11.5px] text-white shrink-0"
                       [style.background]="a.color"
@@ -45,31 +44,38 @@ import { SortableHeader } from '@shared/ui/sortable-header';
                     <div class="min-w-0">
                       <div class="font-medium text-ink truncate">{{ a.nombre }}</div>
                       <div class="text-[11px] text-ink-3 font-mono truncate">{{ a.id }}</div>
+                      <div class="md:hidden text-[11px] text-ink-3 mt-0.5 truncate">
+                        {{ a.segmento ?? '—' }} · {{ a.ciudad }}
+                      </div>
+                      <div class="md:hidden flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-[11px] text-ink-3">
+                        <span class="tabular-nums">{{ a.casos }} casos</span>
+                        <span class="tabular-nums lg:hidden">{{ money(a.monto) }}</span>
+                      </div>
                     </div>
                   </div>
                 </td>
-                <td class="py-2.5 px-4 text-ink-2">{{ a.segmento ?? '—' }}</td>
-                <td class="py-2.5 px-4 text-ink-2">{{ a.ciudad }}</td>
-                <td class="py-2.5 px-4 text-right tabular-nums font-medium">{{ a.casos }}</td>
+                <td class="hidden md:table-cell text-ink-2">{{ a.segmento ?? '—' }}</td>
+                <td class="hidden md:table-cell text-ink-2">{{ a.ciudad }}</td>
+                <td class="hidden md:table-cell text-right tabular-nums font-medium">{{ a.casos }}</td>
                 <td
-                  class="py-2.5 px-4 text-right tabular-nums font-medium"
+                  class="text-right tabular-nums font-medium"
                   [class.text-tier-red-ink]="a.alertas >= 6"
                   [class.text-tier-yellow-ink]="a.alertas >= 3 && a.alertas < 6"
                 >
                   {{ a.alertas }}
                 </td>
-                <td class="py-2.5 px-4 text-right tabular-nums">{{ money(a.monto) }}</td>
-                <td class="py-2.5 px-4">
+                <td class="hidden lg:table-cell text-right tabular-nums">{{ money(a.monto) }}</td>
+                <td>
                   @if (a.mora_actual) {
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-tier-red-soft text-tier-red-ink">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-tier-red-soft text-tier-red-ink whitespace-nowrap">
                       Mora actual
                     </span>
                   } @else {
-                    <span class="text-ink-3 text-[12px]">Al día</span>
+                    <span class="text-ink-3 text-[12px] whitespace-nowrap">Al día</span>
                   }
                 </td>
-                <td class="py-2.5 px-4">
-                  <div class="flex items-center justify-end gap-1">
+                <td>
+                  <div class="flex items-center justify-end gap-0.5 sm:gap-1">
                     <button
                       type="button"
                       class="rounded-sm w-8 h-8 grid place-items-center text-ink-3 hover:bg-hover hover:text-ink"

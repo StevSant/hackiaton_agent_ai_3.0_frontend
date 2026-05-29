@@ -61,6 +61,18 @@ export interface CityNationalBenchmark {
   nationalSuspicionPct: number;
 }
 
+export interface CitySavingsSnapshot {
+  totalAhorro: number;
+  totalRiesgo: number;
+  casos: number;
+  buckets: readonly {
+    nivel: 'amarillo' | 'rojo';
+    casos: number;
+    ahorro: number;
+    riesgo: number;
+  }[];
+}
+
 export interface CityInsightsSnapshot {
   city: string;
   province: string | null;
@@ -84,6 +96,7 @@ export interface CityInsightsSnapshot {
   scatterPoints: CityScatterPoint[];
   signalRadar: CitySignalRadar;
   nationalBenchmark: CityNationalBenchmark;
+  savings: CitySavingsSnapshot;
   narrative: string;
 }
 
@@ -94,6 +107,9 @@ const TIER_LABELS: Record<RiskTier, string> = {
 };
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+/** Matches backend TASA_RECUPERACION_AHORRO — used for city-level approximation. */
+const TASA_RECUPERACION_AHORRO = 0.6;
 
 export function citySlugEncode(city: string): string {
   return encodeURIComponent(city);
@@ -194,6 +210,7 @@ export function buildCityInsights(
   }));
   const signalRadar = buildSignalRadar(topSignals);
   const nationalBenchmark = buildNationalBenchmark(cityClaims, allClaims);
+  const savings = buildCitySavings(cityClaims);
   const avgScore = cityClaims.length
     ? Math.round(cityClaims.reduce((sum, claim) => sum + claim.score, 0) / cityClaims.length)
     : 0;
@@ -241,7 +258,38 @@ export function buildCityInsights(
     scatterPoints,
     signalRadar,
     nationalBenchmark,
+    savings,
     narrative,
+  };
+}
+
+function buildCitySavings(cityClaims: readonly Claim[]): CitySavingsSnapshot {
+  const buckets = {
+    amarillo: { casos: 0, ahorro: 0, riesgo: 0 },
+    rojo: { casos: 0, ahorro: 0, riesgo: 0 },
+  };
+
+  for (const claim of cityClaims) {
+    if (claim.nivel !== 'amarillo' && claim.nivel !== 'rojo') continue;
+    const riesgo = claim.monto_reclamado;
+    const ahorro = riesgo * (claim.score / 100) * TASA_RECUPERACION_AHORRO;
+    buckets[claim.nivel].casos += 1;
+    buckets[claim.nivel].riesgo += riesgo;
+    buckets[claim.nivel].ahorro += ahorro;
+  }
+
+  const tierBuckets = (['rojo', 'amarillo'] as const).map((nivel) => ({
+    nivel,
+    casos: buckets[nivel].casos,
+    ahorro: Math.round(buckets[nivel].ahorro),
+    riesgo: Math.round(buckets[nivel].riesgo),
+  }));
+
+  return {
+    totalAhorro: Math.round(tierBuckets.reduce((sum, bucket) => sum + bucket.ahorro, 0)),
+    totalRiesgo: Math.round(tierBuckets.reduce((sum, bucket) => sum + bucket.riesgo, 0)),
+    casos: tierBuckets.reduce((sum, bucket) => sum + bucket.casos, 0),
+    buckets: tierBuckets,
   };
 }
 
