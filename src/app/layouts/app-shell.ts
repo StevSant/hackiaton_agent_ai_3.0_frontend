@@ -16,11 +16,17 @@ import { SidebarNav } from './sidebar-nav';
       <!-- Mobile hamburger: opens the sidebar as a drawer below md -->
       <button
         type="button"
-        class="md:hidden fixed top-3 left-3 z-30 w-10 h-10 rounded-md bg-surface border border-line shadow-pop grid place-items-center text-ink-2 hover:text-ink hover:bg-hover"
+        class="md:hidden fixed z-30 grid place-items-center bg-surface border border-line shadow-pop text-ink-2 hover:text-ink hover:bg-hover"
+        [class.top-3]="!fullBleed()"
+        [class.left-3]="!fullBleed()"
+        [class.w-10]="!fullBleed()"
+        [class.h-10]="!fullBleed()"
+        [class.rounded-md]="!fullBleed()"
+        [class.centinela-shell-menu--fullbleed]="fullBleed()"
         (click)="sidebarOpen.set(true)"
         aria-label="Abrir menú"
       >
-        <ui-icon name="menu" [size]="20" />
+        <ui-icon name="menu" [size]="fullBleed() ? 18 : 20" />
       </button>
 
       <!-- Drawer backdrop -->
@@ -53,7 +59,7 @@ import { SidebarNav } from './sidebar-nav';
         </main>
       } @else {
         <main class="flex-1 md:flex-initial min-h-0 overflow-y-auto scroll-pretty centinela-main">
-          <div class="max-w-page mx-auto px-4 md:px-8 pt-14 md:pt-8 pb-24">
+          <div class="max-w-page mx-auto px-4 md:px-8 pt-14 md:pt-8 pb-24 min-w-0">
             <router-outlet />
           </div>
         </main>

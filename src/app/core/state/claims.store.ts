@@ -193,6 +193,21 @@ export class ClaimsStore {
     return this._detailLoadedIds().has(id);
   }
 
+  /** Warm the detail cache without blocking UI — skips ids already loading or loaded. */
+  prefetchDetail(id: string | null | undefined): void {
+    if (!id || this._detailLoadedIds().has(id) || this._detailLoads.has(id)) return;
+    void this.loadDetail(id);
+  }
+
+  prefetchNeighborDetails(orderedIds: readonly string[], currentId: string, radius = 1): void {
+    const index = orderedIds.indexOf(currentId);
+    if (index === -1) return;
+    for (let offset = 1; offset <= radius; offset++) {
+      this.prefetchDetail(orderedIds[index - offset]);
+      this.prefetchDetail(orderedIds[index + offset]);
+    }
+  }
+
   private fetchDetail(id: string): Promise<Claim | null> {
     const promise = (async (): Promise<Claim | null> => {
       try {

@@ -4,6 +4,7 @@ import { Button } from '@shared/ui/button';
 import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
+import { PageHeader } from '@shared/ui/page-header';
 import {
   PROVIDER_EXPORT_COLUMNS,
   RAMOS,
@@ -36,29 +37,27 @@ const GRAPH_MAX_NODES = 15;
     ExportModal,
     Icon,
     KpiSmall,
+    PageHeader,
     NetworkGraph,
     ProviderRanking,
     RamoDistributionCard,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-start justify-between gap-4 py-2 pb-5">
-      <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">Red de proveedores</h1>
-        <p class="text-ink-3 text-[13.5px] m-0 max-w-2xl">
-          Ranking de proveedores por concentración de alertas, montos y patrones cruzados.
-        </p>
-      </div>
+    <ui-page-header title="Red de proveedores">
+      <p class="centinela-page-header__desc" ngProjectAs="[description]">
+        Ranking de proveedores por concentración de alertas, montos y patrones cruzados.
+      </p>
       <ui-button
+        ngProjectAs="[actions]"
         variant="secondary"
-        class="shrink-0"
         [disabled]="filteredProviders().length === 0"
         (click)="exportOpen.set(true)"
       >
         <ui-icon name="download" [size]="14" />
         Exportar ranking
       </ui-button>
-    </div>
+    </ui-page-header>
 
     <div class="flex flex-wrap items-center gap-2 mb-4">
       <span class="text-[11.5px] uppercase tracking-wide text-ink-3 mr-1">Ramo</span>
@@ -91,7 +90,7 @@ const GRAPH_MAX_NODES = 15;
       }
     </div>
 
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+    <div class="centinela-kpi-row">
       <ui-kpi-small label="Proveedores activos" [value]="filteredStats().total" icon="work" />
       <ui-kpi-small label="En lista restrictiva" [value]="filteredStats().restrictiva" icon="warning" tone="red" />
       <ui-kpi-small label="Alertas concentradas" [value]="filteredStats().alertas" icon="flag" tone="yellow" />

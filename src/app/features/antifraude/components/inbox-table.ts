@@ -41,7 +41,7 @@ interface InboxRowVm {
               </td>
               <td>
                 <div class="flex items-center gap-2">
-                  <ui-icon [name]="ramoIcon(vm.row.ramo)" [size]="16" />
+                  <ui-icon [name]="ramoIcon(vm.row.ramo)" [cacheKey]="vm.row.claim_id" [size]="16" />
                   <div>
                     <div class="font-mono text-[12px] text-ink-2">{{ vm.row.claim_id }}</div>
                     <div class="text-[11.5px] text-ink-3">{{ ramoLabel(vm.row.ramo) }} · {{ vm.row.asegurado }}</div>

@@ -15,7 +15,7 @@ type KpiTone = 'default' | 'red' | 'yellow' | 'brand';
     >
       <div class="centinela-kpi-card__label flex items-center gap-2 shrink-0">
         <span
-          class="centinela-kpi-card__icon w-8 h-8 rounded-[10px] grid place-items-center shrink-0"
+          class="centinela-kpi-card__icon grid place-items-center shrink-0"
           [style.background]="bg()"
           [style.color]="fg()"
         >
@@ -23,7 +23,7 @@ type KpiTone = 'default' | 'red' | 'yellow' | 'brand';
         </span>
         {{ label() }}
       </div>
-      <div class="flex-1 flex items-end pt-3">
+      <div class="centinela-kpi-card__body flex-1 flex items-end">
         <span class="centinela-kpi-card__value">{{ value() }}</span>
       </div>
     </div>

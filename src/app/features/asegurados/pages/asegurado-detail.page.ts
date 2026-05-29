@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AseguradosStore } from '@core/state/asegurados.store';
+import { AseguradoNavigationStore } from '@core/state/asegurado-navigation.store';
+import { ClaimNavigationStore } from '@core/state/claim-navigation.store';
 import { ClaimsStore } from '@core/state/claims.store';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
@@ -9,7 +11,7 @@ import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonCard } from '@shared/ui/skeleton-card';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { formatMoney, initials } from '@shared/utils';
+import { formatMoney, initials, navigateToClaimDetail, bindDetailKeyboardNav, bindRecordSwapPulse, scrollAppMainToTop } from '@shared/utils';
 import { AseguradoClaimsList } from '../components/asegurado-claims-list';
 
 @Component({
@@ -18,27 +20,57 @@ import { AseguradoClaimsList } from '../components/asegurado-claims-list';
   imports: [Button, Icon, KpiSmall, Pagination, SkeletonCard, SkeletonTable, AseguradoClaimsList],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-center gap-2 mb-3.5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">
       <button
         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[13px] text-ink-2 hover:bg-hover hover:text-ink"
         (click)="back()"
       >
         <ui-icon name="arrow_back" [size]="14" /> Volver a asegurados
       </button>
+      @if (aseguradoNav().total > 1) {
+        <nav class="centinela-record-nav" aria-label="Navegación entre asegurados">
+          <button
+            type="button"
+            class="centinela-record-nav__btn"
+            [disabled]="!aseguradoNav().prevId"
+            (click)="goToAsegurado(aseguradoNav().prevId)"
+            aria-label="Asegurado anterior"
+          >
+            <ui-icon name="chevron_left" [size]="16" />
+            <span class="hidden sm:inline">Anterior</span>
+          </button>
+          <span class="centinela-record-nav__count" [attr.data-swap]="swapTick()">
+            {{ aseguradoNav().position }}/{{ aseguradoNav().total }}
+          </span>
+          <button
+            type="button"
+            class="centinela-record-nav__btn"
+            [disabled]="!aseguradoNav().nextId"
+            (click)="goToAsegurado(aseguradoNav().nextId)"
+            aria-label="Asegurado siguiente"
+          >
+            <span class="hidden sm:inline">Siguiente</span>
+            <ui-icon name="chevron_right" [size]="16" />
+          </button>
+        </nav>
+      }
     </div>
 
     @if (asegurado(); as a) {
-      <div class="bg-surface border border-line rounded-lg shadow-1 mb-5">
-        <div class="px-6 py-5 flex items-start gap-4">
+      <div class="bg-surface border border-line rounded-lg shadow-1 mb-5 overflow-hidden">
+        <div
+          class="centinela-detail-hero centinela-record-identity-panel"
+          [attr.data-swap]="swapTick()"
+        >
           <div
             class="w-14 h-14 rounded-full grid place-items-center font-semibold text-[16px] text-white shrink-0"
             [style.background]="a.color"
           >
             {{ initials(a.nombre) }}
           </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2.5 mb-1">
-              <h1 class="text-[20px] font-semibold tracking-tight m-0">{{ a.nombre }}</h1>
+          <div class="centinela-detail-hero__body">
+            <div class="flex flex-wrap items-center gap-2 mb-1.5">
+              <span class="centinela-record-id-chip">{{ a.id }}</span>
               @if (a.mora_actual) {
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-tier-red-soft text-tier-red-ink">
                   Mora actual
@@ -50,7 +82,8 @@ import { AseguradoClaimsList } from '../components/asegurado-claims-list';
                 </span>
               }
             </div>
-            <div class="text-[13px] text-ink-3">
+            <h1 class="centinela-record-primary-name">{{ a.nombre }}</h1>
+            <p class="centinela-record-secondary-line">
               {{ a.ciudad }}
               @if (a.antiguedad !== null) {
                 · {{ a.antiguedad }} meses con la aseguradora
@@ -58,10 +91,9 @@ import { AseguradoClaimsList } from '../components/asegurado-claims-list';
               @if (a.num_polizas > 0) {
                 · {{ a.num_polizas }} póliza{{ a.num_polizas === 1 ? '' : 's' }}
               }
-            </div>
-            <div class="text-[11.5px] text-ink-3 font-mono mt-1">{{ a.id }}</div>
+            </p>
           </div>
-          <div class="shrink-0 self-start">
+          <div class="centinela-detail-hero__actions">
             <ui-button (click)="askAI()">
               <ui-icon name="auto_awesome" [size]="14" />
               Preguntar a la IA
@@ -70,7 +102,7 @@ import { AseguradoClaimsList } from '../components/asegurado-claims-list';
         </div>
       </div>
 
-      <div class="grid grid-cols-4 gap-3 mb-5">
+      <div class="centinela-kpi-row">
         <ui-kpi-small label="Casos asociados" [value]="a.casos + ''" icon="folder" />
         <ui-kpi-small label="Alertas" [value]="a.alertas + ''" icon="warning" tone="yellow" />
         <ui-kpi-small label="Monto total" [value]="formatMoney(a.monto)" icon="payments" />
@@ -119,6 +151,9 @@ export class AseguradoDetailPage {
   protected readonly store = inject(AseguradosStore);
   protected readonly claimsStore = inject(ClaimsStore);
   private readonly router = inject(Router);
+  private readonly claimNavigation = inject(ClaimNavigationStore);
+  private readonly aseguradoNavigation = inject(AseguradoNavigationStore);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly asegurado = computed(() => this.store.findById(this.id()));
 
@@ -135,6 +170,7 @@ export class AseguradoDetailPage {
 
   protected readonly page = signal(0);
   protected readonly pageSize = signal(10);
+  protected readonly swapTick = signal(0);
 
   protected readonly pagedClaims = computed(() => {
     const start = this.page() * this.pageSize();
@@ -142,10 +178,23 @@ export class AseguradoDetailPage {
   });
 
   constructor() {
+    bindRecordSwapPulse(() => this.id(), this.swapTick);
+
     effect(() => {
       this.id();
       this.aseguradoClaims().length;
       this.page.set(0);
+    });
+
+    effect(() => {
+      const id = this.id();
+      if (!id) return;
+      scrollAppMainToTop();
+    });
+
+    bindDetailKeyboardNav(this.destroyRef, {
+      onPrev: () => this.goToAsegurado(this.aseguradoNav().prevId),
+      onNext: () => this.goToAsegurado(this.aseguradoNav().nextId),
     });
   }
 
@@ -155,8 +204,24 @@ export class AseguradoDetailPage {
     return Math.round((a.alertas / a.casos) * 100);
   });
 
+  protected readonly fallbackNavIds = computed(() =>
+    [...this.store.asegurados()]
+      .sort((left, right) => right.alertas - left.alertas || left.nombre.localeCompare(right.nombre, 'es'))
+      .map((asegurado) => asegurado.id),
+  );
+
+  protected readonly aseguradoNav = computed(() =>
+    this.aseguradoNavigation.resolve(this.id(), this.fallbackNavIds()),
+  );
+
   protected back(): void {
     void this.router.navigate(['/asegurados']);
+  }
+
+  protected goToAsegurado(id: string | null): void {
+    if (!id || id === this.id()) return;
+    scrollAppMainToTop();
+    void this.router.navigate(['/asegurados', id]);
   }
 
   protected askAI(): void {
@@ -170,7 +235,11 @@ export class AseguradoDetailPage {
   }
 
   protected openClaim(id: string): void {
-    void this.router.navigate(['/claims', id]);
+    const contextIds = [...this.aseguradoClaims()]
+      .sort((a, b) => b.score - a.score)
+      .map((claim) => claim.id);
+    this.claimsStore.prefetchNeighborDetails(contextIds, id, 1);
+    navigateToClaimDetail(this.router, this.claimNavigation, id, contextIds);
   }
 
   protected onPageChange(page: number): void {

@@ -19,88 +19,113 @@ import { RulesStore } from '@features/alerts/services/rules.store';
       align-items: center;
       gap: 0.625rem;
       padding: 0.75rem 0.875rem;
-      border: 1px solid rgba(148, 163, 184, 0.28);
+      border: 1.5px solid var(--mkt-auth-field-border);
       border-radius: 0.75rem;
-      background: rgba(51, 65, 85, 0.45);
+      background: var(--mkt-auth-field-bg);
       transition: border-color 200ms ease, box-shadow 200ms ease, background 200ms ease;
     }
 
     .auth-field:focus-within {
-      border-color: rgba(103, 232, 249, 0.55);
-      background: rgba(51, 65, 85, 0.62);
-      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.14);
+      border-color: var(--mkt-accent);
+      background: var(--mkt-auth-focus-bg);
+      box-shadow: 0 0 0 3px var(--mkt-form-field-focus);
     }
 
     .auth-field ui-icon {
-      color: rgba(103, 232, 249, 0.75);
+      color: var(--mkt-accent-ink);
     }
 
     .auth-glow-button {
+      background: var(--mkt-auth-btn-bg);
+      color: var(--mkt-auth-btn-ink);
+      border: 1px solid var(--mkt-auth-btn-glow-1);
+      font-weight: 600;
       box-shadow:
-        0 0 0 1px rgba(34, 211, 238, 0.4),
-        0 8px 32px -8px rgba(34, 211, 238, 0.45);
-      transition: transform 200ms ease, box-shadow 200ms ease;
+        0 0 0 1px var(--mkt-auth-btn-glow-1),
+        0 8px 32px -8px var(--mkt-auth-btn-glow-2);
+      transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
     }
 
     .auth-glow-button:hover:not(:disabled) {
       transform: translateY(-1px);
       box-shadow:
-        0 0 0 1px rgba(34, 211, 238, 0.55),
-        0 14px 38px -6px rgba(34, 211, 238, 0.55);
+        0 0 0 1px color-mix(in oklch, var(--mkt-auth-btn-glow-1) 140%, transparent),
+        0 14px 38px -6px color-mix(in oklch, var(--mkt-auth-btn-glow-2) 120%, transparent);
+    }
+
+    :host-context(html:not(.dark)) .auth-glow-button:hover:not(:disabled) {
+      filter: brightness(1.05);
     }
 
     .auth-demo-card {
-      background: rgba(51, 65, 85, 0.38);
-      border: 1px solid rgba(148, 163, 184, 0.22);
-      transition: border-color 220ms ease, background 220ms ease;
+      background: var(--mkt-auth-demo-bg);
+      border: 1.5px solid var(--mkt-auth-demo-border);
+      transition: border-color 220ms ease, background 220ms ease, box-shadow 220ms ease;
     }
 
     .auth-demo-card:hover {
-      border-color: rgba(103, 232, 249, 0.4);
-      background: rgba(51, 65, 85, 0.58);
+      border-color: var(--mkt-accent);
+      background: var(--mkt-auth-demo-hover-bg);
+      box-shadow: 0 8px 24px -16px rgba(15, 23, 42, 0.18);
+    }
+
+    :host-context(html.dark) .auth-demo-card:hover {
+      box-shadow: none;
     }
 
     .auth-demo-card--antifraude:hover {
-      border-color: rgba(251, 113, 133, 0.35);
+      border-color: #e11d48;
+    }
+
+    .auth-divider {
+      background: var(--mkt-auth-divider);
+    }
+
+    .auth-label {
+      color: var(--mkt-auth-label);
+    }
+
+    .auth-muted {
+      color: var(--mkt-auth-muted);
     }
   `],
   template: `
     <div>
       <div class="mb-6 flex items-center justify-between gap-3">
         <a routerLink="/"
-           class="inline-flex items-center gap-1.5 text-[12.5px] text-slate-300 hover:text-cyan-200 px-2 py-1 -ml-2 rounded-lg hover:bg-slate-600/30 transition-colors"
+           class="inline-flex items-center gap-1.5 text-[12.5px] text-mkt-ink-2 hover:text-mkt-accent px-2 py-1 -ml-2 rounded-lg hover:bg-mkt-accent-muted transition-colors"
            aria-label="Volver al inicio">
           <ui-icon name="arrow_back" [size]="14" />
           Volver al inicio
         </a>
 
         <div class="lg:hidden flex items-center gap-2">
-          <span class="w-8 h-8 rounded-lg grid place-items-center bg-cyan-400/12 border border-cyan-400/35">
+          <span class="w-8 h-8 rounded-lg grid place-items-center bg-mkt-accent-muted border border-mkt-accent-border">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z"
-                    stroke="#67e8f9" stroke-width="1.7" stroke-linejoin="round"/>
-              <circle cx="12" cy="12" r="3" stroke="#67e8f9" stroke-width="1.7"/>
+                    stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" class="text-mkt-accent"/>
+              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7" class="text-mkt-accent"/>
             </svg>
           </span>
-          <div class="font-semibold text-[14px] text-white">Centinela</div>
+          <div class="font-semibold text-[14px] text-mkt-ink">Centinela</div>
         </div>
       </div>
 
-      <div class="text-cyan-300/80 text-[11px] uppercase tracking-[0.18em] mb-2">Iniciar sesión</div>
-      <h1 class="text-[26px] sm:text-[28px] font-semibold tracking-tight text-white m-0 mb-1.5">Bienvenido de vuelta</h1>
-      <p class="text-slate-300 text-[14px] m-0 mb-6 leading-relaxed">
+      <div class="text-mkt-accent-ink text-[11px] uppercase tracking-[0.18em] mb-2 font-bold">Iniciar sesión</div>
+      <h1 class="text-[26px] sm:text-[28px] font-bold tracking-tight text-mkt-ink m-0 mb-1.5">Bienvenido de vuelta</h1>
+      <p class="auth-muted text-[14px] m-0 mb-6 leading-relaxed">
         Abre tu bandeja con correo corporativo o entra directo con una perspectiva demo.
       </p>
 
       <form (submit)="onSubmit($event)" class="flex flex-col gap-3.5">
         <div>
-          <label class="block text-[11px] text-slate-300 uppercase tracking-[0.14em] font-medium mb-1.5">Correo corporativo</label>
+          <label class="auth-label block text-[11px] uppercase tracking-[0.14em] font-bold mb-1.5">Correo corporativo</label>
           <div class="auth-field">
             <ui-icon name="mail" [size]="16" />
             <input type="email"
                    autocomplete="email"
                    placeholder="analista@demo.com"
-                   class="flex-1 bg-transparent border-0 outline-0 text-slate-100 text-[14px] min-w-0 placeholder:text-slate-500"
+                   class="flex-1 bg-transparent border-0 outline-0 text-mkt-ink text-[14px] font-medium min-w-0 placeholder:text-mkt-ink-4"
                    [value]="email()"
                    (input)="email.set($any($event.target).value)"
                    required />
@@ -109,20 +134,20 @@ import { RulesStore } from '@features/alerts/services/rules.store';
 
         <div>
           <div class="flex items-center justify-between mb-1.5">
-            <label class="block text-[11px] text-slate-300 uppercase tracking-[0.14em] font-medium">Contraseña</label>
-            <button type="button" class="text-[11px] text-cyan-300/80 hover:text-cyan-200">¿Olvidaste tu clave?</button>
+            <label class="auth-label block text-[11px] uppercase tracking-[0.14em] font-bold">Contraseña</label>
+            <button type="button" class="text-[11px] text-mkt-accent-ink hover:text-mkt-accent font-semibold">¿Olvidaste tu clave?</button>
           </div>
           <div class="auth-field">
             <ui-icon name="lock" [size]="16" />
             <input [type]="showPassword() ? 'text' : 'password'"
                    autocomplete="current-password"
                    placeholder="••••••••"
-                   class="flex-1 bg-transparent border-0 outline-0 text-slate-100 text-[14px] min-w-0 placeholder:text-slate-500"
+                   class="flex-1 bg-transparent border-0 outline-0 text-mkt-ink text-[14px] font-medium min-w-0 placeholder:text-mkt-ink-4"
                    [value]="password()"
                    (input)="password.set($any($event.target).value)"
                    required />
             <button type="button"
-                    class="text-slate-500 hover:text-slate-300"
+                    class="text-mkt-ink-4 hover:text-mkt-ink-2"
                     (click)="showPassword.set(!showPassword())"
                     [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
               <ui-icon [name]="showPassword() ? 'visibility_off' : 'visibility'" [size]="16" />
@@ -130,8 +155,8 @@ import { RulesStore } from '@features/alerts/services/rules.store';
           </div>
         </div>
 
-        <label class="flex items-center gap-2 text-[12.5px] text-slate-300 cursor-pointer select-none">
-          <input type="checkbox" class="accent-cyan-400 rounded" [checked]="remember()" (change)="remember.set($any($event.target).checked)" />
+        <label class="flex items-center gap-2 text-[12.5px] auth-muted font-medium cursor-pointer select-none">
+          <input type="checkbox" class="accent-mkt-accent rounded" [checked]="remember()" (change)="remember.set($any($event.target).checked)" />
           Mantener sesión en este dispositivo
         </label>
 
@@ -144,51 +169,51 @@ import { RulesStore } from '@features/alerts/services/rules.store';
 
         <button type="submit"
                 [disabled]="auth.loading()"
-                class="auth-glow-button inline-flex items-center justify-center gap-2 w-full text-[14px] font-medium text-[#05070d] bg-cyan-300 px-5 py-3 rounded-xl disabled:opacity-60 disabled:cursor-not-allowed">
+                class="auth-glow-button inline-flex items-center justify-center gap-2 w-full text-[14px] px-5 py-3 rounded-xl disabled:opacity-60 disabled:cursor-not-allowed">
           <ui-icon name="login" [size]="14" />
           {{ auth.loading() ? 'Verificando…' : 'Iniciar sesión' }}
         </button>
 
         <div class="flex items-center gap-2 my-1">
-          <div class="flex-1 h-px bg-slate-700/60"></div>
-          <span class="text-[10px] text-slate-400 uppercase tracking-[0.14em]">Demo · elige perspectiva</span>
-          <div class="flex-1 h-px bg-slate-700/60"></div>
+          <div class="flex-1 h-px auth-divider"></div>
+          <span class="text-[10px] auth-muted uppercase tracking-[0.14em] font-semibold">Demo · elige perspectiva</span>
+          <div class="flex-1 h-px auth-divider"></div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <button type="button"
                   class="auth-demo-card flex items-center gap-2.5 text-left px-3 py-3 rounded-xl"
                   (click)="onDemo('analista')">
-            <span class="w-8 h-8 rounded-full shrink-0 grid place-items-center bg-cyan-400/12 border border-cyan-400/30 text-cyan-200">
+            <span class="w-8 h-8 rounded-full shrink-0 grid place-items-center bg-mkt-accent-muted border border-mkt-accent-border text-mkt-accent">
               <ui-icon name="badge" [size]="15" />
             </span>
             <span class="flex-1 leading-tight min-w-0">
-              <span class="block text-[13px] font-medium text-white">Analista de siniestros</span>
-              <span class="block text-[11px] text-slate-300 mt-0.5 truncate">Ana Lema · triaje</span>
+              <span class="block text-[13px] font-semibold text-mkt-ink">Analista de siniestros</span>
+              <span class="block text-[11px] auth-muted mt-0.5 truncate">Ana Lema · triaje</span>
             </span>
           </button>
 
           <button type="button"
                   class="auth-demo-card auth-demo-card--antifraude flex items-center gap-2.5 text-left px-3 py-3 rounded-xl"
                   (click)="onDemo('antifraude')">
-            <span class="w-8 h-8 rounded-full shrink-0 grid place-items-center bg-rose-400/12 border border-rose-400/30 text-rose-200">
+            <span class="w-8 h-8 rounded-full shrink-0 grid place-items-center bg-rose-400/12 border border-rose-400/30 text-rose-500 dark:text-rose-200">
               <ui-icon name="shield_person" [size]="15" />
             </span>
             <span class="flex-1 leading-tight min-w-0">
-              <span class="block text-[13px] font-medium text-white">Especialista antifraude</span>
-              <span class="block text-[11px] text-slate-300 mt-0.5 truncate">Lucía Vélez · dictamen</span>
+              <span class="block text-[13px] font-semibold text-mkt-ink">Especialista antifraude</span>
+              <span class="block text-[11px] auth-muted mt-0.5 truncate">Lucía Vélez · dictamen</span>
             </span>
           </button>
         </div>
 
-        <p class="text-[11px] text-slate-400 text-center mt-0.5">
+        <p class="text-[11px] auth-muted text-center mt-0.5">
           Puedes cambiar de perspectiva desde el panel lateral.
         </p>
       </form>
 
-      <p class="text-[11px] text-slate-400 mt-5 leading-relaxed">
+      <p class="text-[11px] auth-muted mt-5 leading-relaxed">
         Prototipo Centinela — autenticación JWT local. Credenciales demo en
-        <code class="font-mono text-slate-400">AUTH_SEED_USERS</code> del backend.
+        <code class="font-mono text-mkt-ink-3 bg-mkt-auth-field-bg px-1 py-0.5 rounded">AUTH_SEED_USERS</code> del backend.
       </p>
     </div>
   `,

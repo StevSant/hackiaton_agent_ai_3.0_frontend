@@ -11,6 +11,8 @@ import {
 } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 
+import { ThemeToggle } from '@shared/ui/theme-toggle';
+
 interface AuthOrbitAgent {
   id: string;
   name: string;
@@ -32,26 +34,30 @@ interface AuthOrbitAgent {
 @Component({
   selector: 'auth-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink],
+  imports: [RouterOutlet, RouterLink, ThemeToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [`
     :host {
       display: block;
-      background: #182338;
-      color: #e2e8f0;
+      background: var(--mkt-bg);
+      color: var(--mkt-ink);
       font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
     }
 
+    .auth-shell-grid {
+      background: var(--mkt-bg);
+    }
+
     @media (min-width: 1024px) {
-      :host {
-        background: #05070d;
+      .auth-shell-grid {
+        background: var(--mkt-bg-deep);
       }
     }
 
     .auth-cyber-grid {
       background-image:
-        linear-gradient(rgba(59, 130, 246, 0.07) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(59, 130, 246, 0.07) 1px, transparent 1px);
+        linear-gradient(var(--mkt-grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--mkt-grid-line) 1px, transparent 1px);
       background-size: 56px 56px;
       mask-image: radial-gradient(ellipse 80% 60% at 50% 42%, black 38%, transparent 95%);
       -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 42%, black 38%, transparent 95%);
@@ -59,39 +65,59 @@ interface AuthOrbitAgent {
 
     .auth-cyber-haze {
       background:
-        radial-gradient(50rem 32rem at 50% 38%, rgba(34, 211, 238, 0.16) 0%, transparent 65%),
-        radial-gradient(36rem 24rem at 20% 80%, rgba(59, 130, 246, 0.12) 0%, transparent 65%);
+        radial-gradient(50rem 32rem at 50% 38%, var(--mkt-haze-1) 0%, transparent 65%),
+        radial-gradient(36rem 24rem at 20% 80%, var(--mkt-haze-2) 0%, transparent 65%);
     }
 
     .auth-panel-main {
-      background: linear-gradient(165deg, #162033 0%, #1c2a42 42%, #182338 100%);
-      border-left: 1px solid rgba(148, 163, 184, 0.1);
+      background: var(--mkt-panel);
+      border-left: 1px solid var(--mkt-border-subtle);
     }
 
     .auth-panel-haze {
       background:
-        radial-gradient(42rem 28rem at 70% 20%, rgba(34, 211, 238, 0.1) 0%, transparent 62%),
-        radial-gradient(36rem 24rem at 20% 90%, rgba(148, 163, 184, 0.08) 0%, transparent 65%);
+        radial-gradient(42rem 28rem at 70% 20%, var(--mkt-haze-1) 0%, transparent 62%),
+        radial-gradient(36rem 24rem at 20% 90%, color-mix(in oklch, var(--mkt-ink-3) 12%, transparent) 0%, transparent 65%);
     }
 
     .auth-panel-grid {
       background-image:
-        linear-gradient(rgba(148, 163, 184, 0.09) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(148, 163, 184, 0.09) 1px, transparent 1px);
+        linear-gradient(color-mix(in oklch, var(--mkt-ink-3) 16%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in oklch, var(--mkt-ink-3) 16%, transparent) 1px, transparent 1px);
       background-size: 48px 48px;
       mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, black 30%, transparent 92%);
       -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, black 30%, transparent 92%);
     }
 
     .auth-form-shell {
-      background: linear-gradient(180deg, rgba(30, 41, 59, 0.72) 0%, rgba(23, 33, 51, 0.82) 100%);
-      border: 1px solid rgba(148, 163, 184, 0.22);
-      box-shadow:
-        0 0 0 1px rgba(15, 23, 42, 0.35),
-        0 24px 64px -32px rgba(0, 0, 0, 0.55),
-        0 0 80px -40px rgba(34, 211, 238, 0.12);
+      background: var(--mkt-form-shell);
+      border: 1px solid var(--mkt-auth-shell-border);
+      box-shadow: var(--mkt-auth-shell-shadow);
       backdrop-filter: blur(12px);
     }
+
+    .auth-orbit-ring circle {
+      stroke: var(--mkt-eye-ring-stroke);
+    }
+
+    .auth-satellite-label {
+      display: block;
+      margin-top: 4px;
+      text-align: center;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--mkt-ink-2);
+    }
+
+    :host-context(html:not(.dark)) .auth-satellite-label--centinela { color: #5b21b6; }
+    :host-context(html:not(.dark)) .auth-satellite-label--vigia { color: #b45309; }
+    :host-context(html:not(.dark)) .auth-satellite-label--rastreador { color: #be123c; }
+
+    :host-context(html.dark) .auth-satellite-label--centinela { color: #a78bfa; }
+    :host-context(html.dark) .auth-satellite-label--vigia { color: #fbbf24; }
+    :host-context(html.dark) .auth-satellite-label--rastreador { color: #fb7185; }
 
     .auth-orbit-stage {
       width: 100%;
@@ -142,18 +168,16 @@ interface AuthOrbitAgent {
       50% { transform: translateY(-3px); }
     }
 
-    .auth-satellite-label {
-      display: block;
-      margin-top: 4px;
-      text-align: center;
-      font-size: 9px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: rgba(148, 163, 184, 0.85);
-    }
-
     .auth-eye-wrap {
       filter: drop-shadow(0 0 40px rgba(34, 211, 238, 0.28));
+    }
+
+    .auth-eye-stroke {
+      stroke: var(--mkt-eye-frame-stroke);
+    }
+
+    .auth-eye-stroke-soft {
+      stroke: var(--mkt-eye-ring-stroke);
     }
 
     .auth-iris-ring { animation: authIrisPulse 3.4s ease-in-out infinite; }
@@ -261,7 +285,7 @@ interface AuthOrbitAgent {
     }
   `],
   template: `
-    <div class="min-h-screen grid lg:grid-cols-[1.05fr_1fr] bg-[#182338] lg:bg-[#05070d]">
+    <div class="auth-shell-grid min-h-screen grid lg:grid-cols-[1.05fr_1fr]">
 
       <!-- Left — cyber eye + orbiting agents (desktop) -->
       <aside class="hidden lg:flex relative min-h-screen overflow-hidden flex-col">
@@ -270,17 +294,17 @@ interface AuthOrbitAgent {
 
         <div class="relative z-10 px-10 xl:px-12 py-8">
           <a routerLink="/" class="inline-flex items-center gap-2.5 w-fit">
-            <span class="w-9 h-9 rounded-lg grid place-items-center bg-cyan-400/12 border border-cyan-400/40 shadow-[0_0_18px_-4px_rgba(34,211,238,0.55)]">
+            <span class="w-9 h-9 rounded-lg grid place-items-center bg-mkt-accent-muted border border-mkt-accent-border shadow-[0_0_18px_-4px_var(--mkt-glow)] text-mkt-accent">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Z"
-                      stroke="#67e8f9" stroke-width="1.7" stroke-linejoin="round"/>
-                <circle cx="12" cy="12" r="3" stroke="#67e8f9" stroke-width="1.7"/>
-                <circle cx="12" cy="12" r="1.2" fill="#67e8f9"/>
+                      stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/>
+                <circle cx="12" cy="12" r="1.2" fill="currentColor"/>
               </svg>
             </span>
             <div class="leading-tight">
-              <div class="text-white font-semibold tracking-tight text-[15px]">Centinela</div>
-              <div class="text-cyan-300/70 text-[10px] uppercase tracking-[0.18em]">Alertas inteligentes</div>
+              <div class="text-mkt-ink font-semibold tracking-tight text-[15px]">Centinela</div>
+              <div class="text-mkt-accent-ink text-[10px] uppercase tracking-[0.18em] font-semibold">Alertas inteligentes</div>
             </div>
           </a>
         </div>
@@ -289,7 +313,7 @@ interface AuthOrbitAgent {
           <div class="auth-orbit-stage relative mx-auto">
 
             <svg class="absolute inset-0 w-full h-full pointer-events-none auth-orbit-ring" viewBox="0 0 400 400" aria-hidden="true">
-              <circle cx="200" cy="200" r="168" fill="none" stroke="rgba(103,232,249,0.18)" stroke-width="1" stroke-dasharray="4 7"/>
+              <circle cx="200" cy="200" r="168" fill="none" stroke-width="1" stroke-dasharray="4 7"/>
             </svg>
 
             @for (agent of orbitAgents; track agent.id) {
@@ -316,7 +340,7 @@ interface AuthOrbitAgent {
                       }
                     </g>
                     <path d="M18 50 Q50 22 82 50 Q50 78 18 50 Z"
-                          fill="#070b14"
+                          fill="var(--mkt-eye-socket)"
                           [attr.stroke]="agent.accent"
                           stroke-width="1.3"
                           stroke-opacity="0.75"/>
@@ -330,16 +354,16 @@ interface AuthOrbitAgent {
                         <circle [attr.cx]="agent.highlightX" [attr.cy]="agent.highlightY" r="1.8" fill="white" opacity="0.62"/>
                       </g>
                       @if (agent.lidPath) {
-                        <path [attr.d]="agent.lidPath" fill="#070b14" class="auth-mini-lid" [style.animation-delay]="agent.breatheDelay"/>
+                        <path [attr.d]="agent.lidPath" fill="var(--mkt-eye-socket)" class="auth-mini-lid" [style.animation-delay]="agent.breatheDelay"/>
                       }
                       <path d="M18 50 Q50 22 82 50 Q50 78 18 50 Z"
-                            fill="#05070d"
+                            fill="var(--mkt-eye-lid)"
                             class="auth-mini-blink"
                             [style.animation-delay]="agent.blinkDelay"/>
                     </g>
                   </svg>
                 </div>
-                <span class="auth-satellite-label" [style.color]="agent.accent">{{ agent.name }}</span>
+                <span [class]="'auth-satellite-label auth-satellite-label--' + agent.id">{{ agent.name }}</span>
               </div>
             }
 
@@ -364,17 +388,17 @@ interface AuthOrbitAgent {
                     </filter>
                   </defs>
 
-                  <g class="auth-ray-scan" stroke="rgba(103, 232, 249, 0.7)" stroke-width="1.6" fill="none">
+                  <g class="auth-ray-scan auth-eye-stroke" stroke-width="1.6" fill="none">
                     <circle cx="200" cy="200" r="184" stroke-dasharray="2 18"/>
                   </g>
 
-                  <circle cx="200" cy="200" r="190" fill="none" stroke="rgba(103, 232, 249, 0.18)" stroke-width="1"/>
+                  <circle cx="200" cy="200" r="190" fill="none" class="auth-eye-stroke-soft" stroke-width="1"/>
                   <polygon points="200,46 320,116 320,284 200,354 80,284 80,116"
-                           fill="none" stroke="rgba(103,232,249,0.42)" stroke-width="1.4"/>
+                           fill="none" class="auth-eye-stroke" stroke-width="1.4"/>
 
                   <path d="M70 200 Q200 70 330 200 Q200 330 70 200 Z"
-                        fill="rgba(7, 12, 23, 0.88)"
-                        stroke="rgba(103, 232, 249, 0.5)"
+                        fill="var(--mkt-eye-socket-fill)"
+                        class="auth-eye-stroke"
                         stroke-width="1.6"/>
 
                   <g class="auth-eye-iris" [attr.transform]="irisTransform()">
@@ -391,31 +415,34 @@ interface AuthOrbitAgent {
 
         <div class="relative z-10 px-10 xl:px-12 pb-8 space-y-4">
           <div>
-            <div class="text-cyan-300/80 text-[11px] uppercase tracking-[0.18em] mb-2">Arquitectura multiagente</div>
-            <p class="text-[22px] font-semibold text-white tracking-tight leading-snug max-w-[320px]">
+            <div class="text-mkt-accent-ink text-[11px] uppercase tracking-[0.18em] mb-2 font-semibold mkt-eyebrow">Arquitectura multiagente</div>
+            <p class="text-[22px] font-semibold text-mkt-ink tracking-tight leading-snug max-w-[320px]">
               Tres especialistas, un acceso
             </p>
-            <p class="text-slate-400 text-[14px] mt-2 max-w-[340px] leading-relaxed">
+            <p class="text-mkt-ink-2 text-[14px] mt-2 max-w-[340px] leading-relaxed font-medium">
               Vigía, Rastreador y Centinela orbitan el mismo núcleo. Ingresa y elige tu perspectiva.
             </p>
           </div>
           <div class="flex flex-wrap gap-2">
-            <span class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-slate-400 border border-slate-700/60 bg-slate-900/40 rounded-full px-2.5 py-1">
+            <span class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-mkt-ink-2 font-semibold border border-mkt-border bg-mkt-seal rounded-full px-2.5 py-1">
               <span class="w-1 h-1 rounded-full bg-emerald-400"></span>
               Datos sintéticos
             </span>
-            <span class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-slate-400 border border-slate-700/60 bg-slate-900/40 rounded-full px-2.5 py-1">
+            <span class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-mkt-ink-2 font-semibold border border-mkt-border bg-mkt-seal rounded-full px-2.5 py-1">
               <span class="w-1 h-1 rounded-full bg-emerald-400"></span>
               Decisión humana
             </span>
           </div>
         </div>
 
-        <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#05070d] to-transparent pointer-events-none"></div>
+        <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-mkt-deep to-transparent pointer-events-none"></div>
       </aside>
 
       <!-- Right — form -->
       <main class="auth-panel-main relative flex min-h-screen items-center justify-center p-6 sm:p-10 lg:p-14 overflow-hidden">
+        <div class="absolute top-5 right-5 sm:top-6 sm:right-6 z-20">
+          <ui-theme-toggle [compact]="true" />
+        </div>
         <div class="absolute inset-0 auth-panel-haze pointer-events-none" aria-hidden="true"></div>
         <div class="absolute inset-0 auth-panel-grid pointer-events-none" aria-hidden="true"></div>
         <div class="relative w-full max-w-[440px]">

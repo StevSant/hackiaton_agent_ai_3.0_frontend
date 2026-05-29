@@ -5,6 +5,7 @@ import { Button } from '@shared/ui/button';
 import { Chip } from '@shared/ui/chip';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
+import { PageHeader } from '@shared/ui/page-header';
 import { AdvancedFiltersModal } from '../components/advanced-filters-modal';
 import { AuditRow } from '../components/audit-row';
 import { ExportCsvModal, type ExportRequest } from '../components/export-csv-modal';
@@ -17,17 +18,14 @@ type Filter = 'todos' | AuditActor;
 @Component({
   selector: 'page-audit',
   standalone: true,
-  imports: [AdvancedFiltersModal, AuditRow, Button, Chip, ExportCsvModal, Icon, KpiSmall],
+  imports: [AdvancedFiltersModal, AuditRow, Button, Chip, ExportCsvModal, Icon, KpiSmall, PageHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-end justify-between gap-6 py-2 pb-6">
-      <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">Auditoría</h1>
-        <p class="text-ink-3 text-[13.5px] m-0">
-          Rastrea cada decisión: qué reglas se activaron, qué analista revisó el caso y qué citó la IA.
-        </p>
-      </div>
-      <div class="flex gap-2">
+    <ui-page-header title="Auditoría">
+      <p class="centinela-page-header__desc" ngProjectAs="[description]">
+        Rastrea cada decisión: qué reglas se activaron, qué analista revisó el caso y qué citó la IA.
+      </p>
+      <div ngProjectAs="[actions]" class="flex flex-wrap items-center gap-2">
         <ui-button (click)="filtersOpen.set(true)">
           <ui-icon name="filter_alt" [size]="14" />
           Filtros avanzados
@@ -37,22 +35,22 @@ type Filter = 'todos' | AuditActor;
           Exportar CSV
         </ui-button>
       </div>
-    </div>
+    </ui-page-header>
 
-    <div class="grid grid-cols-4 gap-3 mb-5">
+    <div class="centinela-kpi-row">
       <ui-kpi-small label="Eventos hoy" [value]="stats().hoy" icon="bolt" tone="brand" />
       <ui-kpi-small label="Escalamientos" [value]="stats().escalamientos" icon="flag" tone="red" />
       <ui-kpi-small label="Consultas a la IA" [value]="stats().consultas" icon="auto_awesome" tone="yellow" />
       <ui-kpi-small label="Acciones manuales" [value]="stats().manuales" icon="person" />
     </div>
 
-    <div class="bg-surface border border-line rounded-lg shadow-1">
-      <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
-        <div class="flex items-center gap-3.5">
+    <div class="bg-surface border border-line rounded-lg shadow-1 overflow-hidden">
+      <div class="centinela-panel-head">
+        <div class="centinela-panel-head__title">
           <h3 class="text-[13px] font-semibold m-0">Bitácora de eventos</h3>
           <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line">{{ filtered().length }} eventos</span>
         </div>
-        <div class="flex items-center gap-1.5">
+        <div class="centinela-panel-head__filters">
           <ui-chip [active]="filter() === 'todos'" (click)="filter.set('todos')">Todos</ui-chip>
           <ui-chip [active]="filter() === 'analista'" (click)="filter.set('analista')">
             <ui-icon name="person" [size]="11" />

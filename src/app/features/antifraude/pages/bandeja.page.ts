@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 
 import type { ClaimSummaryDto, InboxRowDto } from '@core/api/clients/claim.dto';
 import { AuthStore } from '@core/auth/auth.store';
+import { ClaimNavigationStore } from '@core/state/claim-navigation.store';
+import { ClaimsStore } from '@core/state/claims.store';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
@@ -10,7 +12,7 @@ import { PageHeader } from '@shared/ui/page-header';
 import { Pagination } from '@shared/ui/pagination';
 import { SegmentedTabs, type SegmentedTab } from '@shared/ui/segmented-tabs';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { formatDateTime, ramoIcon, ramoLabel } from '@shared/utils';
+import { formatDateTime, navigateToClaimDetail, ramoIcon, ramoLabel } from '@shared/utils';
 import { AntifraudeInboxStore } from '../services/antifraude-inbox.store';
 import { InboxTable } from '../components/inbox-table';
 
@@ -130,7 +132,7 @@ type TabKey = 'activos' | 'historico';
                       <tr (click)="openCase(h.id)">
                         <td>
                           <div class="flex items-center gap-2">
-                            <ui-icon [name]="ramoIcon(h.ramo)" [size]="16" />
+                            <ui-icon [name]="ramoIcon(h.ramo)" [cacheKey]="h.id" [size]="16" />
                             <div class="font-mono text-[12px] text-ink-2">{{ h.id }}</div>
                           </div>
                         </td>
@@ -161,6 +163,8 @@ export class BandejaPage {
   protected readonly store = inject(AntifraudeInboxStore);
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly claimNavigation = inject(ClaimNavigationStore);
+  private readonly claimsStore = inject(ClaimsStore);
 
   protected readonly tab = signal<TabKey>('activos');
   protected readonly page = signal<number>(0);
@@ -224,7 +228,12 @@ export class BandejaPage {
   }
 
   protected openCase(id: string): void {
-    void this.router.navigate(['/claims', id]);
+    const contextIds =
+      this.tab() === 'historico'
+        ? this.historicoRows().map((row) => row.id)
+        : this.activeRows().map((row) => row.claim_id);
+    navigateToClaimDetail(this.router, this.claimNavigation, id, contextIds);
+    this.claimsStore.prefetchNeighborDetails(contextIds, id, 2);
   }
 
   protected reload(): void {

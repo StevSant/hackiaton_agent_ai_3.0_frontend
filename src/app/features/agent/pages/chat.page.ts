@@ -70,15 +70,17 @@ function generateUuid(): string {
   template: `
     <div class="chat-page flex flex-col flex-1 min-h-0 h-full bg-surface">
       <header class="chat-panel__toolbar shrink-0">
-        <button
-          type="button"
-          class="chat-panel__tool-btn"
-          (click)="historyOpen.set(true)"
-          aria-label="Abrir historial de conversaciones"
-          title="Historial"
-        >
-          <ui-icon name="history" [size]="18" />
-        </button>
+        <div class="chat-panel__toolbar-start">
+          <button
+            type="button"
+            class="chat-panel__tool-btn"
+            (click)="historyOpen.set(true)"
+            aria-label="Abrir historial de conversaciones"
+            title="Historial"
+          >
+            <ui-icon name="history" [size]="18" />
+          </button>
+        </div>
 
         <div class="chat-panel__toolbar-actions">
           <button

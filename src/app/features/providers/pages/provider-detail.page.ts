@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { ClaimsStore } from '@core/state/claims.store';
+import { ClaimNavigationStore } from '@core/state/claim-navigation.store';
+import { ProviderNavigationStore } from '@core/state/provider-navigation.store';
 import { ProvidersStore } from '@core/state/providers.store';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
@@ -9,7 +11,7 @@ import { KpiSmall } from '@shared/ui/kpi-small';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonCard } from '@shared/ui/skeleton-card';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { formatMoney, initials } from '@shared/utils';
+import { formatMoney, initials, navigateToClaimDetail, bindDetailKeyboardNav, bindRecordSwapPulse, scrollAppMainToTop } from '@shared/utils';
 import { ProviderClaimsList } from '../components/provider-claims-list';
 
 @Component({
@@ -18,37 +20,67 @@ import { ProviderClaimsList } from '../components/provider-claims-list';
   imports: [Button, Icon, KpiSmall, Pagination, SkeletonCard, SkeletonTable, ProviderClaimsList],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-center gap-2 mb-3.5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">
       <button
         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[13px] text-ink-2 hover:bg-hover hover:text-ink"
         (click)="back()"
       >
         <ui-icon name="arrow_back" [size]="14" /> Volver a proveedores
       </button>
+      @if (providerNav().total > 1) {
+        <nav class="centinela-record-nav" aria-label="Navegación entre proveedores">
+          <button
+            type="button"
+            class="centinela-record-nav__btn"
+            [disabled]="!providerNav().prevId"
+            (click)="goToProvider(providerNav().prevId)"
+            aria-label="Proveedor anterior"
+          >
+            <ui-icon name="chevron_left" [size]="16" />
+            <span class="hidden sm:inline">Anterior</span>
+          </button>
+          <span class="centinela-record-nav__count" [attr.data-swap]="swapTick()">
+            {{ providerNav().position }}/{{ providerNav().total }}
+          </span>
+          <button
+            type="button"
+            class="centinela-record-nav__btn"
+            [disabled]="!providerNav().nextId"
+            (click)="goToProvider(providerNav().nextId)"
+            aria-label="Proveedor siguiente"
+          >
+            <span class="hidden sm:inline">Siguiente</span>
+            <ui-icon name="chevron_right" [size]="16" />
+          </button>
+        </nav>
+      }
     </div>
 
     @if (provider(); as p) {
-      <div class="bg-surface border border-line rounded-lg shadow-1 mb-5">
-        <div class="px-6 py-5 flex items-start gap-4">
+      <div class="bg-surface border border-line rounded-lg shadow-1 mb-5 overflow-hidden">
+        <div
+          class="centinela-detail-hero centinela-record-identity-panel"
+          [attr.data-swap]="swapTick()"
+        >
           <div
             class="w-14 h-14 rounded-lg grid place-items-center font-semibold text-[16px] text-white shrink-0"
             [style.background]="p.color"
           >
             {{ initials(p.nombre) }}
           </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2.5 mb-1">
-              <h1 class="text-[20px] font-semibold tracking-tight m-0">{{ p.nombre }}</h1>
+          <div class="centinela-detail-hero__body">
+            <div class="flex flex-wrap items-center gap-2 mb-1.5">
+              <span class="centinela-record-id-chip">{{ p.id }}</span>
               @if (p.listaRestrictiva) {
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-tier-red-soft text-tier-red-ink">
                   Lista restrictiva
                 </span>
               }
             </div>
-            <div class="text-[13px] text-ink-3">{{ p.tipo }} · {{ p.ciudad }}</div>
-            <div class="text-[11.5px] text-ink-3 font-mono mt-1">{{ p.id }}</div>
+            <h1 class="centinela-record-primary-name">{{ p.nombre }}</h1>
+            <p class="centinela-record-secondary-line">{{ p.tipo }} · {{ p.ciudad }}</p>
           </div>
-          <div class="shrink-0 self-start">
+          <div class="centinela-detail-hero__actions">
             <ui-button (click)="askAI()">
               <ui-icon name="auto_awesome" [size]="14" />
               Preguntar a la IA
@@ -57,7 +89,7 @@ import { ProviderClaimsList } from '../components/provider-claims-list';
         </div>
       </div>
 
-      <div class="grid grid-cols-4 gap-3 mb-5">
+      <div class="centinela-kpi-row">
         <ui-kpi-small label="Casos asociados" [value]="p.casos + ''" icon="folder" />
         <ui-kpi-small label="Alertas" [value]="p.alertas + ''" icon="warning" tone="yellow" />
         <ui-kpi-small label="Monto total" [value]="formatMoney(p.monto)" icon="payments" />
@@ -106,6 +138,9 @@ export class ProviderDetailPage {
   protected readonly providersStore = inject(ProvidersStore);
   protected readonly claimsStore = inject(ClaimsStore);
   private readonly router = inject(Router);
+  private readonly claimNavigation = inject(ClaimNavigationStore);
+  private readonly providerNavigation = inject(ProviderNavigationStore);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly provider = computed(() => this.providersStore.findById(this.id()));
 
@@ -124,6 +159,7 @@ export class ProviderDetailPage {
 
   protected readonly page = signal(0);
   protected readonly pageSize = signal(10);
+  protected readonly swapTick = signal(0);
 
   protected readonly pagedClaims = computed(() => {
     const start = this.page() * this.pageSize();
@@ -131,12 +167,23 @@ export class ProviderDetailPage {
   });
 
   constructor() {
-    // Reset to the first page whenever the underlying provider (or its claim
-    // count) changes — otherwise a deep page number leaks across navigations.
+    bindRecordSwapPulse(() => this.id(), this.swapTick);
+
     effect(() => {
       this.id();
       this.providerClaims().length;
       this.page.set(0);
+    });
+
+    effect(() => {
+      const id = this.id();
+      if (!id) return;
+      scrollAppMainToTop();
+    });
+
+    bindDetailKeyboardNav(this.destroyRef, {
+      onPrev: () => this.goToProvider(this.providerNav().prevId),
+      onNext: () => this.goToProvider(this.providerNav().nextId),
     });
   }
 
@@ -146,8 +193,24 @@ export class ProviderDetailPage {
     return Math.round((p.alertas / p.casos) * 100);
   });
 
+  protected readonly fallbackNavIds = computed(() =>
+    [...this.providersStore.providers()]
+      .sort((left, right) => right.alertas - left.alertas || left.nombre.localeCompare(right.nombre, 'es'))
+      .map((provider) => provider.id),
+  );
+
+  protected readonly providerNav = computed(() =>
+    this.providerNavigation.resolve(this.id(), this.fallbackNavIds()),
+  );
+
   protected back(): void {
     void this.router.navigate(['/providers']);
+  }
+
+  protected goToProvider(id: string | null): void {
+    if (!id || id === this.id()) return;
+    scrollAppMainToTop();
+    void this.router.navigate(['/providers', id]);
   }
 
   protected askAI(): void {
@@ -161,7 +224,11 @@ export class ProviderDetailPage {
   }
 
   protected openClaim(id: string): void {
-    void this.router.navigate(['/claims', id]);
+    const contextIds = [...this.providerClaims()]
+      .sort((a, b) => b.score - a.score)
+      .map((claim) => claim.id);
+    this.claimsStore.prefetchNeighborDetails(contextIds, id, 1);
+    navigateToClaimDetail(this.router, this.claimNavigation, id, contextIds);
   }
 
   protected onPageChange(page: number): void {

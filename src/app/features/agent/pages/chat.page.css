@@ -22,16 +22,24 @@
 .chat-panel__toolbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 10px 12px;
+  min-height: 52px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in oklch, var(--bg-soft) 55%, var(--bg-elev));
+  box-sizing: border-box;
 }
 
+.chat-panel__toolbar-start,
 .chat-panel__toolbar-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 36px;
+}
+
+.chat-panel__toolbar-actions {
   margin-left: auto;
 }
 
@@ -39,14 +47,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: 36px;
   height: 36px;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--bg-elev);
   color: var(--ink-2);
   cursor: pointer;
   box-shadow: var(--shadow-1);
+  box-sizing: border-box;
+  vertical-align: middle;
   transition:
     transform 120ms ease,
     background 120ms ease,
@@ -173,8 +185,8 @@
 
 @media (max-width: 767px) {
   .chat-panel__toolbar {
-    /* Extra left padding so the floating shell hamburger (40px wide @ left-3) doesn't overlap the history button. */
-    padding: 8px 10px 8px 60px;
+    /* Room for the fixed shell hamburger (36px @ left 10px) + 8px gap. */
+    padding: 8px 10px 8px 54px;
   }
 }
 

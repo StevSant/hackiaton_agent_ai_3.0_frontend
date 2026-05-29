@@ -1,14 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 
 import { AuthStore } from '@core/auth/auth.store';
+import { ClaimNavigationStore } from '@core/state/claim-navigation.store';
 import { Button } from '@shared/ui/button';
 import { Icon } from '@shared/ui/icon';
 import { RiskBadge } from '@shared/ui/risk-badge';
 import { SkeletonCard } from '@shared/ui/skeleton-card';
-import { ramoIcon, ramoLabel, resolveClaimBackNavigation, insightsMapFocusQuery } from '@shared/utils';
+import { ramoIcon, ramoLabel, resolveClaimBackNavigation, insightsMapFocusQuery, bindDetailKeyboardNav, bindRecordSwapPulse, scrollAppMainToTop } from '@shared/utils';
 import { SummaryCanvas } from '../components/summary-canvas';
 import { AlertsList } from '../components/alerts-list';
 import { AnomalyIndicatorCard } from '../components/anomaly-indicator-card';
@@ -64,67 +65,106 @@ import { ProvidersStore } from '@core/state/providers.store';
   template: `
     @let c = claim();
     @if (c) {
-      <div class="flex items-center gap-2 mb-3.5">
-        <button
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[13px] text-ink-2 hover:bg-hover hover:text-ink"
-          (click)="back()"
-        >
-          <ui-icon name="arrow_back" [size]="14" /> {{ backLabel() }}
-        </button>
-        <span class="text-ink-3 text-[12.5px]">/</span>
-        <span class="font-mono text-[12.5px] whitespace-nowrap">{{ c.id }}</span>
+      <p class="sr-only" aria-live="polite">{{ swapAnnouncement() }}</p>
+
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">
+        <div class="flex items-center gap-2 min-w-0">
+          <button
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[13px] text-ink-2 hover:bg-hover hover:text-ink"
+            (click)="back()"
+          >
+            <ui-icon name="arrow_back" [size]="14" /> {{ backLabel() }}
+          </button>
+        </div>
+        @if (caseNav().total > 1) {
+          <nav class="centinela-record-nav" aria-label="Navegación entre casos">
+            <button
+              type="button"
+              class="centinela-record-nav__btn"
+              [disabled]="!caseNav().prevId"
+              (mouseenter)="prefetchCase(caseNav().prevId)"
+              (click)="goToCase(caseNav().prevId)"
+              aria-label="Caso anterior"
+            >
+              <ui-icon name="chevron_left" [size]="16" />
+              <span class="hidden sm:inline">Anterior</span>
+            </button>
+            <span class="centinela-record-nav__count" [attr.data-swap]="swapTick()">
+              {{ caseNav().position }}/{{ caseNav().total }}
+            </span>
+            <button
+              type="button"
+              class="centinela-record-nav__btn"
+              [disabled]="!caseNav().nextId"
+              (mouseenter)="prefetchCase(caseNav().nextId)"
+              (click)="goToCase(caseNav().nextId)"
+              aria-label="Caso siguiente"
+            >
+              <span class="hidden sm:inline">Siguiente</span>
+              <ui-icon name="chevron_right" [size]="16" />
+            </button>
+          </nav>
+        }
       </div>
 
-      <div class="flex items-start justify-between gap-6 pb-6">
-        <div class="flex-1">
-          <div class="flex items-center gap-2.5 mb-1.5">
-            <ui-icon [name]="ramoIcon(c.ramo)" [size]="18" />
-            <span
-              class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line"
-              >{{ ramoLabel(c.ramo) }}</span
-            >
-            <span
-              class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line"
-              >{{ c.estado }}</span
-            >
-            <ui-risk-badge [nivel]="c.nivel" />
+      <div class="bg-surface border border-line rounded-lg shadow-1 mb-5 overflow-hidden">
+        <div
+          class="centinela-detail-hero centinela-record-identity-panel"
+          [attr.data-swap]="swapTick()"
+        >
+          <div class="centinela-detail-hero__body">
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+              <span class="centinela-record-id-chip">{{ c.id }}</span>
+              <span
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line"
+              >
+                <ui-icon [name]="ramoIcon(c.ramo)" [cacheKey]="c.id" [size]="14" />
+                {{ ramoLabel(c.ramo) }}
+              </span>
+              <span
+                class="inline-flex items-center px-2 py-0.5 rounded-full text-[11.5px] bg-soft text-ink-2 border border-line"
+                >{{ c.estado }}</span
+              >
+              <ui-risk-badge [nivel]="c.nivel" />
+            </div>
+            <h1 class="centinela-record-primary-name">{{ c.asegurado }}</h1>
+            <p class="centinela-record-secondary-line">
+              <span class="text-ink-2 font-medium">{{ c.cobertura }}</span>
+              · {{ c.ciudad }} · ocurrió el {{ c.fecha_ocurrencia }} · reportado
+              {{ c.fecha_reporte }}
+            </p>
           </div>
-          <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1.5">{{ c.cobertura }}</h1>
-          <p class="text-ink-3 text-[13.5px] m-0">
-            {{ c.asegurado }} · {{ c.ciudad }} · ocurrió el {{ c.fecha_ocurrencia }} · reportado
-            {{ c.fecha_reporte }}
-          </p>
-        </div>
-        <div class="flex flex-col items-end gap-2">
-          <div class="flex gap-2">
-            <ui-button [disabled]="reanalyzing()" (click)="reanalyze()">
-              <ui-icon name="autorenew" [size]="14" />
-              {{ reanalyzing() ? 'Re-analizando…' : 'Re-analizar caso' }}
-            </ui-button>
-            <ui-button (click)="askAI()">
-              <ui-icon name="auto_awesome" [size]="14" />
-              Preguntar a la IA
-            </ui-button>
-            <ui-button (click)="showOnMap()">
-              <ui-icon name="map" [size]="14" />
-              Mostrar en el mapa
-            </ui-button>
-            <ui-button (click)="exportPdf()">
-              <ui-icon name="download" [size]="14" />
-              PDF
-            </ui-button>
+          <div class="centinela-detail-hero__actions">
+            <div class="flex flex-wrap gap-2">
+              <ui-button [disabled]="reanalyzing()" (click)="reanalyze()">
+                <ui-icon name="autorenew" [size]="14" />
+                {{ reanalyzing() ? 'Re-analizando…' : 'Re-analizar caso' }}
+              </ui-button>
+              <ui-button (click)="askAI()">
+                <ui-icon name="auto_awesome" [size]="14" />
+                Preguntar a la IA
+              </ui-button>
+              <ui-button (click)="showOnMap()">
+                <ui-icon name="map" [size]="14" />
+                Mostrar en el mapa
+              </ui-button>
+              <ui-button (click)="exportPdf()">
+                <ui-icon name="download" [size]="14" />
+                PDF
+              </ui-button>
+            </div>
+            @if (roleCode(); as r) {
+              <claim-review-action-bar
+                [role]="r"
+                [currentUserId]="currentUserId()"
+                [review]="c.review"
+                (escalate)="onEscalate()"
+                (take)="onTake()"
+                (dictaminate)="dictamenOpen.set(true)"
+                (markRevisado)="onMarkRevisado()"
+              />
+            }
           </div>
-          @if (roleCode(); as r) {
-            <claim-review-action-bar
-              [role]="r"
-              [currentUserId]="currentUserId()"
-              [review]="c.review"
-              (escalate)="onEscalate()"
-              (take)="onTake()"
-              (dictaminate)="dictamenOpen.set(true)"
-              (markRevisado)="onMarkRevisado()"
-            />
-          }
         </div>
       </div>
 
@@ -155,8 +195,6 @@ import { ProvidersStore } from '@core/state/providers.store';
             />
           } @else {
             <div role="status" aria-label="Cargando análisis del siniestro" class="flex flex-col gap-5">
-              <ui-skeleton-card [bodyLines]="5" />
-              <ui-skeleton-card [bodyLines]="3" />
               <ui-skeleton-card [bodyLines]="4" />
             </div>
           }
@@ -206,10 +244,12 @@ export class ClaimDetailPage {
   readonly id = input.required<string>();
 
   private readonly claims = inject(ClaimsStore);
+  private readonly claimNavigation = inject(ClaimNavigationStore);
   private readonly providers = inject(ProvidersStore);
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
 
   private readonly returnTo = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('returnTo'))),
@@ -223,6 +263,7 @@ export class ClaimDetailPage {
   protected readonly activeAlert = signal<ClaimAlert | null>(null);
   protected readonly dictamenOpen = signal(false);
   protected readonly reanalyzing = signal(false);
+  protected readonly swapTick = signal(0);
 
   protected readonly claim = computed(() => this.claims.findById(this.id()));
   protected readonly detailLoaded = computed(() =>
@@ -230,13 +271,22 @@ export class ClaimDetailPage {
   );
 
   constructor() {
-    // Load the full detail (alertas, documentos, factores ML, similar) whenever
-    // the route id changes. The summary cached in the list only carries enough
-    // to render the table row.
+    bindRecordSwapPulse(() => this.id(), this.swapTick);
+
     effect(() => {
       const id = this.id();
       if (!id) return;
+
+      scrollAppMainToTop();
       void this.claims.loadDetail(id);
+
+      const orderedIds = this.claimNavigation.getOrderedIds(this.fallbackNavIds());
+      this.claims.prefetchNeighborDetails(orderedIds, id, 2);
+    });
+
+    bindDetailKeyboardNav(this.destroyRef, {
+      onPrev: () => this.goToCase(this.caseNav().prevId),
+      onNext: () => this.goToCase(this.caseNav().nextId),
     });
   }
 
@@ -256,8 +306,38 @@ export class ClaimDetailPage {
 
   protected readonly backLabel = computed(() => this.backNavigation().label);
 
+  protected readonly fallbackNavIds = computed(() =>
+    [...this.claims.claims()]
+      .sort((a, b) => b.score - a.score)
+      .map((claim) => claim.id),
+  );
+
+  protected readonly caseNav = computed(() =>
+    this.claimNavigation.resolve(this.id(), this.fallbackNavIds()),
+  );
+
+  protected readonly swapAnnouncement = computed(() => {
+    this.swapTick();
+    const claim = this.claim();
+    if (!claim) return '';
+    const nav = this.caseNav();
+    return `Caso ${claim.id}, ${claim.asegurado}. ${nav.position} de ${nav.total}.`;
+  });
+
   protected back(): void {
     void this.router.navigateByUrl(this.backNavigation().path);
+  }
+
+  protected goToCase(id: string | null): void {
+    if (!id || id === this.id()) return;
+    this.claims.prefetchDetail(id);
+    scrollAppMainToTop();
+    const queryParams = this.returnTo() ? { returnTo: this.returnTo()! } : undefined;
+    void this.router.navigate(['/claims', id], { queryParams });
+  }
+
+  protected prefetchCase(id: string | null): void {
+    this.claims.prefetchDetail(id);
   }
 
   protected askAI(): void {

@@ -6,15 +6,17 @@ import {
   type AseguradoUpdate,
 } from '@core/api/clients/asegurados.api';
 import { AseguradosStore } from '@core/state/asegurados.store';
+import { AseguradoNavigationStore } from '@core/state/asegurado-navigation.store';
 import type { Asegurado } from '@shared/models';
 import { Button } from '@shared/ui/button';
 import { Chip } from '@shared/ui/chip';
 import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
+import { PageHeader } from '@shared/ui/page-header';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { formatMoney } from '@shared/utils';
+import { formatMoney, navigateToAseguradoDetail } from '@shared/utils';
 import {
   AseguradoFormModal,
   type AseguradoFormValue,
@@ -37,6 +39,7 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
     ExportModal,
     Icon,
     KpiSmall,
+    PageHeader,
     Pagination,
     SkeletonTable,
     AseguradosTable,
@@ -44,14 +47,11 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-end justify-between gap-6 py-2 pb-6">
-      <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">Asegurados</h1>
-        <p class="text-ink-3 text-[13.5px] m-0">
-          Listado de personas aseguradas con su exposición y nivel de alertas acumuladas.
-        </p>
-      </div>
-      <div class="flex items-center gap-2 shrink-0">
+    <ui-page-header title="Asegurados">
+      <p class="centinela-page-header__desc" ngProjectAs="[description]">
+        Listado de personas aseguradas con su exposición y nivel de alertas acumuladas.
+      </p>
+      <div ngProjectAs="[actions]" class="flex flex-wrap items-center gap-2">
         <ui-button variant="primary" (click)="openCreate()">
           <ui-icon name="add" [size]="16" />
           Agregar asegurado
@@ -61,27 +61,26 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
           Exportar reporte
         </ui-button>
       </div>
-    </div>
+    </ui-page-header>
 
-    <div class="grid grid-cols-4 gap-3 mb-5">
+    <div class="centinela-kpi-row">
       <ui-kpi-small label="Total" [value]="stats().total + ''" icon="group" tone="brand" />
       <ui-kpi-small label="En mora" [value]="stats().mora + ''" icon="report" tone="red" />
       <ui-kpi-small label="Alertas acumuladas" [value]="stats().alertas + ''" icon="warning" tone="yellow" />
       <ui-kpi-small label="Monto total" [value]="formatMoney(stats().monto)" icon="payments" />
     </div>
 
-    <div class="bg-surface border border-line rounded-lg shadow-1 px-4 py-3 mb-4 flex items-center justify-between gap-4 flex-wrap">
-      <div class="flex items-center gap-2 flex-1 min-w-[260px]">
-        <ui-icon name="search" [size]="16" class="text-ink-3" />
+    <div class="centinela-list-toolbar">
+      <div class="centinela-list-toolbar__search">
+        <ui-icon name="search" [size]="16" class="text-ink-3 shrink-0" />
         <input
           type="search"
-          class="bg-transparent border-0 outline-0 text-[13.5px] flex-1 text-ink placeholder:text-ink-3"
           placeholder="Buscar por nombre, ciudad o segmento…"
           [value]="search()"
           (input)="search.set($any($event.target).value)"
         />
       </div>
-      <div class="flex items-center gap-1.5">
+      <div class="centinela-list-toolbar__filters">
         <ui-chip [active]="mora() === 'todos'" (click)="mora.set('todos')">Todos</ui-chip>
         <ui-chip [active]="mora() === 'mora'" (click)="mora.set('mora')">En mora</ui-chip>
         <ui-chip [active]="mora() === 'al-dia'" (click)="mora.set('al-dia')">Al día</ui-chip>
@@ -135,6 +134,7 @@ type MoraFilter = 'todos' | 'mora' | 'al-dia';
 export class AseguradosListPage {
   protected readonly store = inject(AseguradosStore);
   private readonly router = inject(Router);
+  private readonly aseguradoNavigation = inject(AseguradoNavigationStore);
 
   protected readonly search = signal<string>('');
   protected readonly mora = signal<MoraFilter>('todos');
@@ -179,7 +179,12 @@ export class AseguradosListPage {
   protected readonly exportFilename = computed(() => `centinela-asegurados-${todayStamp()}`);
 
   protected openAsegurado(id: string): void {
-    void this.router.navigate(['/asegurados', id]);
+    navigateToAseguradoDetail(
+      this.router,
+      this.aseguradoNavigation,
+      id,
+      this.filtered().map((asegurado) => asegurado.id),
+    );
   }
 
   protected onPageSize(size: number): void {

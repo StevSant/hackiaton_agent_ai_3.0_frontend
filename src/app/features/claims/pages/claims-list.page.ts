@@ -18,8 +18,9 @@ import { SkeletonTable } from '@shared/ui/skeleton-table';
 import { ClaimsTable } from '../components/claims-table';
 import { BandejaFilters, type BandejaFilterState } from '../components/bandeja-filters';
 import { ClaimsStore } from '@core/state/claims.store';
+import { ClaimNavigationStore } from '@core/state/claim-navigation.store';
 import type { Claim } from '@shared/models';
-import type { RiskTier } from '@shared/utils';
+import { navigateToClaimDetail, type RiskTier } from '@shared/utils';
 
 type TabKey = 'activos' | 'historico';
 type TierFilter = 'todos' | RiskTier | 'rebotados';
@@ -135,6 +136,7 @@ export class ClaimsListPage {
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly claimNavigation = inject(ClaimNavigationStore);
 
   protected readonly tab = signal<TabKey>('activos');
   protected readonly tierFilter = signal<TierFilter>('todos');
@@ -289,7 +291,9 @@ export class ClaimsListPage {
   }
 
   protected openCase(id: string): void {
-    void this.router.navigate(['/claims', id]);
+    const ids = this.filtered().map((claim) => claim.id);
+    navigateToClaimDetail(this.router, this.claimNavigation, id, ids);
+    this.store.prefetchNeighborDetails(ids, id, 2);
   }
 }
 

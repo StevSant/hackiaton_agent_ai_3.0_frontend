@@ -4,9 +4,10 @@ import { Router } from '@angular/router';
 import { Button } from '@shared/ui/button';
 import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
 import { Icon } from '@shared/ui/icon';
+import { PageHeader } from '@shared/ui/page-header';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
-import { RAMOS, reviewStatusLabel, type RamoKey, type RiskTier } from '@shared/utils';
+import { RAMOS, navigateToClaimDetail, reviewStatusLabel, type RamoKey, type RiskTier } from '@shared/utils';
 import type { Claim } from '@shared/models';
 import { InvestigacionTable } from '../components/investigacion-table';
 import { SavedFiltersModal } from '../components/saved-filters-modal';
@@ -19,6 +20,7 @@ import {
   type InvestigationTierFilter,
 } from '../utils/investigation-filters';
 import { ClaimsStore } from '@core/state/claims.store';
+import { ClaimNavigationStore } from '@core/state/claim-navigation.store';
 
 type StatusFilter = InvestigationStatusFilter;
 type TierFilter = InvestigationTierFilter;
@@ -52,6 +54,7 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
     Button,
     ExportModal,
     Icon,
+    PageHeader,
     InvestigacionTable,
     Pagination,
     SavedFiltersModal,
@@ -59,113 +62,135 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-start justify-between gap-4 py-2 pb-5">
-      <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">Investigación Avanzada</h1>
-        <p class="text-ink-3 text-[13.5px] m-0 max-w-2xl">
-          Vista completa de todos los siniestros. Cruza patrones por proveedor, asegurado y ramo.
-        </p>
-      </div>
-      <div class="flex items-center gap-2 shrink-0">
-        <ui-button variant="secondary" (click)="savedFiltersOpen.set(true)">
-          <ui-icon name="tune" [size]="15" />
+    <ui-page-header title="Investigación Avanzada">
+      <p class="centinela-page-header__desc" ngProjectAs="[description]">
+        Vista completa de todos los siniestros. Cruza patrones por proveedor, asegurado y ramo.
+      </p>
+      <ui-button
+        ngProjectAs="[actions]"
+        variant="primary"
+        [disabled]="filtered().length === 0"
+        (click)="exportOpen.set(true)"
+      >
+        <ui-icon name="download" [size]="15" />
+        Exportar reporte
+      </ui-button>
+    </ui-page-header>
+
+    <div class="centinela-filter-panel">
+      <button
+        type="button"
+        class="centinela-filter-panel__toggle md:hidden"
+        (click)="filtersOpen.update((open) => !open)"
+        [attr.aria-expanded]="filtersOpen()"
+      >
+        <span class="inline-flex items-center gap-2 min-w-0">
+          <ui-icon name="tune" [size]="16" class="shrink-0" />
+          <span class="truncate">Filtros</span>
+          @if (activeFilterTags().length > 0) {
+            <span class="centinela-filter-panel__toggle-badge">{{ activeFilterTags().length }}</span>
+          }
+        </span>
+        <ui-icon [name]="filtersOpen() ? 'expand_less' : 'expand_more'" [size]="18" class="shrink-0 text-ink-3" />
+      </button>
+
+      <div class="centinela-filter-panel__head hidden md:flex">
+        <span class="centinela-filter-panel__title">Filtros</span>
+        <button type="button" class="centinela-filter-panel__saved" (click)="savedFiltersOpen.set(true)">
+          <ui-icon name="bookmark" [size]="14" />
           Filtros guardados
-        </ui-button>
-        <ui-button
-          variant="primary"
-          [disabled]="filtered().length === 0"
-          (click)="exportOpen.set(true)"
-        >
-          <ui-icon name="download" [size]="15" />
-          Exportar reporte
-        </ui-button>
-      </div>
-    </div>
-
-    <div class="bg-surface border border-line rounded-lg shadow-1 mb-4">
-      <div class="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-        <label class="block min-w-0">
-          <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Nivel de riesgo IA</span>
-          <select
-            class="w-full bg-surface border border-line rounded-md px-3 py-2 text-[13px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-2"
-            [value]="filters().tier"
-            (change)="patchFilter('tier', $any($event.target).value)"
-          >
-            <option value="todos">Todos</option>
-            <option value="rojo">Alto</option>
-            <option value="amarillo">Medio</option>
-            <option value="verde">Bajo</option>
-          </select>
-        </label>
-
-        <label class="block min-w-0">
-          <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Ramo asegurador</span>
-          <select
-            class="w-full bg-surface border border-line rounded-md px-3 py-2 text-[13px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-2"
-            [value]="filters().ramo"
-            (change)="patchFilter('ramo', $any($event.target).value)"
-          >
-            <option value="todos">Todos</option>
-            @for (ramo of ramoFilters; track ramo.key) {
-              <option [value]="ramo.key">{{ ramo.label }}</option>
-            }
-          </select>
-        </label>
-
-        <label class="block min-w-0">
-          <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Ciudad o región</span>
-          <div class="flex items-center gap-2 bg-surface border border-line rounded-md px-3 py-2">
-            <ui-icon name="location_on" [size]="16" class="text-ink-3 shrink-0" />
-            <select
-              class="flex-1 border-0 outline-0 bg-transparent text-[13px] text-ink min-w-0 cursor-pointer focus-visible:outline-none"
-              [value]="filters().city"
-              (change)="patchFilter('city', $any($event.target).value)"
-            >
-              <option value="">Todas</option>
-              @for (city of cityOptions(); track city) {
-                <option [value]="city">{{ city }}</option>
-              }
-            </select>
-          </div>
-        </label>
-
-        <label class="block min-w-0">
-          <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Fecha desde</span>
-          <div class="flex items-center gap-2 bg-surface border border-line rounded-md px-3 py-2">
-            <ui-icon name="calendar_today" [size]="16" class="text-ink-3 shrink-0" />
-            <input
-              type="date"
-              class="flex-1 border-0 outline-0 bg-transparent text-[13px] text-ink min-w-0"
-              [value]="filters().dateFrom"
-              (input)="patchFilter('dateFrom', $any($event.target).value)"
-            />
-          </div>
-        </label>
-
-        <label class="block min-w-0">
-          <span class="text-[12px] font-medium text-ink-2 mb-1.5 block">Estado de revisión</span>
-          <select
-            class="w-full bg-surface border border-line rounded-md px-3 py-2 text-[13px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-2"
-            [value]="filters().status"
-            (change)="patchFilter('status', $any($event.target).value)"
-          >
-            <option value="todos">Todos</option>
-            <option value="pendiente">{{ reviewStatusLabel('pendiente') }}</option>
-            <option value="escalado">{{ reviewStatusLabel('escalado') }}</option>
-            <option value="en_revision">{{ reviewStatusLabel('en_revision') }}</option>
-            <option value="dictaminado">{{ reviewStatusLabel('dictaminado') }}</option>
-            <option value="revisado_sin_escalar">{{ reviewStatusLabel('revisado_sin_escalar') }}</option>
-          </select>
-        </label>
+        </button>
       </div>
 
-      <div class="px-5 pb-4 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex flex-wrap items-center gap-2 min-h-[28px]">
+      <div
+        class="centinela-filter-panel__body"
+        [class.centinela-filter-panel__body--open]="filtersOpen()"
+      >
+        <div class="centinela-filter-panel__grid">
+          <label class="centinela-filter-field">
+            <span class="centinela-filter-field__label">Riesgo IA</span>
+            <span class="centinela-field">
+              <select
+                [value]="filters().tier"
+                (change)="patchFilter('tier', $any($event.target).value)"
+              >
+                <option value="todos">Todos</option>
+                <option value="rojo">Alto</option>
+                <option value="amarillo">Medio</option>
+                <option value="verde">Bajo</option>
+              </select>
+            </span>
+          </label>
+
+          <label class="centinela-filter-field">
+            <span class="centinela-filter-field__label">Ramo</span>
+            <span class="centinela-field">
+              <select
+                [value]="filters().ramo"
+                (change)="patchFilter('ramo', $any($event.target).value)"
+              >
+                <option value="todos">Todos</option>
+                @for (ramo of ramoFilters; track ramo.key) {
+                  <option [value]="ramo.key">{{ ramo.label }}</option>
+                }
+              </select>
+            </span>
+          </label>
+
+          <label class="centinela-filter-field">
+            <span class="centinela-filter-field__label">Ciudad</span>
+            <span class="centinela-field">
+              <ui-icon name="location_on" [size]="14" class="shrink-0" />
+              <select
+                [value]="filters().city"
+                (change)="patchFilter('city', $any($event.target).value)"
+              >
+                <option value="">Todas</option>
+                @for (city of cityOptions(); track city) {
+                  <option [value]="city">{{ city }}</option>
+                }
+              </select>
+            </span>
+          </label>
+
+          <label class="centinela-filter-field">
+            <span class="centinela-filter-field__label">Desde</span>
+            <span class="centinela-field">
+              <ui-icon name="calendar_today" [size]="14" class="shrink-0" />
+              <input
+                type="date"
+                [value]="filters().dateFrom"
+                (input)="patchFilter('dateFrom', $any($event.target).value)"
+              />
+            </span>
+          </label>
+
+          <label class="centinela-filter-field centinela-filter-field--wide">
+            <span class="centinela-filter-field__label">Estado</span>
+            <span class="centinela-field">
+              <select
+                [value]="filters().status"
+                (change)="patchFilter('status', $any($event.target).value)"
+              >
+                <option value="todos">Todos</option>
+                <option value="pendiente">{{ reviewStatusLabel('pendiente') }}</option>
+                <option value="escalado">{{ reviewStatusLabel('escalado') }}</option>
+                <option value="en_revision">{{ reviewStatusLabel('en_revision') }}</option>
+                <option value="dictaminado">{{ reviewStatusLabel('dictaminado') }}</option>
+                <option value="revisado_sin_escalar">{{ reviewStatusLabel('revisado_sin_escalar') }}</option>
+              </select>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="centinela-filter-panel__foot">
+        <div class="centinela-filter-panel__tags">
           @if (activeFilterTags().length === 0) {
-            <span class="text-[12px] text-ink-3 italic">Sin filtros activos</span>
+            <span class="centinela-filter-panel__empty">Sin filtros activos</span>
           } @else {
             @for (tag of activeFilterTags(); track tag.key) {
-              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] bg-soft text-ink-2 border border-line">
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] bg-soft text-ink-2 border border-line">
                 {{ tag.label }}
                 <button
                   type="button"
@@ -173,20 +198,20 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
                   (click)="removeFilter(tag.key)"
                   [attr.aria-label]="'Quitar filtro ' + tag.label"
                 >
-                  <ui-icon name="close" [size]="14" />
+                  <ui-icon name="close" [size]="13" />
                 </button>
               </span>
             }
           }
         </div>
-        <div class="flex items-center gap-2 shrink-0">
+        <div class="centinela-filter-panel__foot-actions">
+          <button type="button" class="centinela-filter-panel__saved md:hidden" (click)="savedFiltersOpen.set(true)">
+            <ui-icon name="bookmark" [size]="14" />
+            Filtros guardados
+          </button>
           @if (activeFilterTags().length > 0) {
-            <button
-              type="button"
-              class="text-[13px] text-ink-3 hover:text-ink bg-transparent border-0 cursor-pointer px-2 py-1"
-              (click)="clearFilters()"
-            >
-              Limpiar filtros
+            <button type="button" class="centinela-filter-panel__clear" (click)="clearFilters()">
+              Limpiar
             </button>
           }
         </div>
@@ -257,12 +282,14 @@ const STATUS_LABELS: Record<Exclude<StatusFilter, 'todos'>, string> = {
 export class InvestigacionPage {
   protected readonly store = inject(ClaimsStore);
   private readonly router = inject(Router);
+  private readonly claimNavigation = inject(ClaimNavigationStore);
 
   protected reload(): void {
     void this.store.loadList();
   }
 
   protected readonly filters = signal<InvestigationFilters>({ ...EMPTY_FILTERS });
+  protected readonly filtersOpen = signal<boolean>(false);
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(10);
   protected readonly exportOpen = signal<boolean>(false);
@@ -347,7 +374,9 @@ export class InvestigacionPage {
   }
 
   protected openCase(id: string): void {
-    void this.router.navigate(['/claims', id]);
+    const ids = this.filtered().map((claim) => claim.id);
+    navigateToClaimDetail(this.router, this.claimNavigation, id, ids);
+    this.store.prefetchNeighborDetails(ids, id, 2);
   }
 
   protected onExport(req: ExportRequest): void {

@@ -6,18 +6,21 @@ import {
   type ProviderUpdate,
 } from '@core/api/clients/network.api';
 import { ProvidersStore } from '@core/state/providers.store';
+import { ProviderNavigationStore } from '@core/state/provider-navigation.store';
 import type { Provider } from '@shared/models';
 import { Button } from '@shared/ui/button';
 import { Chip } from '@shared/ui/chip';
 import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
+import { PageHeader } from '@shared/ui/page-header';
 import { Pagination } from '@shared/ui/pagination';
 import { SkeletonTable } from '@shared/ui/skeleton-table';
 import {
   PROVIDER_EXPORT_COLUMNS,
   exportProviders,
   formatMoney,
+  navigateToProviderDetail,
   projectProvider,
 } from '@shared/utils';
 import { ProviderFormModal, type ProviderFormValue } from '../components/provider-form-modal';
@@ -34,6 +37,7 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
     ExportModal,
     Icon,
     KpiSmall,
+    PageHeader,
     Pagination,
     SkeletonTable,
     ProvidersTable,
@@ -41,14 +45,11 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex items-end justify-between gap-6 py-2 pb-6">
-      <div>
-        <h1 class="text-[26px] font-semibold tracking-tight m-0 mb-1">Proveedores y beneficiarios</h1>
-        <p class="text-ink-3 text-[13.5px] m-0">
-          Listado de talleres, clínicas y beneficiarios asociados a los siniestros.
-        </p>
-      </div>
-      <div class="flex items-center gap-2 shrink-0">
+    <ui-page-header title="Proveedores y beneficiarios">
+      <p class="centinela-page-header__desc" ngProjectAs="[description]">
+        Listado de talleres, clínicas y beneficiarios asociados a los siniestros.
+      </p>
+      <div ngProjectAs="[actions]" class="flex flex-wrap items-center gap-2">
         <ui-button variant="primary" (click)="openCreate()">
           <ui-icon name="add" [size]="16" />
           Agregar proveedor
@@ -58,27 +59,26 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
           Exportar reporte
         </ui-button>
       </div>
-    </div>
+    </ui-page-header>
 
-    <div class="grid grid-cols-4 gap-3 mb-5">
+    <div class="centinela-kpi-row">
       <ui-kpi-small label="Total" [value]="stats().total + ''" icon="storefront" tone="brand" />
       <ui-kpi-small label="En lista restrictiva" [value]="stats().restrictiva + ''" icon="report" tone="red" />
       <ui-kpi-small label="Alertas acumuladas" [value]="stats().alertas + ''" icon="warning" tone="yellow" />
       <ui-kpi-small label="Monto total" [value]="formatMoney(stats().monto)" icon="payments" />
     </div>
 
-    <div class="bg-surface border border-line rounded-lg shadow-1 px-4 py-3 mb-4 flex items-center justify-between gap-4 flex-wrap">
-      <div class="flex items-center gap-2 flex-1 min-w-[260px]">
-        <ui-icon name="search" [size]="16" class="text-ink-3" />
+    <div class="centinela-list-toolbar">
+      <div class="centinela-list-toolbar__search">
+        <ui-icon name="search" [size]="16" class="text-ink-3 shrink-0" />
         <input
           type="search"
-          class="bg-transparent border-0 outline-0 text-[13.5px] flex-1 text-ink placeholder:text-ink-3"
           placeholder="Buscar por nombre, ciudad o tipo…"
           [value]="search()"
           (input)="search.set($any($event.target).value)"
         />
       </div>
-      <div class="flex items-center gap-1.5">
+      <div class="centinela-list-toolbar__filters">
         <ui-chip [active]="restrictive() === 'todos'" (click)="restrictive.set('todos')">Todos</ui-chip>
         <ui-chip [active]="restrictive() === 'restrictiva'" (click)="restrictive.set('restrictiva')">Lista restrictiva</ui-chip>
         <ui-chip [active]="restrictive() === 'normal'" (click)="restrictive.set('normal')">Normales</ui-chip>
@@ -131,6 +131,7 @@ type RestrictiveFilter = 'todos' | 'restrictiva' | 'normal';
 export class ProvidersListPage {
   protected readonly store = inject(ProvidersStore);
   private readonly router = inject(Router);
+  private readonly providerNavigation = inject(ProviderNavigationStore);
 
   protected readonly search = signal<string>('');
   protected readonly restrictive = signal<RestrictiveFilter>('todos');
@@ -175,7 +176,12 @@ export class ProvidersListPage {
   protected readonly exportFilename = computed(() => `centinela-proveedores-${todayStamp()}`);
 
   protected openProvider(id: string): void {
-    void this.router.navigate(['/providers', id]);
+    navigateToProviderDetail(
+      this.router,
+      this.providerNavigation,
+      id,
+      this.filtered().map((provider) => provider.id),
+    );
   }
 
   protected onPageSize(size: number): void {
