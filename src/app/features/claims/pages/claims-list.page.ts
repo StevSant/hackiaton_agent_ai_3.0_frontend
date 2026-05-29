@@ -11,6 +11,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthStore } from '@core/auth/auth.store';
 import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
+import { ExportButton } from '@shared/ui/export-button';
+import { ExportModal, type ExportRequest } from '@shared/ui/export-modal';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { PageHeader } from '@shared/ui/page-header';
@@ -24,6 +26,9 @@ import type { Claim } from '@shared/models';
 import {
   bindListKeyboardNav,
   byTriagePriority,
+  CLAIM_EXPORT_COLUMNS,
+  exportClaims,
+  projectClaim,
   sortRows,
   TableSortController,
   type RiskTier,
@@ -37,7 +42,18 @@ type DateRangePreset = 'todos' | '7d' | '30d' | 'custom';
 @Component({
   selector: 'page-claims-list',
   standalone: true,
-  imports: [Icon, KpiSmall, PageHeader, Pagination, SegmentedTabs, SkeletonTable, FilterBar, ClaimsTable],
+  imports: [
+    Icon,
+    KpiSmall,
+    PageHeader,
+    Pagination,
+    SegmentedTabs,
+    SkeletonTable,
+    FilterBar,
+    ClaimsTable,
+    ExportButton,
+    ExportModal,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="centinela-viewport-page">
@@ -52,6 +68,13 @@ type DateRangePreset = 'todos' | '7d' | '30d' | 'custom';
             <span class="ml-1.5 text-tier-yellow-ink">· {{ kpis().rebotados }} caso{{ kpis().rebotados > 1 ? 's' : '' }} rebotado{{ kpis().rebotados > 1 ? 's' : '' }} de Antifraude.</span>
           }
         </p>
+        <div ngProjectAs="[actions]">
+          <ui-export-button
+            label="Exportar reporte"
+            [disabled]="filtered().length === 0"
+            (trigger)="exportOpen.set(true)"
+          />
+        </div>
       </ui-page-header>
 
       <div class="centinela-kpi-row">
@@ -108,6 +131,18 @@ type DateRangePreset = 'todos' | '7d' | '30d' | 'custom';
         }
       </div>
     </div>
+
+    <ui-export-modal
+      [open]="exportOpen()"
+      title="Exportar bandeja de triaje"
+      subtitle="Genera un archivo con los siniestros que coinciden con la pestaña y los filtros actuales."
+      [columns]="claimColumns"
+      [defaultFilename]="exportFilename()"
+      [totalRows]="filtered().length"
+      [previewRows]="previewRows()"
+      (close)="exportOpen.set(false)"
+      (download)="onExport($event)"
+    />
   `,
 })
 export class ClaimsListPage {
@@ -123,6 +158,8 @@ export class ClaimsListPage {
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(10);
   protected readonly listFocusIndex = signal(-1);
+  protected readonly exportOpen = signal<boolean>(false);
+  protected readonly claimColumns = CLAIM_EXPORT_COLUMNS;
 
   // Seed filters from URL params (e.g. ?q= after import, ?ciudad= from Insights drill-down)
   protected readonly filters = signal<FilterValue>({
@@ -368,9 +405,24 @@ export class ClaimsListPage {
     this.page.set(0);
   }
 
+  protected readonly previewRows = computed(() => this.filtered().slice(0, 3).map(projectClaim));
+
+  protected readonly exportFilename = computed(
+    () => `centinela-bandeja-${this.tab()}-${todayStamp()}`,
+  );
+
+  protected onExport(req: ExportRequest): void {
+    exportClaims(this.filtered(), req);
+  }
+
   protected openCase(id: string): void {
     void this.router.navigate(['/claims', id]);
   }
+}
+
+function todayStamp(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function isActiveForAnalista(c: Claim): boolean {

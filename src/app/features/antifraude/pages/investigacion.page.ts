@@ -13,6 +13,9 @@ import { SkeletonTable } from '@shared/ui/skeleton-table';
 import {
   bindListKeyboardNav,
   byTriagePriority,
+  CLAIM_EXPORT_COLUMNS,
+  exportClaims,
+  projectClaim,
   RAMOS,
   reviewStatusLabel,
   sortRows,
@@ -24,7 +27,6 @@ import {
 import type { Claim } from '@shared/models';
 import { InvestigacionTable } from '../components/investigacion-table';
 import { SavedFiltersModal } from '../components/saved-filters-modal';
-import { CLAIM_EXPORT_COLUMNS, exportClaims, projectClaim } from '../utils/export-claims';
 import {
   EMPTY_INVESTIGATION_FILTERS,
   type InvestigationCategoryFilter,

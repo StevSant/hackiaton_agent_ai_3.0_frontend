@@ -5,6 +5,8 @@ import type { ClaimSummaryDto, InboxRowDto } from '@core/api/clients/claim.dto';
 import { AuthStore } from '@core/auth/auth.store';
 import { KeyboardShortcutsService } from '@core/keyboard/keyboard-shortcuts.service';
 import { Button } from '@shared/ui/button';
+import { ExportButton } from '@shared/ui/export-button';
+import { ExportModal, type ExportColumnOption, type ExportRequest } from '@shared/ui/export-modal';
 import { Icon } from '@shared/ui/icon';
 import { KpiSmall } from '@shared/ui/kpi-small';
 import { PageHeader } from '@shared/ui/page-header';
@@ -23,13 +25,32 @@ import {
 } from '@shared/utils';
 import { AntifraudeInboxStore } from '../services/antifraude-inbox.store';
 import { InboxTable } from '../components/inbox-table';
+import {
+  exportInboxActiveRows,
+  exportInboxHistoricoRows,
+  INBOX_ACTIVE_EXPORT_COLUMNS,
+  INBOX_HISTORICO_EXPORT_COLUMNS,
+  projectInboxActiveRow,
+  projectInboxHistoricoRow,
+} from '../utils/export-inbox';
 
 type TabKey = 'activos' | 'historico';
 
 @Component({
   selector: 'page-antifraude-bandeja',
   standalone: true,
-  imports: [Button, Icon, KpiSmall, PageHeader, Pagination, SegmentedTabs, SkeletonTable, InboxTable],
+  imports: [
+    Button,
+    ExportButton,
+    ExportModal,
+    Icon,
+    KpiSmall,
+    PageHeader,
+    Pagination,
+    SegmentedTabs,
+    SkeletonTable,
+    InboxTable,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="centinela-viewport-page">
@@ -45,9 +66,16 @@ type TabKey = 'activos' | 'historico';
             Bandeja vacía. Te puedes enfocar en patrones o auditoría.
           }
         </p>
-        <div actions class="hidden lg:flex items-center gap-2 text-[12px] text-ink-3 max-w-[220px] text-right leading-snug" ngProjectAs="[actions]">
-          <ui-icon name="info" [size]="14" class="shrink-0" />
-          Ordenados por tier (rojo primero) y luego por FIFO de escalación.
+        <div actions class="flex items-center gap-3" ngProjectAs="[actions]">
+          <span class="hidden lg:flex items-center gap-2 text-[12px] text-ink-3 max-w-[220px] text-right leading-snug">
+            <ui-icon name="info" [size]="14" class="shrink-0" />
+            Ordenados por tier (rojo primero) y luego por FIFO de escalación.
+          </span>
+          <ui-export-button
+            label="Exportar reporte"
+            [disabled]="exportableCount() === 0"
+            (trigger)="exportOpen.set(true)"
+          />
         </div>
       </ui-page-header>
 
@@ -180,6 +208,18 @@ type TabKey = 'activos' | 'historico';
         }
       </div>
     </div>
+
+    <ui-export-modal
+      [open]="exportOpen()"
+      [title]="exportTitle()"
+      [subtitle]="exportSubtitle()"
+      [columns]="exportColumns()"
+      [defaultFilename]="exportFilename()"
+      [totalRows]="exportableCount()"
+      [previewRows]="exportPreviewRows()"
+      (close)="exportOpen.set(false)"
+      (download)="onExport($event)"
+    />
   `,
 })
 export class BandejaPage {
@@ -194,6 +234,7 @@ export class BandejaPage {
   protected readonly page = signal<number>(0);
   protected readonly pageSize = signal<number>(10);
   protected readonly listFocusIndex = signal(-1);
+  protected readonly exportOpen = signal<boolean>(false);
 
   protected readonly ramoIcon = ramoIcon;
   protected readonly ramoLabel = ramoLabel;
@@ -296,6 +337,47 @@ export class BandejaPage {
     this.page.set(0);
   }
 
+  // --- Export: respects the active tab, exporting all sorted rows (not just the page) ---
+
+  protected readonly exportableCount = computed(() =>
+    this.tab() === 'activos' ? this.sortedActiveRows().length : this.sortedHistoricoRows().length,
+  );
+
+  protected readonly exportColumns = computed<readonly ExportColumnOption[]>(() =>
+    this.tab() === 'activos' ? INBOX_ACTIVE_EXPORT_COLUMNS : INBOX_HISTORICO_EXPORT_COLUMNS,
+  );
+
+  protected readonly exportTitle = computed(() =>
+    this.tab() === 'activos'
+      ? 'Exportar bandeja antifraude'
+      : 'Exportar histórico de dictámenes',
+  );
+
+  protected readonly exportSubtitle = computed(() =>
+    this.tab() === 'activos'
+      ? 'Genera un archivo con los casos escalados actualmente en la bandeja antifraude.'
+      : 'Genera un archivo con los dictámenes que has emitido.',
+  );
+
+  protected readonly exportFilename = computed(() => {
+    const tab = this.tab() === 'activos' ? 'bandeja' : 'historico';
+    return `centinela-antifraude-${tab}-${todayStamp()}`;
+  });
+
+  protected readonly exportPreviewRows = computed(() =>
+    this.tab() === 'activos'
+      ? this.sortedActiveRows().slice(0, 3).map(projectInboxActiveRow)
+      : this.sortedHistoricoRows().slice(0, 3).map(projectInboxHistoricoRow),
+  );
+
+  protected onExport(req: ExportRequest): void {
+    if (this.tab() === 'activos') {
+      exportInboxActiveRows(this.sortedActiveRows(), req);
+    } else {
+      exportInboxHistoricoRows(this.sortedHistoricoRows(), req);
+    }
+  }
+
   protected openCase(id: string): void {
     void this.router.navigate(['/claims', id]);
   }
@@ -319,6 +401,11 @@ export class BandejaPage {
       void this.store.loadHistorico();
     }
   }
+}
+
+function todayStamp(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 const TIER_RANK: Record<RiskTier, number> = { rojo: 0, amarillo: 1, verde: 2 };

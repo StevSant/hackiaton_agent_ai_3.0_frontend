@@ -1,6 +1,8 @@
 import type { Claim } from '@shared/models';
 import type { ExportColumnOption, ExportRequest } from '@shared/ui';
-import { downloadExport, ramoLabel, reviewStatusLabel } from '@shared/utils';
+import { downloadExport } from './download-export';
+import { ramoLabel } from './ramos';
+import { reviewStatusLabel } from './review-status';
 
 export const CLAIM_EXPORT_COLUMNS: readonly ExportColumnOption[] = [
   { key: 'id_siniestro', label: 'ID Siniestro', defaultSelected: true },

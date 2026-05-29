@@ -22,6 +22,7 @@ export {
   projectProvider,
   PROVIDER_EXPORT_COLUMNS,
 } from './export-providers';
+export { exportClaims, projectClaim, CLAIM_EXPORT_COLUMNS } from './export-claims';
 export {
   CLAIM_RETURN_TO_QUERY,
   MAP_CLAIM_QUERY,
