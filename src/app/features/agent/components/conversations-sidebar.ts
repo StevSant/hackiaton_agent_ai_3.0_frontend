@@ -60,7 +60,9 @@ const GROUP_PREVIEW_LIMIT = 6;
             }
           </div>
         } @else if (items().length === 0) {
-          <p class="text-[12.5px] text-ink-3 px-3 py-2">Sin conversaciones todavía.</p>
+          <p class="text-[12.5px] text-ink-3 px-3 py-2">
+            {{ query() ? 'Sin resultados para «' + query() + '».' : 'Sin conversaciones todavía.' }}
+          </p>
         } @else {
           @for (group of groups(); track group.key) {
             @if (showHeaders()) {

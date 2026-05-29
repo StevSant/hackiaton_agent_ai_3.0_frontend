@@ -488,7 +488,7 @@ function generateUuid(): string {
         <div class="flex-1 min-h-0 flex flex-col">
           <agent-conversations-sidebar
             class="flex-1 min-h-0 flex flex-col"
-            [items]="conversations.list()"
+            [items]="conversations.filtered()"
             [activeId]="activeConversationId()"
             [query]="conversations.query()"
             [loading]="conversations.loading()"

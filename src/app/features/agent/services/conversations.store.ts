@@ -5,6 +5,14 @@ import { ConversationsApi } from '@core/api/clients/conversations.api';
 import { AppError } from '@core/errors/app-error';
 import type { ConversationSummary } from '../models';
 
+/** Lowercase + strip accents so "grafico" matches "gráfico". */
+function norm(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+}
+
 @Injectable({ providedIn: 'root' })
 export class ConversationsStore {
   private readonly api = inject(ConversationsApi);
@@ -13,8 +21,8 @@ export class ConversationsStore {
   private readonly _loading = signal<boolean>(false);
   private readonly _error = signal<AppError | null>(null);
   private readonly _query = signal<string>('');
-
-  private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Set once the first fetch lands — so later refreshes can revalidate silently. */
+  private _loaded = false;
 
   readonly list = this._list.asReadonly();
   readonly loading = this._loading.asReadonly();
@@ -23,13 +31,30 @@ export class ConversationsStore {
 
   readonly isEmpty = computed(() => !this._loading() && this._list().length === 0);
 
+  /** Client-side filtered view (title + last-message snippet), accent-insensitive.
+   * Searching is instant against the cached list — no per-keystroke backend call. */
+  readonly filtered = computed(() => {
+    const q = norm(this._query().trim());
+    if (!q) return this._list();
+    return this._list().filter(
+      (c) => norm(c.title ?? '').includes(q) || norm(c.snippet ?? '').includes(q),
+    );
+  });
+
+  /**
+   * Fetch the conversation list. Shows the loading skeleton ONLY on the first
+   * load (empty cache); subsequent calls revalidate silently so reopening the
+   * panel never flashes skeletons over already-cached data (stale-while-revalidate).
+   */
   async refresh(): Promise<void> {
-    this._loading.set(true);
+    const silent = this._loaded && this._list().length > 0;
+    if (!silent) this._loading.set(true);
     this._error.set(null);
     try {
-      const q = this._query() || undefined;
-      const result = await firstValueFrom(this.api.list(q));
+      // Always fetch the full list — filtering happens client-side now.
+      const result = await firstValueFrom(this.api.list());
       this._list.set(result);
+      this._loaded = true;
     } catch (err) {
       this._error.set(
         err instanceof AppError
@@ -41,12 +66,9 @@ export class ConversationsStore {
     }
   }
 
+  /** Local, instant filtering — just updates the query; `filtered` recomputes. */
   setQuery(q: string): void {
     this._query.set(q);
-    if (this.debounceTimer !== null) clearTimeout(this.debounceTimer);
-    this.debounceTimer = setTimeout(() => {
-      void this.refresh();
-    }, 250);
   }
 
   async rename(id: string, title: string): Promise<void> {
