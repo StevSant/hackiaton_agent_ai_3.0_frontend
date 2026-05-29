@@ -52,18 +52,29 @@ import { formatEvidence, type EvidenceRow } from '../utils/evidence-format';
                   </div>
 
                   @if (evidenceFor(a).length > 0) {
-                    <div>
-                      <div class="text-[10.5px] uppercase tracking-wide text-ink-4 font-semibold mb-1.5">
-                        Por qué se activó en este caso
+                    <div class="rounded-lg border border-brand/35 bg-brand-soft/50 px-3 py-2.5">
+                      <div class="flex items-center gap-1.5 mb-2">
+                        <ui-icon name="fact_check" [size]="14" class="text-brand-ink" />
+                        <span class="text-[11px] uppercase tracking-[0.06em] text-brand-ink font-bold">
+                          Por qué se activó en este caso
+                        </span>
                       </div>
-                      <div class="flex flex-wrap gap-x-4 gap-y-1.5">
+                      <div class="flex flex-wrap gap-x-5 gap-y-2">
                         @for (row of evidenceFor(a); track row.label) {
-                          <span class="inline-flex items-baseline gap-1 text-[12px]">
-                            <span class="text-ink-3">{{ row.label }}:</span>
-                            <span class="text-ink font-semibold font-mono">{{ row.value }}</span>
+                          <span class="inline-flex flex-col leading-tight">
+                            <span class="text-[10.5px] text-ink-3">{{ row.label }}</span>
+                            <span class="text-[13.5px] text-ink font-semibold font-mono">{{ row.value }}</span>
                           </span>
                         }
                       </div>
+                    </div>
+                  } @else {
+                    <div class="flex items-start gap-1.5 text-[11.5px] text-ink-3 italic">
+                      <ui-icon name="info" [size]="13" class="mt-0.5 shrink-0" />
+                      <span>
+                        Se activó por el criterio general de la regla (ver descripción). El detalle
+                        cuantitativo de este caso requiere re-analizar el siniestro con contexto completo.
+                      </span>
                     </div>
                   }
 
