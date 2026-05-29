@@ -92,12 +92,19 @@ export class ClaimsStore {
   // Lets the summary card show the four specialists lighting up (pendiente →
   // pensando → voto) instead of a static spinner. Cleared once the run lands.
   private readonly _panelLive = signal<ReadonlyMap<string, PanelLiveAgent[]>>(new Map());
+  // Claim ids whose NLP narrative analysis is in flight vs. has failed. Lets the
+  // narrative card distinguish "en curso" from "falló — reintentá" instead of
+  // spinning forever when the request times out or errors.
+  private readonly _narrativeRunningIds = signal<ReadonlySet<string>>(new Set());
+  private readonly _narrativeErrorIds = signal<ReadonlySet<string>>(new Set());
 
   readonly claims = this._claims.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
   readonly detailLoadedIds = this._detailLoadedIds.asReadonly();
   readonly panelRunningIds = this._panelRunningIds.asReadonly();
+  readonly narrativeRunningIds = this._narrativeRunningIds.asReadonly();
+  readonly narrativeErrorIds = this._narrativeErrorIds.asReadonly();
 
   /** Live per-agent panel status for a claim (empty until a run starts). */
   panelLive(id: string): PanelLiveAgent[] {
@@ -284,12 +291,18 @@ export class ClaimsStore {
    * swallowed so the detail page still renders without the NLP card.
    */
   async analyzeNarrative(id: string): Promise<void> {
+    this._narrativeErrorIds.update((s) => removeFromSet(s, id));
+    this._narrativeRunningIds.update((s) => (s.has(id) ? s : new Set([...s, id])));
     try {
       const dto = await firstValueFrom(this.api.analyzeNarrative(id));
       this.upsert(dtoToClaim(dto));
       this._detailLoadedIds.update((s) => (s.has(id) ? s : new Set([...s, id])));
     } catch {
-      // NLP is an enrichment — never block the detail view on its failure.
+      // NLP is an enrichment — never block the detail view on its failure, but
+      // surface it so the card shows "reintentar" instead of spinning forever.
+      this._narrativeErrorIds.update((s) => (s.has(id) ? s : new Set([...s, id])));
+    } finally {
+      this._narrativeRunningIds.update((s) => removeFromSet(s, id));
     }
   }
 
@@ -594,4 +607,12 @@ function toAppError(error: unknown): AppError {
   if (error instanceof AppError) return error;
   const message = error instanceof Error ? error.message : 'Error al cargar la información.';
   return new AppError('claims/load', message);
+}
+
+/** Return a new set without `id` (same reference when `id` wasn't present). */
+function removeFromSet(set: ReadonlySet<string>, id: string): ReadonlySet<string> {
+  if (!set.has(id)) return set;
+  const next = new Set(set);
+  next.delete(id);
+  return next;
 }

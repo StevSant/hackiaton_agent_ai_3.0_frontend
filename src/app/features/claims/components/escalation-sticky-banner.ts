@@ -16,19 +16,41 @@ import type { ClaimReview } from '@shared/models';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (review().bounce_count > 0 && review().bounce_note) {
-      <div class="rounded-lg border border-tier-yellow-ink/30 bg-tier-yellow-soft/30 overflow-hidden">
-        <div class="px-5 py-3 flex items-center gap-2 border-b border-tier-yellow-ink/20 bg-tier-yellow-soft/60">
-          <ui-icon name="info" [size]="16" />
-          <h3 class="text-[13px] font-semibold m-0 text-tier-yellow-ink">
-            Unidad Antifraude solicita más información
-          </h3>
-          <span class="ml-auto text-[11px] text-tier-yellow-ink/80">
-            {{ author() }}{{ when() ? ' · ' + when() : '' }}
-          </span>
-        </div>
-        <div class="px-5 py-4">
-          <p class="text-[13px] leading-relaxed m-0 text-ink">{{ review().bounce_note }}</p>
-          <p class="text-[11.5px] text-ink-3 mt-3 mb-0">
+      <div class="claim-bounce-alert" role="alert" aria-live="polite">
+        <div class="claim-bounce-alert__accent" aria-hidden="true"></div>
+
+        <div class="claim-bounce-alert__inner">
+          <div class="claim-bounce-alert__header">
+            <div class="claim-bounce-alert__lead">
+              <span class="claim-bounce-alert__icon" aria-hidden="true">
+                <ui-icon name="priority_high" [size]="20" />
+              </span>
+              <div class="claim-bounce-alert__titles">
+                <span class="claim-bounce-alert__badge">Acción requerida</span>
+                <h3 class="claim-bounce-alert__title">
+                  Unidad Antifraude solicita más información
+                </h3>
+              </div>
+            </div>
+
+            <div class="claim-bounce-alert__meta">
+              <ui-icon name="person" [size]="13" />
+              <span>{{ author() }}</span>
+              @if (when()) {
+                <span class="claim-bounce-alert__meta-sep" aria-hidden="true">·</span>
+                <ui-icon name="schedule" [size]="13" />
+                <span>{{ when() }}</span>
+              }
+            </div>
+          </div>
+
+          <blockquote class="claim-bounce-alert__message">
+            <span class="claim-bounce-alert__quote-mark" aria-hidden="true">“</span>
+            {{ review().bounce_note }}
+          </blockquote>
+
+          <p class="claim-bounce-alert__hint">
+            <ui-icon name="upload_file" [size]="15" />
             Cuando hayas adjuntado los documentos solicitados, vuelve a escalar el caso.
           </p>
         </div>
